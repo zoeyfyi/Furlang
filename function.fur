@@ -1,0 +1,6 @@
+add :: int a , int b -> int {
+    c := a + b
+    return c
+}
+
+add ( 4 , 3 )
