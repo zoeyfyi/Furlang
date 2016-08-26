@@ -31,7 +31,10 @@ const (
 	ADDITION      = "ADDITION"
 
 	NAME = "NAME"
-	TYPE = "TYPE"
+
+	INTEGER = "INTEGER"
+	FLOAT   = "FLOAT"
+	STRING  = "STRING"
 
 	NUMBER = "NUMBER"
 
@@ -73,12 +76,16 @@ func tokenize(in string) []Token {
 				tokenType = ARROW
 			case "+":
 				tokenType = ADDITION
+			case "int":
+				tokenType = INTEGER
+			case "float":
+				tokenType = FLOAT
+			case "string":
+				tokenType = STRING
 			}
 
 			if tokenType == UNDEFIND {
-				if word == "int" || word == "float" {
-					tokenType = TYPE
-				} else if _, err := strconv.ParseInt(word, 10, 0); err == nil {
+				if _, err := strconv.ParseInt(word, 10, 0); err == nil {
 					tokenType = NUMBER
 				} else {
 					tokenType = NAME
