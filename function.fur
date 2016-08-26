@@ -3,4 +3,7 @@ add :: int a , int b -> int {
     return c
 }
 
-add ( 4 , 3 )
+main :: -> int {
+    add ( 4 , 3 )
+    return 1
+}
