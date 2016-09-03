@@ -1,0 +1,9 @@
+add :: i32 a, i32 b -> i32 c {
+    c := a + b
+    return c
+}
+
+main:: -> i32 i {
+    a := add(9, 3)
+    return a
+}

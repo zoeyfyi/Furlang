@@ -1,9 +1,9 @@
-add :: int a , int b -> int {
+add :: i32 a , i32 b -> i32 c {
     c := a + b
     return c
 }
 
-main :: -> int {
+main :: -> i32 {
     add ( 4 , 3 )
     return 1
 }

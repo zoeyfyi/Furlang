@@ -5,8 +5,10 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
-	"strconv"
-	"strings"
+	"time"
+
+	"github.com/bongo227/go-compiler/compiler"
+	"github.com/fatih/color"
 )
 
 func check(e error) {
@@ -15,131 +17,68 @@ func check(e error) {
 	}
 }
 
-// Token types
-const (
-	BLOCK_BEGIN = "BLOCK BEGIN"
-	BLOCK_END   = "BLOCK END"
-
-	FUNCTION   = "FUNCTION"
-	ASSIGNMENT = "ASSINGMENT"
-
-	COMMA         = "COMMA"
-	BRACKET_OPEN  = "BRACKET_OPEN"
-	BRACKET_CLOSE = "BRACKET_CLOSE"
-	ARROW         = "ARROW"
-	NEWLINE       = "NEWLINE"
-	ADDITION      = "ADDITION"
-
-	NAME = "NAME"
-
-	INTEGER = "INTEGER"
-	FLOAT   = "FLOAT"
-	STRING  = "STRING"
-
-	NUMBER = "NUMBER"
-
-	UNDEFIND = "UNDEFIND"
-)
-
-type Token struct {
-	ttype string
-	value string
-}
-
-func tokenize(in string) []Token {
-	out := make([]Token, 1000)
-
-	i := 0
-	for _, line := range strings.Split(in, "\n") {
-		for _, word := range strings.Split(line, " ") {
-			if word == "" {
-				continue
-			}
-
-			tokenType := UNDEFIND
-			switch word {
-			case "{":
-				tokenType = BLOCK_BEGIN
-			case "}":
-				tokenType = BLOCK_END
-			case "::":
-				tokenType = FUNCTION
-			case ":=":
-				tokenType = ASSIGNMENT
-			case ",":
-				tokenType = COMMA
-			case "(":
-				tokenType = BRACKET_OPEN
-			case ")":
-				tokenType = BRACKET_CLOSE
-			case "->":
-				tokenType = ARROW
-			case "+":
-				tokenType = ADDITION
-			case "int":
-				tokenType = INTEGER
-			case "float":
-				tokenType = FLOAT
-			case "string":
-				tokenType = STRING
-			}
-
-			if tokenType == UNDEFIND {
-				if _, err := strconv.ParseInt(word, 10, 0); err == nil {
-					tokenType = NUMBER
-				} else {
-					tokenType = NAME
-				}
-			}
-
-			out[i] = Token{
-				ttype: tokenType,
-				value: word,
-			}
-
-			i++
-		}
-
-		out[i] = Token{
-			ttype: NEWLINE,
-			value: "\n",
-		}
-
-		i++
-	}
-
-	return out
-}
-
 func main() {
+	start := time.Now()
+	blue := color.New(color.FgHiBlue).SprintFunc()
+
+	fmt.Printf("%s -> ", blue("Reading input file"))
+
+	// Get file from arguments
 	if len(os.Args) <= 1 {
-		fmt.Println("No input file")
+		fmt.Println("\nNo input file")
 		return
 	}
-
 	in := os.Args[1]
+
+	// Check its a fur file
 	matched, err := regexp.MatchString("(\\w)+(\\.)+(fur)", in)
 	check(err)
-
 	if !matched {
-		fmt.Printf("File '%s' is not a fur file\n", in)
+		fmt.Printf("\nFile '%s' is not a fur file", in)
 		return
 	}
 
+	// Read file into memory
 	data, err := ioutil.ReadFile(in)
 	check(err)
 
-	f, err := os.Create("ben")
+	// Create a file to write to
+	f, err := os.Create("build/ben.ll")
 	check(err)
 	defer f.Close()
 
-	tokens := tokenize(string(data))
-	for _, token := range tokens {
-		if token.ttype == "" {
-			return
+	// Write the tokens to file
+	fmt.Printf("%s -> ", blue("Parcing token"))
+	tokens := compiler.ParseTokens(string(data))
+	if len(os.Args) == 3 && os.Args[2] == "-tokens" {
+		fmt.Println()
+		compiler.Dump(tokens, "tokens")
+		tokensFile, err := os.Create("build/tokens.txt")
+		check(err)
+		defer f.Close()
+
+		for _, t := range tokens {
+			tokensFile.WriteString(t.String())
 		}
-		f.WriteString(token.ttype + " -- " + strconv.Quote(token.value) + "\n")
 	}
 
+	// Create abstract syntax tree
+	fmt.Printf("%s -> ", blue("Creating abstract syntax tree"))
+	funcs := compiler.Ast(tokens)
+	if len(os.Args) == 3 && os.Args[2] == "-ast" {
+		compiler.Dump(funcs, "funcs")
+	}
+
+	// Compile
+	fmt.Printf("%s -> ", blue("Compiling to LLVM"))
+	s := compiler.Llvm(funcs)
+
+	fmt.Printf("%s -> ", blue("Writing to file"))
+	f.WriteString(s)
+
+	// Confirm the writes
 	f.Sync()
+	fmt.Printf("%s\n", blue("Done"))
+	duration := time.Since(start)
+	fmt.Printf("[Compiled in %fs]\n", duration.Seconds())
 }
