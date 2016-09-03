@@ -1,13 +1,13 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
 	"time"
 
-	"bitbucket.com/bongo227/cmap"
 	"bitbucket.com/bongo227/furlang/compiler"
 	"github.com/fatih/color"
 )
@@ -18,68 +18,86 @@ func check(e error) {
 	}
 }
 
-func main() {
-	start := time.Now()
+func step(name string) {
 	blue := color.New(color.FgHiBlue).SprintFunc()
+	fmt.Printf("%s -> ", blue(name))
+}
 
-	fmt.Printf("%s -> ", blue("Reading input file"))
+func main() {
+	// Parse command line flags
+	outputTokens := flag.Bool("tokens", false, "Create a file with the tokens")
+	outputAst := flag.Bool("ast", false, "Create file with the abstract syntax tree")
+	flag.Parse()
+
+	fmt.Println(*outputTokens, *outputAst)
+
+	// Start compiler timer
+	start := time.Now()
 
 	// Get file from arguments
-	if len(os.Args) <= 1 {
+	step("Reading input file")
+	in := flag.Arg(0)
+	if in == "" {
 		fmt.Println("\nNo input file")
 		return
 	}
-	in := os.Args[1]
 
 	// Check its a fur file
 	matched, err := regexp.MatchString("(\\w)+(\\.)+(fur)", in)
-	check(err)
-	if !matched {
+	if err != nil || !matched {
 		fmt.Printf("\nFile '%s' is not a fur file", in)
 		return
 	}
 
 	// Read file into memory
 	data, err := ioutil.ReadFile(in)
-	check(err)
+	program := string(data)
+	if err != nil {
+		fmt.Printf("\nProblem reading file '%s", in)
+		return
+	}
 
 	// Create a file to write to
 	f, err := os.Create("build/ben.ll")
-	check(err)
+	if err != nil {
+		fmt.Printf("\nProblem creating build file")
+		return
+	}
 	defer f.Close()
 
 	// Write the tokens to file
-	fmt.Printf("%s -> ", blue("Parcing token"))
-	tokens := compiler.ParseTokens(string(data))
-	if len(os.Args) == 3 && os.Args[2] == "-tokens" {
-		fmt.Println()
-		cmap.Dump(tokens, "tokens")
+	if *outputTokens {
+		step("Writing tokens to file")
 		tokensFile, err := os.Create("build/tokens.txt")
-		check(err)
+		if err != nil {
+			fmt.Printf("Problem creating token file")
+			return
+		}
 		defer f.Close()
 
-		for _, t := range tokens {
-			tokensFile.WriteString(t.String())
-		}
+		tokens := compiler.Tokens(program)
+		tokensFile.WriteString(tokens)
 	}
 
 	// Create abstract syntax tree
-	fmt.Printf("%s -> ", blue("Creating abstract syntax tree"))
-	funcs := compiler.Ast(tokens)
-	if len(os.Args) == 3 && os.Args[2] == "-ast" {
-		cmap.Dump(funcs, "funcs")
+	if *outputAst {
+		step("Printing abstract syntax tree")
+		fmt.Print("\n")
+		compiler.AbstractSyntaxTree(program)
 	}
 
 	// Compile
-	fmt.Printf("%s -> ", blue("Compiling to LLVM"))
-	s := compiler.Llvm(funcs)
+	step("Compiling")
+	s := compiler.Compile(program)
 
-	fmt.Printf("%s -> ", blue("Writing to file"))
+	step("Writing to file")
 	f.WriteString(s)
 
 	// Confirm the writes
 	f.Sync()
-	fmt.Printf("%s\n", blue("Done"))
+	step("Done")
+
+	// Print compiler statistics
 	duration := time.Since(start)
 	fmt.Printf("[Compiled in %fs]\n", duration.Seconds())
 }

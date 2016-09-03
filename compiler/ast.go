@@ -7,14 +7,14 @@ type typedName struct {
 	name string
 }
 
-type Function struct {
+type function struct {
 	name    string
 	args    []typedName
 	returns []typedName
 	lines   []expression
 }
 
-func Ast(tokens []Token) (funcs []Function) {
+func ast(tokens []Token) (funcs []function) {
 	// Parses a list of types and names with a format of 'type a, type b, type c, ...'
 	parseTypedList := func(tokens []Token) (names []typedName, lastPosition int) {
 
@@ -44,7 +44,7 @@ func Ast(tokens []Token) (funcs []Function) {
 		return -1
 	}
 
-	parseFunction := func(tokens []Token, functionNames []string) (function Function) {
+	parseFunction := func(tokens []Token, functionNames []string) (function function) {
 		t := tokens[0].(TokenName)
 		function.name = t.name
 

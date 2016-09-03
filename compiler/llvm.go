@@ -30,7 +30,7 @@ func stringToType(t string) llvm.Type {
 }
 
 // Llvm compiles functions to llvm ir
-func Llvm(funcs []Function) string {
+func Llvm(funcs []function) string {
 	context := llvm.NewContext()
 	module := context.NewModule("ben")
 	builder := llvm.NewBuilder()
