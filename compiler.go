@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"time"
 
+	"bitbucket.com/bongo227/cmap"
 	"bitbucket.com/bongo227/furlang/compiler"
 	"github.com/fatih/color"
 )
@@ -52,7 +53,7 @@ func main() {
 	tokens := compiler.ParseTokens(string(data))
 	if len(os.Args) == 3 && os.Args[2] == "-tokens" {
 		fmt.Println()
-		compiler.Dump(tokens, "tokens")
+		cmap.Dump(tokens, "tokens")
 		tokensFile, err := os.Create("build/tokens.txt")
 		check(err)
 		defer f.Close()
@@ -66,7 +67,7 @@ func main() {
 	fmt.Printf("%s -> ", blue("Creating abstract syntax tree"))
 	funcs := compiler.Ast(tokens)
 	if len(os.Args) == 3 && os.Args[2] == "-ast" {
-		compiler.Dump(funcs, "funcs")
+		cmap.Dump(funcs, "funcs")
 	}
 
 	// Compile

@@ -20,6 +20,16 @@ func (lf llvmFunction) nextTempName() string {
 	return fmt.Sprintf("tmp%d", *(lf.tempCount))
 }
 
+func stringToType(t string) llvm.Type {
+	switch t {
+	case "i32":
+		return llvm.Int32Type()
+	default:
+		panic(fmt.Sprintf("Unkown type '%s'", t))
+	}
+}
+
+// Llvm compiles functions to llvm ir
 func Llvm(funcs []Function) string {
 	context := llvm.NewContext()
 	module := context.NewModule("ben")
@@ -30,36 +40,32 @@ func Llvm(funcs []Function) string {
 	tempCount := 0
 
 	for _, f := range funcs {
+		// Add function definintion to module
 		var argumentTypes []llvm.Type
-		for _, a := range f.Arguments {
-			switch a.Type.Name {
-			case "i32":
-				argumentTypes = append(argumentTypes, llvm.Int32Type())
-			}
+		for _, a := range f.args {
+			argumentTypes = append(argumentTypes, stringToType(a.t))
 		}
 
-		var returnType llvm.Type
-		switch f.Returns[0].Type.Name {
-		case "i32":
-			returnType = llvm.Int32Type()
-		}
-
+		returnType := stringToType(f.returns[0].t)
 		functionType := llvm.FunctionType(returnType, argumentTypes, false)
-		function := llvm.AddFunction(module, f.Name, functionType)
+		function := llvm.AddFunction(module, f.name, functionType)
 
-		functions[f.Name] = function
+		// Add function to function map
+		functions[f.name] = function
 
-		for i, a := range f.Arguments {
-			names[a.Name] = function.Param(i)
+		// Add function parameters to names map
+		for i, a := range f.args {
+			names[a.name] = function.Param(i)
 		}
 
+		// Create entry block and set builder cursor
 		entry := llvm.AddBasicBlock(function, "entry")
 		builder.SetInsertPointAtEnd(entry)
 
+		// Compile all expressions
 		lfunction := llvmFunction{functions, names, builder, &tempCount}
-
-		for _, l := range f.Lines {
-			l.Compile(lfunction)
+		for _, l := range f.lines {
+			l.compile(lfunction)
 		}
 	}
 
