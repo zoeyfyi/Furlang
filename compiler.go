@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/bongo227/go-compiler/compiler"
+	"bitbucket.com/bongo227/furlang/compiler"
 	"github.com/fatih/color"
 )
 
