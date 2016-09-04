@@ -61,6 +61,19 @@ func (t addition) compile(function llvmFunction) llvm.Value {
 		function.nextTempName())
 }
 
+// ================ Subtraction expression ================ //
+type subtraction struct {
+	lhs expression
+	rhs expression
+}
+
+func (t subtraction) compile(function llvmFunction) llvm.Value {
+	return function.builder.CreateSub(
+		t.lhs.compile(function),
+		t.rhs.compile(function),
+		function.nextTempName())
+}
+
 // ================ Number expression ================ //
 type number struct {
 	value int

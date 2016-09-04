@@ -1,7 +1,5 @@
 package compiler
 
-import "reflect"
-
 type typedName struct {
 	t    string
 	name string
@@ -14,86 +12,24 @@ type function struct {
 	lines   []expression
 }
 
-func ast(tokens []Token) (funcs []function) {
-	// Parses a list of types and names with a format of 'type a, type b, type c, ...'
-	parseTypedList := func(tokens []Token) (names []typedName, lastPosition int) {
-
-		for i, t := range tokens {
-			switch t := t.(type) {
-			case TokenSymbol:
-				if t.symbol != "," {
-					return names, i
-				}
-			case TokenType:
-				names = append(names, typedName{t: t.typeName})
-			case TokenName:
-				names[len(names)-1].name = t.name
-			}
-		}
-
-		return nil, 0
-	}
-
-	getTokenPosition := func(toke Token, tokens []Token) (pos int) {
-		for i, t := range tokens {
-			if reflect.DeepEqual(toke, t) {
-				return i
-			}
-		}
-
-		return -1
-	}
-
-	parseFunction := func(tokens []Token, functionNames []string) (function function) {
-		t := tokens[0].(TokenName)
-		function.name = t.name
-
-		// Ofset of 2 skips the function name and the double colons
-
-		colonPosition := getTokenPosition(TokenSymbol{"::"}, tokens)
-		arguments, _ := parseTypedList(tokens[colonPosition+1:])
-
-		arrowPosition := getTokenPosition(TokenSymbol{"->"}, tokens)
-		returns, _ := parseTypedList(tokens[arrowPosition+1:])
-
-		blockPosition := getTokenPosition(TokenSymbol{"{"}, tokens)
-		var tokenBuffer []Token
-		for _, t := range tokens[blockPosition+1:] {
-			if token, found := t.(TokenSymbol); found && token.symbol == "\n" {
-
-				if tokenBuffer != nil {
-					function.lines = append(function.lines, parseExpression(tokenBuffer, functionNames))
-				}
-
-				tokenBuffer = nil
-			} else {
-				tokenBuffer = append(tokenBuffer, t)
-			}
-		}
-
-		function.args = arguments
-		function.returns = returns
-
-		return function
-	}
-
-	var functions []int
+func ast(tokens []token) (funcs []function) {
+	// Position in slice of functions
+	var functionPositions []int
 	for i, t := range tokens {
-		switch t := t.(type) {
-		case TokenSymbol:
-			if t.symbol == "::" {
-				functions = append(functions, i-1)
-			}
+		switch t.tokenType {
+		case tokenDoubleColon:
+			functionPositions = append(functionPositions, i-1)
 
-			if t.symbol == "}" {
-				functions = append(functions, i)
-			}
+		case tokenCloseBody:
+			functionPositions = append(functionPositions, i)
+
 		}
 	}
 
+	// Parse functions
 	var functionNames []string
-	for i := 0; i < len(functions); i += 2 {
-		f := parseFunction(tokens[functions[i]:functions[i+1]], functionNames)
+	for i := 0; i < len(functionPositions); i += 2 {
+		f := parseFunction(tokens[functionPositions[i]:functionPositions[i+1]], functionNames)
 		functionNames = append(functionNames, f.name)
 		funcs = append(funcs, f)
 	}
@@ -101,18 +37,100 @@ func ast(tokens []Token) (funcs []function) {
 	return funcs
 }
 
-func parseExpression(tokens []Token, functionNames []string) (e expression) {
-	if _, found := tokens[0].(TokenReturn); found {
-		// Expression is a return (return expression)
+// Gets the first position of a token in a slice with the corrasponding token type
+func getTokenPosition(tokenType int, tokens []token) (pos int) {
+	for i, t := range tokens {
+		if t.tokenType == tokenType {
+			return i
+		}
+	}
 
+	return -1
+}
+
+// Create the function definition from a slice of tokens
+func parseFunction(tokens []token, functionNames []string) (function function) {
+	if tokens[0].tokenType != tokenName {
+		panic("Expected function to begin with name")
+	}
+
+	function.name = tokens[0].value.(string)
+
+	// Ofset of 2 skips the function name and the double colons
+	colonPosition := getTokenPosition(tokenDoubleColon, tokens)
+	arguments, _ := parseTypedList(tokens[colonPosition+1:])
+
+	arrowPosition := getTokenPosition(tokenArrow, tokens)
+	returns, _ := parseTypedList(tokens[arrowPosition+1:])
+
+	blockPosition := getTokenPosition(tokenOpenBody, tokens)
+
+	var tokenBuffer []token
+	for _, t := range tokens[blockPosition+1:] {
+		if t.tokenType == tokenNewLine && tokenBuffer != nil {
+			function.lines = append(function.lines, parseExpression(tokenBuffer, functionNames))
+			tokenBuffer = nil
+		} else {
+			tokenBuffer = append(tokenBuffer, t)
+		}
+	}
+
+	function.args = arguments
+	function.returns = returns
+
+	return function
+}
+
+// Parses a list of types and names with a format of 'type a, type b, type c, ...'
+func parseTypedList(tokens []token) (names []typedName, lastPosition int) {
+	lastToken := -1
+
+	for i, t := range tokens {
+		switch t.tokenType {
+		case tokenComma:
+			if lastToken != tokenName {
+				panic("Unexpected comma")
+			}
+		case tokenInt32:
+			if lastToken == tokenName {
+				panic("Unexpected type")
+			}
+
+			names = append(names, typedName{t: "i32"})
+		case tokenName:
+			if lastToken != tokenInt32 {
+				panic("Unexpected name")
+			}
+
+			names[len(names)-1].name = t.value.(string)
+		default:
+			return names, i
+		}
+
+		lastToken = t.tokenType
+	}
+
+	return nil, 0
+}
+
+func parseExpression(tokens []token, functionNames []string) (e expression) {
+	for tokens[0].tokenType == tokenNewLine {
+		tokens = tokens[1:]
+	}
+
+	if tokens[0].tokenType == tokenReturn {
+		// Expression is a return expression
 		returnExpression := ret{}
+
+		// Create a slice of expressions to return
 		for _, r := range tokens[1:] {
 			var exp expression
-			switch r := r.(type) {
-			case TokenName:
-				exp = name{r.name}
-			case TokenNumber:
-				exp = number{r.number}
+
+			switch r.tokenType {
+			case tokenName:
+				exp = name{r.value.(string)}
+			case tokenNumber:
+				exp = number{r.value.(int)}
 			default:
 				panic("Unexpected expression in return statement")
 			}
@@ -121,24 +139,24 @@ func parseExpression(tokens []Token, functionNames []string) (e expression) {
 		}
 
 		return returnExpression
-	} else if symbol, found := tokens[1].(TokenSymbol); found && symbol.symbol == ":=" {
-		// Expression is an assignment (name := expression)
+	} else if tokens[1].tokenType == tokenAssign {
+		// Expression is an assignment
 
 		assignmentExpression := assignment{}
-		assignmentExpression.name = tokens[0].(TokenName).name
+		assignmentExpression.name = tokens[0].value.(string)
 		assignmentExpression.value = parseExpression(tokens[2:], functionNames)
 
 		return assignmentExpression
-	} else if symbol, found := tokens[1].(TokenSymbol); found && symbol.symbol == "+" {
+	} else if tokens[1].tokenType == tokenPlus {
 		// Expression is an addition (expression + expression)
 
 		// Check if lhs is name or number
 		additionExpression := addition{}
-		switch t := tokens[0].(type) {
-		case TokenNumber:
-			additionExpression.lhs = number{t.number}
-		case TokenName:
-			additionExpression.lhs = name{t.name}
+		switch tokens[0].tokenType {
+		case tokenNumber:
+			additionExpression.lhs = number{tokens[0].value.(int)}
+		case tokenName:
+			additionExpression.lhs = name{tokens[0].value.(string)}
 		default:
 			panic("Unkown token on left hand side of '+'")
 		}
@@ -147,23 +165,23 @@ func parseExpression(tokens []Token, functionNames []string) (e expression) {
 			additionExpression.rhs = parseExpression(tokens[2:], functionNames)
 		} else {
 			// Check if rhs is name or number
-			switch t := tokens[2].(type) {
-			case TokenNumber:
-				additionExpression.rhs = number{t.number}
-			case TokenName:
-				additionExpression.rhs = name{t.name}
+			switch tokens[2].tokenType {
+			case tokenNumber:
+				additionExpression.rhs = number{tokens[2].value.(int)}
+			case tokenName:
+				additionExpression.rhs = name{tokens[2].value.(string)}
 			default:
 				panic("Unkown token on right hand side of '+'")
 			}
 		}
 
 		return additionExpression
+	} else if tokens[0].tokenType == tokenName && stringInSlice(tokens[0].value.(string), functionNames) {
 		// Expression is a function call ( name(number, number, ...) )
-	} else if name, found := tokens[0].(TokenName); found && stringInSlice(name.name, functionNames) {
 		functionCallExpression := call{}
-		functionCallExpression.function = name.name
+		functionCallExpression.function = tokens[0].value.(string)
 		for i := 2; i < len(tokens); i += 2 {
-			functionCallExpression.args = append(functionCallExpression.args, tokens[i].(TokenNumber).number)
+			functionCallExpression.args = append(functionCallExpression.args, tokens[i].value.(int))
 		}
 
 		return functionCallExpression
@@ -180,12 +198,4 @@ func stringInSlice(item string, slice []string) bool {
 	}
 
 	return false
-}
-
-func pad(n int) (s string) {
-	for i := 0; i < n; i++ {
-		s += " "
-	}
-
-	return s
 }
