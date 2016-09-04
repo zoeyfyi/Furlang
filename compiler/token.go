@@ -4,29 +4,29 @@ import "strconv"
 
 const (
 	tokenName = iota
-	tokenInt32
-	tokenReturn
 	tokenNumber
 
-	tokenNewLine
+	tokenInt32
+	tokenReturn
 
 	tokenArrow
 	tokenAssign
-	tokenComma
 	tokenDoubleColon
 
+	tokenComma
+	tokenNewLine
 	tokenOpenBody
 	tokenOpenBracket
 	tokenCloseBody
 	tokenCloseBracket
-
 	tokenPlus
 	tokenMinus
 	tokenMultiply
 	tokenDivide
-
 	tokenLessThan
 	tokenMoreThan
+	tokenColon
+	tokenEqual
 )
 
 type token struct {
@@ -36,136 +36,88 @@ type token struct {
 
 // ParseTokens parses the program and returns a sequantial list of tokens
 func parseTokens(in string) []token {
-	var tokens []token
-
-	buffer := ""
-	lineNumber := 0
-	lineIndex := 0
-
-	parseBuffer := func(tokens []token, buffer string) []token {
-		if buffer != "" {
-			if i, err := strconv.Atoi(buffer); err == nil {
-				return append(tokens, token{tokenNumber, i})
-			} else if buffer == "i32" {
-				return append(tokens, token{tokenInt32, nil})
-			} else if buffer == "return" {
-				return append(tokens, token{tokenReturn, nil})
-			} else if buffer == "+" {
-				return append(tokens, token{tokenPlus, nil})
-			} else if buffer == "-" {
-				return append(tokens, token{tokenMinus, nil})
-			} else {
-				return append(tokens, token{tokenName, buffer})
-			}
-		}
-
-		return tokens
+	multiSymbolMap := map[int][]int{
+		tokenArrow:       []int{tokenMinus, tokenMoreThan},
+		tokenAssign:      []int{tokenColon, tokenEqual},
+		tokenDoubleColon: []int{tokenColon, tokenColon},
 	}
 
-	for _, char := range in {
+	symbolMap := map[string]int{
+		"\n": tokenNewLine,
+		",":  tokenComma,
+		"{":  tokenOpenBody,
+		"}":  tokenCloseBody,
+		"(":  tokenOpenBracket,
+		")":  tokenCloseBracket,
+		"+":  tokenPlus,
+		"-":  tokenMinus,
+		"*":  tokenMultiply,
+		"/":  tokenDivide,
+		"<":  tokenLessThan,
+		">":  tokenMoreThan,
+		":":  tokenColon,
+		"=":  tokenEqual,
+	}
 
-		// Handle special case characters
-		switch string(char) {
+	var buffer string
+	var tokens []token
 
-		case "\n":
-			lineNumber++
-			lineIndex = 0
-			tokens = parseBuffer(tokens, buffer)
-			tokens = append(tokens, token{tokenNewLine, nil})
-			buffer = ""
-			continue
+	// Create list of single character tokens
 
-		case " ":
-			tokens = parseBuffer(tokens, buffer)
-			buffer = ""
-			continue
-
-		case ":":
-			if buffer == ":" {
-				tokens = append(tokens, token{tokenDoubleColon, nil})
-				buffer = ""
-			} else {
-				tokens = parseBuffer(tokens, buffer)
-				buffer = ":"
-			}
-			continue
-
-		case "=":
-			if buffer == ":" {
-				tokens = append(tokens, token{tokenAssign, nil})
-				buffer = ""
-			} else {
-				tokens = parseBuffer(tokens, buffer)
-				buffer = "="
-			}
-			continue
-
-		case "-":
-			tokens = parseBuffer(tokens, buffer)
-			buffer = "-"
-			continue
-
-		case "+":
-			tokens = parseBuffer(tokens, buffer)
-			buffer = "+"
-			continue
-
-		case ">":
-			if buffer == "-" {
-				tokens = append(tokens, token{tokenArrow, nil})
-				buffer = ""
-			} else {
-				tokens = parseBuffer(tokens, buffer)
-				tokens = append(tokens, token{tokenLessThan, nil})
-				buffer = ""
-			}
-			continue
-
-		case ",":
-			tokens = parseBuffer(tokens, buffer)
-			tokens = append(tokens, token{tokenComma, nil})
-			buffer = ""
-			continue
-
-		case "{":
-			tokens = parseBuffer(tokens, buffer)
-			tokens = append(tokens, token{tokenOpenBody, nil})
-			buffer = ""
-			continue
-
-		case "}":
-			tokens = parseBuffer(tokens, buffer)
-			tokens = append(tokens, token{tokenCloseBody, nil})
-			buffer = ""
-			continue
-
-		case "(":
-			tokens = parseBuffer(tokens, buffer)
-			tokens = append(tokens, token{tokenOpenBracket, nil})
-			buffer = ""
-			continue
-
-		case ")":
-			tokens = parseBuffer(tokens, buffer)
-			tokens = append(tokens, token{tokenCloseBracket, nil})
-			buffer = ""
-			continue
-
+	parseBuffer := func(buffer *string, tokens *[]token) {
+		if i, err := strconv.Atoi(*buffer); err == nil {
+			*tokens = append(*tokens, token{tokenNumber, i})
+		} else if *buffer == "i32" {
+			*tokens = append(*tokens, token{tokenInt32, *buffer})
+		} else if *buffer == "return" {
+			*tokens = append(*tokens, token{tokenReturn, *buffer})
+		} else {
+			*tokens = append(*tokens, token{tokenName, *buffer})
 		}
 
-		// Check if buffer is a token
-		switch buffer {
-		case "+":
-			tokens = append(tokens, token{tokenPlus, nil})
-			buffer = ""
-		case "-":
-			tokens = append(tokens, token{tokenMinus, nil})
-			buffer = ""
+		*buffer = ""
+	}
+
+characterLoop:
+	for _, char := range in {
+
+		if string(char) == " " && buffer != "" {
+			parseBuffer(&buffer, &tokens)
+			continue characterLoop
+		} else if string(char) == " " {
+			continue characterLoop
+		}
+
+		for symbol, symbolToken := range symbolMap {
+			if string(char) == symbol {
+				if buffer != "" {
+					parseBuffer(&buffer, &tokens)
+				}
+
+				tokens = append(tokens, token{symbolToken, string(char)})
+				continue characterLoop
+			}
 		}
 
 		buffer += string(char)
-		lineIndex++
+	}
 
+	for i := 0; i < len(tokens); i++ {
+		for msk, msv := range multiSymbolMap {
+			if tokens[i].tokenType == msv[0] {
+				equal := true
+				for offset, val := range msv {
+					if tokens[i+offset].tokenType != val {
+						equal = false
+					}
+				}
+
+				if equal {
+					lower := append(tokens[:i], token{msk, nil})
+					tokens = append(lower, tokens[i+len(msv):]...)
+				}
+			}
+		}
 	}
 
 	return tokens

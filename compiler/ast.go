@@ -176,6 +176,33 @@ func parseExpression(tokens []token, functionNames []string) (e expression) {
 		}
 
 		return additionExpression
+	} else if tokens[1].tokenType == tokenMinus {
+		// Check if lhs is name or number
+		subtractionExpression := subtraction{}
+		switch tokens[0].tokenType {
+		case tokenNumber:
+			subtractionExpression.lhs = number{tokens[0].value.(int)}
+		case tokenName:
+			subtractionExpression.lhs = name{tokens[0].value.(string)}
+		default:
+			panic("Unkown token on left hand side of '-'")
+		}
+
+		if len(tokens) > 3 {
+			subtractionExpression.rhs = parseExpression(tokens[2:], functionNames)
+		} else {
+			// Check if rhs is name or number
+			switch tokens[2].tokenType {
+			case tokenNumber:
+				subtractionExpression.rhs = number{tokens[2].value.(int)}
+			case tokenName:
+				subtractionExpression.rhs = name{tokens[2].value.(string)}
+			default:
+				panic("Unkown token on right hand side of '-'")
+			}
+		}
+
+		return subtractionExpression
 	} else if tokens[0].tokenType == tokenName && stringInSlice(tokens[0].value.(string), functionNames) {
 		// Expression is a function call ( name(number, number, ...) )
 		functionCallExpression := call{}
@@ -185,9 +212,9 @@ func parseExpression(tokens []token, functionNames []string) (e expression) {
 		}
 
 		return functionCallExpression
+	} else {
+		panic("Unkown expression")
 	}
-
-	return nil
 }
 
 func stringInSlice(item string, slice []string) bool {
