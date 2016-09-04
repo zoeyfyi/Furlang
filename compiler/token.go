@@ -29,20 +29,8 @@ const (
 	tokenEqual
 )
 
-type token struct {
-	tokenType int
-	value     interface{}
-}
-
-// ParseTokens parses the program and returns a sequantial list of tokens
-func parseTokens(in string) []token {
-	multiSymbolMap := map[int][]int{
-		tokenArrow:       []int{tokenMinus, tokenMoreThan},
-		tokenAssign:      []int{tokenColon, tokenEqual},
-		tokenDoubleColon: []int{tokenColon, tokenColon},
-	}
-
-	symbolMap := map[string]int{
+var (
+	symbolMap = map[string]int{
 		"\n": tokenNewLine,
 		",":  tokenComma,
 		"{":  tokenOpenBody,
@@ -59,6 +47,25 @@ func parseTokens(in string) []token {
 		"=":  tokenEqual,
 	}
 
+	nameMap = map[string]int{
+		"return": tokenReturn,
+		"i32":    tokenInt32,
+	}
+
+	multiSymbolMap = map[int][]int{
+		tokenArrow:       []int{tokenMinus, tokenMoreThan},
+		tokenAssign:      []int{tokenColon, tokenEqual},
+		tokenDoubleColon: []int{tokenColon, tokenColon},
+	}
+)
+
+type token struct {
+	tokenType int
+	value     interface{}
+}
+
+// ParseTokens parses the program and returns a sequantial list of tokens
+func parseTokens(in string) []token {
 	var buffer string
 	var tokens []token
 
@@ -67,10 +74,8 @@ func parseTokens(in string) []token {
 	parseBuffer := func(buffer *string, tokens *[]token) {
 		if i, err := strconv.Atoi(*buffer); err == nil {
 			*tokens = append(*tokens, token{tokenNumber, i})
-		} else if *buffer == "i32" {
-			*tokens = append(*tokens, token{tokenInt32, *buffer})
-		} else if *buffer == "return" {
-			*tokens = append(*tokens, token{tokenReturn, *buffer})
+		} else if val, found := nameMap[*buffer]; found {
+			*tokens = append(*tokens, token{val, *buffer})
 		} else {
 			*tokens = append(*tokens, token{tokenName, *buffer})
 		}
