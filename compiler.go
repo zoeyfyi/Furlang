@@ -29,8 +29,6 @@ func main() {
 	outputAst := flag.Bool("ast", false, "Create file with the abstract syntax tree")
 	flag.Parse()
 
-	fmt.Println(*outputTokens, *outputAst)
-
 	// Start compiler timer
 	start := time.Now()
 

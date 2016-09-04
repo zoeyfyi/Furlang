@@ -68,7 +68,7 @@ func parseFunction(tokens []token, functionNames []string) (function function) {
 	var tokenBuffer []token
 	for _, t := range tokens[blockPosition+1:] {
 		if t.tokenType == tokenNewLine && tokenBuffer != nil {
-			function.lines = append(function.lines, parseExpression(tokenBuffer, functionNames))
+			function.lines = append(function.lines, parseExpression(tokenBuffer))
 			tokenBuffer = nil
 		} else {
 			tokenBuffer = append(tokenBuffer, t)
@@ -113,108 +113,34 @@ func parseTypedList(tokens []token) (names []typedName, lastPosition int) {
 	return nil, 0
 }
 
-func parseExpression(tokens []token, functionNames []string) (e expression) {
+func parseExpression(tokens []token) (e expression) {
+	// Remove new line tokens
 	for tokens[0].tokenType == tokenNewLine {
 		tokens = tokens[1:]
 	}
 
-	if tokens[0].tokenType == tokenReturn {
-		// Expression is a return expression
-		returnExpression := ret{}
-
-		// Create a slice of expressions to return
-		for _, r := range tokens[1:] {
-			var exp expression
-
-			switch r.tokenType {
-			case tokenName:
-				exp = name{r.value.(string)}
-			case tokenNumber:
-				exp = number{r.value.(int)}
-			default:
-				panic("Unexpected expression in return statement")
-			}
-
-			returnExpression.returns = append(returnExpression.returns, exp)
-		}
-
-		return returnExpression
+	if len(tokens) == 1 && tokens[0].tokenType == tokenName {
+		return newName(tokens[0])
+	} else if len(tokens) == 1 && tokens[0].tokenType == tokenNumber {
+		return newNumber(tokens[0])
+	} else if tokens[0].tokenType == tokenReturn {
+		return newRet(tokens)
 	} else if tokens[1].tokenType == tokenAssign {
-		// Expression is an assignment
-
-		assignmentExpression := assignment{}
-		assignmentExpression.name = tokens[0].value.(string)
-		assignmentExpression.value = parseExpression(tokens[2:], functionNames)
-
-		return assignmentExpression
+		return newAssignment(tokens)
 	} else if tokens[1].tokenType == tokenPlus {
-		// Expression is an addition (expression + expression)
-
-		// Check if lhs is name or number
-		additionExpression := addition{}
-		switch tokens[0].tokenType {
-		case tokenNumber:
-			additionExpression.lhs = number{tokens[0].value.(int)}
-		case tokenName:
-			additionExpression.lhs = name{tokens[0].value.(string)}
-		default:
-			panic("Unkown token on left hand side of '+'")
-		}
-
-		if len(tokens) > 3 {
-			additionExpression.rhs = parseExpression(tokens[2:], functionNames)
-		} else {
-			// Check if rhs is name or number
-			switch tokens[2].tokenType {
-			case tokenNumber:
-				additionExpression.rhs = number{tokens[2].value.(int)}
-			case tokenName:
-				additionExpression.rhs = name{tokens[2].value.(string)}
-			default:
-				panic("Unkown token on right hand side of '+'")
-			}
-		}
-
-		return additionExpression
+		return newAddition(tokens)
 	} else if tokens[1].tokenType == tokenMinus {
-		// Check if lhs is name or number
-		subtractionExpression := subtraction{}
-		switch tokens[0].tokenType {
-		case tokenNumber:
-			subtractionExpression.lhs = number{tokens[0].value.(int)}
-		case tokenName:
-			subtractionExpression.lhs = name{tokens[0].value.(string)}
-		default:
-			panic("Unkown token on left hand side of '-'")
-		}
-
-		if len(tokens) > 3 {
-			subtractionExpression.rhs = parseExpression(tokens[2:], functionNames)
-		} else {
-			// Check if rhs is name or number
-			switch tokens[2].tokenType {
-			case tokenNumber:
-				subtractionExpression.rhs = number{tokens[2].value.(int)}
-			case tokenName:
-				subtractionExpression.rhs = name{tokens[2].value.(string)}
-			default:
-				panic("Unkown token on right hand side of '-'")
-			}
-		}
-
-		return subtractionExpression
-	} else if tokens[0].tokenType == tokenName && stringInSlice(tokens[0].value.(string), functionNames) {
-		// Expression is a function call ( name(number, number, ...) )
-		functionCallExpression := call{}
-		functionCallExpression.function = tokens[0].value.(string)
-		for i := 2; i < len(tokens); i += 2 {
-			functionCallExpression.args = append(functionCallExpression.args, tokens[i].value.(int))
-		}
-
-		return functionCallExpression
-	} else {
-		panic("Unkown expression")
+		return newSubtraction(tokens)
+	} else if tokens[1].tokenType == tokenMultiply {
+		return newMulitply(tokens)
+	} else if tokens[1].tokenType == tokenDivide {
+		return newDivision(tokens)
+	} else if tokens[0].tokenType == tokenName && tokens[1].tokenType == tokenOpenBracket {
+		return newCall(tokens)
 	}
+
+	panic("Unkown expression")
+
 }
 
 func stringInSlice(item string, slice []string) bool {

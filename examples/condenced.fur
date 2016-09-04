@@ -1,9 +1,9 @@
 add :: i32 a, i32 b, i32 test -> i32 c {
-    c := a + b - test
+    c := a + b / test
     return c
 }
 
 main :: -> i32 i {
-    a := add(9, 3, 5)
+    a := add(9, 10, 5)
     return a
 }

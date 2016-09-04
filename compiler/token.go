@@ -1,6 +1,9 @@
 package compiler
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 const (
 	tokenName = iota
@@ -62,6 +65,37 @@ var (
 type token struct {
 	tokenType int
 	value     interface{}
+}
+
+func (t token) printToken() string {
+	switch t.tokenType {
+	case tokenArrow:
+		return fmt.Sprintf("Token type: tokenArrow\n")
+	case tokenAssign:
+		return fmt.Sprintf("Token type: tokenAssign\n")
+	case tokenCloseBody:
+		return fmt.Sprintf("Token type: tokenCloseBody\n")
+	case tokenComma:
+		return fmt.Sprintf("Token type: tokenComma\n")
+	case tokenDoubleColon:
+		return fmt.Sprintf("Token type: tokenDoubleColon\n")
+	case tokenInt32:
+		return fmt.Sprintf("Token type: tokenInt32\n")
+	case tokenName:
+		return fmt.Sprintf("Token type: tokenName, Value: %s\n", t.value.(string))
+	case tokenNewLine:
+		return fmt.Sprintf("Token type: tokenNewLine\n")
+	case tokenNumber:
+		return fmt.Sprintf("Token type: tokenNumber, Value: %d\n", t.value.(int))
+	case tokenOpenBody:
+		return fmt.Sprintf("Token type: tokenOpenBody\n")
+	case tokenPlus:
+		return fmt.Sprintf("Token type: tokenPlus\n")
+	case tokenReturn:
+		return fmt.Sprintf("Token type: tokenReturn\n")
+	}
+
+	return "Undefined token"
 }
 
 // ParseTokens parses the program and returns a sequantial list of tokens
