@@ -4,11 +4,11 @@ import "bitbucket.com/bongo227/cmap"
 
 // Tokens compiles a list of tokens representing the input program
 func Tokens(data string) string {
-	tokens := parseTokens(data)
+	tokens := lexer(data)
 
 	s := ""
 	for _, t := range tokens {
-		s += t.printToken()
+		s += t.string() + "\n"
 	}
 
 	return s
@@ -16,7 +16,7 @@ func Tokens(data string) string {
 
 // AbstractSyntaxTree returns the abstract sytax tree in a pretty printed tree
 func AbstractSyntaxTree(data string) string {
-	tokens := parseTokens(data)
+	tokens := lexer(data)
 	functions := ast(tokens)
 	cmap.Dump(functions, "functions")
 
@@ -26,7 +26,7 @@ func AbstractSyntaxTree(data string) string {
 
 // Compile produces llvm ir code from the input program
 func Compile(data string) string {
-	tokens := parseTokens(data)
+	tokens := lexer(data)
 	functions := ast(tokens)
 	llvm := Llvm(functions)
 

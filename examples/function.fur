@@ -1,9 +1,9 @@
-add :: i32 a , i32 b -> i32 c {
+add :: i32 a, i32 b -> i32 c {
     c := a + b
     return c
 }
 
 main :: -> i32 {
-    add ( 4 , 3 )
-    return 1
+    a := add(4, 3)
+    return a
 }

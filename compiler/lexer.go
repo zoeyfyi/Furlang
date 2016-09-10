@@ -1,15 +1,19 @@
 package compiler
 
-import (
-	"fmt"
-	"strconv"
-)
+import "strconv"
 
+type token struct {
+	tokenType int
+	value     interface{}
+}
+
+// Token type constants
 const (
 	tokenName = iota
 	tokenNumber
 
 	tokenInt32
+	tokenFloat32
 	tokenReturn
 
 	tokenArrow
@@ -32,6 +36,7 @@ const (
 	tokenEqual
 )
 
+// Lexer maps
 var (
 	symbolMap = map[string]int{
 		"\n": tokenNewLine,
@@ -53,6 +58,7 @@ var (
 	nameMap = map[string]int{
 		"return": tokenReturn,
 		"i32":    tokenInt32,
+		"f32":    tokenFloat32,
 	}
 
 	multiSymbolMap = map[int][]int{
@@ -62,99 +68,111 @@ var (
 	}
 )
 
-type token struct {
-	tokenType int
-	value     interface{}
-}
-
-func (t token) printToken() string {
+// Converts token to printable string
+func (t token) string() string {
 	switch t.tokenType {
 	case tokenArrow:
-		return fmt.Sprintf("Token type: tokenArrow\n")
+		return "tokenArrow"
 	case tokenAssign:
-		return fmt.Sprintf("Token type: tokenAssign\n")
+		return "tokenAssign"
 	case tokenCloseBody:
-		return fmt.Sprintf("Token type: tokenCloseBody\n")
+		return "tokenCloseBody"
 	case tokenComma:
-		return fmt.Sprintf("Token type: tokenComma\n")
+		return "tokenComma"
 	case tokenDoubleColon:
-		return fmt.Sprintf("Token type: tokenDoubleColon\n")
+		return "tokenDoubleColon"
 	case tokenInt32:
-		return fmt.Sprintf("Token type: tokenInt32\n")
+		return "tokenInt32"
+	case tokenFloat32:
+		return "tokenFloat32"
 	case tokenName:
-		return fmt.Sprintf("Token type: tokenName, Value: %s\n", t.value.(string))
+		return "tokenName"
 	case tokenNewLine:
-		return fmt.Sprintf("Token type: tokenNewLine\n")
+		return "tokenNewLine"
 	case tokenNumber:
-		return fmt.Sprintf("Token type: tokenNumber, Value: %d\n", t.value.(int))
+		return "tokenNumber"
 	case tokenOpenBody:
-		return fmt.Sprintf("Token type: tokenOpenBody\n")
+		return "tokenOpenBody"
 	case tokenPlus:
-		return fmt.Sprintf("Token type: tokenPlus\n")
+		return "tokenPlus"
+	case tokenMinus:
+		return "tokenMinus"
+	case tokenMultiply:
+		return "tokenMultiply"
+	case tokenDivide:
+		return "tokenDivide"
+	case tokenOpenBracket:
+		return "tokenOpenBracket"
+	case tokenCloseBracket:
+		return "tokenCloseBracket"
 	case tokenReturn:
-		return fmt.Sprintf("Token type: tokenReturn\n")
+		return "tokenReturn"
+	default:
+		return "Undefined token"
 	}
-
-	return "Undefined token"
 }
 
-// ParseTokens parses the program and returns a sequantial list of tokens
-func parseTokens(in string) []token {
-	var buffer string
-	var tokens []token
+// Parsers what ever is in the the buffer
+func parseBuffer(buffer *string, tokens *[]token) {
 
-	// Create list of single character tokens
-
-	parseBuffer := func(buffer *string, tokens *[]token) {
+	if *buffer != "" {
 		if i, err := strconv.Atoi(*buffer); err == nil {
+			// Buffer contains a number
 			*tokens = append(*tokens, token{tokenNumber, i})
 		} else if val, found := nameMap[*buffer]; found {
+			// Buffer contains a control name
 			*tokens = append(*tokens, token{val, *buffer})
 		} else {
+			// Buffer contains a name
 			*tokens = append(*tokens, token{tokenName, *buffer})
 		}
 
 		*buffer = ""
 	}
 
+}
+
+// Returns a sequential list of tokens from the input string
+func lexer(in string) (tokens []token) {
+	buffer := ""
+
+	// Parse all single character tokens, names and numbers
 characterLoop:
 	for _, char := range in {
-
-		if string(char) == " " && buffer != "" {
+		// Handle whitespace
+		if string(char) == " " {
 			parseBuffer(&buffer, &tokens)
-			continue characterLoop
-		} else if string(char) == " " {
 			continue characterLoop
 		}
 
+		// Handle symbol character
 		for symbol, symbolToken := range symbolMap {
 			if string(char) == symbol {
-				if buffer != "" {
-					parseBuffer(&buffer, &tokens)
-				}
-
+				parseBuffer(&buffer, &tokens)
 				tokens = append(tokens, token{symbolToken, string(char)})
 				continue characterLoop
 			}
 		}
 
+		// Any other character (number/letter)
 		buffer += string(char)
 	}
 
+	// Group single character tokens
 	for i := 0; i < len(tokens); i++ {
-		for msk, msv := range multiSymbolMap {
-			if tokens[i].tokenType == msv[0] {
-				equal := true
-				for offset, val := range msv {
-					if tokens[i+offset].tokenType != val {
-						equal = false
-					}
+		for symbolsToken, symbols := range multiSymbolMap {
+			// Check if tokens can be grouped
+			equal := true
+			for offset, val := range symbols {
+				if len(tokens) > i+offset && tokens[i+offset].tokenType != val {
+					equal = false
 				}
+			}
 
-				if equal {
-					lower := append(tokens[:i], token{msk, nil})
-					tokens = append(lower, tokens[i+len(msv):]...)
-				}
+			// Collapse tokens in group into a single token
+			if equal {
+				lower := append(tokens[:i], token{symbolsToken, nil})
+				tokens = append(lower, tokens[i+len(symbols):]...)
 			}
 		}
 	}

@@ -1,0 +1,9 @@
+half :: -> f32 {
+    a := 1 / 2
+    return a
+}
+
+main :: -> i32 {
+    a := half()
+    return 1
+}

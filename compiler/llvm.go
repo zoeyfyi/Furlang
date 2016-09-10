@@ -20,15 +20,6 @@ func (lf llvmFunction) nextTempName() string {
 	return fmt.Sprintf("tmp%d", *(lf.tempCount))
 }
 
-func stringToType(t string) llvm.Type {
-	switch t {
-	case "i32":
-		return llvm.Int32Type()
-	default:
-		panic(fmt.Sprintf("Unkown type '%s'", t))
-	}
-}
-
 // Llvm compiles functions to llvm ir
 func Llvm(funcs []function) string {
 	context := llvm.NewContext()
@@ -39,14 +30,25 @@ func Llvm(funcs []function) string {
 	names := make(map[string]llvm.Value)
 	tempCount := 0
 
+	toType := func(t int) llvm.Type {
+		switch t {
+		case typeInt32:
+			return llvm.Int32Type()
+		case typeFloat32:
+			return llvm.FloatType()
+		default:
+			panic(fmt.Sprintf("Unkown type '%d'", t))
+		}
+	}
+
 	for _, f := range funcs {
 		// Add function definintion to module
 		var argumentTypes []llvm.Type
 		for _, a := range f.args {
-			argumentTypes = append(argumentTypes, stringToType(a.t))
+			argumentTypes = append(argumentTypes, toType(a.nameType))
 		}
 
-		returnType := stringToType(f.returns[0].t)
+		returnType := toType(f.returns[0].nameType)
 		functionType := llvm.FunctionType(returnType, argumentTypes, false)
 		function := llvm.AddFunction(module, f.name, functionType)
 
@@ -72,4 +74,85 @@ func Llvm(funcs []function) string {
 	// Remove weird line which stops code compiling
 	s := module.String()
 	return strings.Replace(s, "source_filename = \"ben\"\n", "", 1)
+}
+
+func (t name) compile(function llvmFunction) llvm.Value {
+	val, ok := function.names[t.name]
+	if !ok {
+		panic(fmt.Sprintf("Variable '%s' not in scope", t.name))
+	}
+
+	return val
+}
+
+func (t ret) compile(function llvmFunction) llvm.Value {
+	val := t.returns[0].compile(function)
+
+	return function.builder.CreateRet(val)
+}
+
+func (t assignment) compile(function llvmFunction) llvm.Value {
+	val := t.value.compile(function)
+	function.names[t.name] = val
+
+	return val
+}
+
+func (t addition) compile(function llvmFunction) llvm.Value {
+	return function.builder.CreateAdd(
+		t.lhs.compile(function),
+		t.rhs.compile(function),
+		function.nextTempName())
+}
+
+func (t subtraction) compile(function llvmFunction) llvm.Value {
+	return function.builder.CreateSub(
+		t.lhs.compile(function),
+		t.rhs.compile(function),
+		function.nextTempName())
+}
+
+func (t multiplication) compile(function llvmFunction) llvm.Value {
+	return function.builder.CreateMul(
+		t.lhs.compile(function),
+		t.rhs.compile(function),
+		function.nextTempName())
+}
+
+func (t division) compile(function llvmFunction) llvm.Value {
+	return function.builder.CreateFDiv(
+		t.lhs.compile(function),
+		t.rhs.compile(function),
+		function.nextTempName())
+}
+
+func (t maths) compile(function llvmFunction) llvm.Value {
+	return t.root.compile(function)
+}
+
+func (t number) compile(function llvmFunction) llvm.Value {
+
+	return llvm.ConstInt(llvm.Int32Type(), uint64(t.value), false)
+
+	// 	return llvm.ConstFloat(llvm.FloatType(), float64(t.value))
+
+	// return llvm.Value{}
+}
+
+func (t float) compile(function llvmFunction) llvm.Value {
+	return llvm.ConstFloat(
+		llvm.FloatType(),
+		float64(t.value))
+}
+
+func (t call) compile(function llvmFunction) llvm.Value {
+	args := []llvm.Value{}
+	for _, a := range t.args {
+		args = append(args, number{a}.compile(function))
+	}
+
+	return function.builder.CreateCall(
+		function.functions[t.function],
+		args,
+		function.nextTempName())
 }
