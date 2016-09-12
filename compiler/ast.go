@@ -32,11 +32,6 @@ type block struct {
 	end   int
 }
 
-type maths struct {
-	mtype string
-	root  expression
-}
-
 type operator struct {
 	precendence int
 	right       bool
@@ -70,7 +65,12 @@ type multiplication struct {
 	rhs expression
 }
 
-type division struct {
+type floatDivision struct {
+	lhs expression
+	rhs expression
+}
+
+type intDivision struct {
 	lhs expression
 	rhs expression
 }
@@ -228,29 +228,35 @@ func ast(tokens []token) (functions []function) {
 	return functions
 }
 
-func infixToTree(tokens []token, functionDefinitions map[string]functionDefinition) maths {
+func infixToTree(tokens []token, functionDefinitions map[string]functionDefinition) expression {
 	opMap := map[int]operator{
-		tokenPlus:     operator{2, false},
-		tokenMinus:    operator{2, false},
-		tokenMultiply: operator{3, false},
-		tokenDivide:   operator{3, false},
+		tokenPlus:        operator{2, false},
+		tokenMinus:       operator{2, false},
+		tokenMultiply:    operator{3, false},
+		tokenFloatDivide: operator{3, false},
+		tokenIntDivide:   operator{3, false},
 	}
 
 	isOp := func(t token) bool {
-		return t.tokenType == tokenPlus || t.tokenType == tokenMinus || t.tokenType == tokenMultiply || t.tokenType == tokenDivide
+		return t.tokenType == tokenPlus ||
+			t.tokenType == tokenMinus ||
+			t.tokenType == tokenMultiply ||
+			t.tokenType == tokenFloatDivide ||
+			t.tokenType == tokenIntDivide
 	}
 
 	outQueue := lane.NewQueue()
 	stack := lane.NewStack()
-	isFloat := false
 
 	for i, t := range tokens {
 		if t.tokenType == tokenNumber {
 			outQueue.Enqueue(t)
 		} else if i+1 < len(tokens) && t.tokenType == tokenName && tokens[i+1].tokenType == tokenOpenBracket {
 			if _, found := functionDefinitions[t.value.(string)]; found {
+				// Token is a function name
 				stack.Push(t)
 			} else {
+				// Token is a varible * somthing in brackets
 				outQueue.Enqueue(t)
 			}
 		} else if t.tokenType == tokenComma {
@@ -259,10 +265,6 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 			}
 		} else if isOp(t) {
 			op := opMap[t.tokenType]
-
-			if t.tokenType == tokenDivide {
-				isFloat = true
-			}
 
 			for !stack.Empty() &&
 				isOp(stack.Head().(token)) &&
@@ -311,8 +313,10 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 				exp = subtraction{lhs, rhs}
 			case tokenMultiply:
 				exp = multiplication{lhs, rhs}
-			case tokenDivide:
-				exp = division{lhs, rhs}
+			case tokenFloatDivide:
+				exp = floatDivision{lhs, rhs}
+			case tokenIntDivide:
+				exp = intDivision{lhs, rhs}
 			}
 
 			resolve.Push(exp)
@@ -336,26 +340,13 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 			}
 
 		} else if t.tokenType == tokenNumber {
-			if isFloat {
-				resolve.Push(float{float32(t.value.(int))})
-			} else {
-				resolve.Push(number{t.value.(int)})
-			}
+			resolve.Push(number{t.value.(int)})
+		} else if t.tokenType == tokenFloat {
+			resolve.Push(float{t.value.(float32)})
 		} else {
 			panic("Cant handle " + t.string())
 		}
 	}
 
-	if isFloat {
-		return maths{
-			mtype: "float",
-			root:  resolve.Head().(expression),
-		}
-	}
-
-	return maths{
-		mtype: "int",
-		root:  resolve.Head().(expression),
-	}
-
+	return resolve.Head().(expression)
 }

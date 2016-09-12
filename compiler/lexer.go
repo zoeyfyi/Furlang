@@ -11,6 +11,7 @@ type token struct {
 const (
 	tokenName = iota
 	tokenNumber
+	tokenFloat
 
 	tokenInt32
 	tokenFloat32
@@ -29,7 +30,8 @@ const (
 	tokenPlus
 	tokenMinus
 	tokenMultiply
-	tokenDivide
+	tokenFloatDivide
+	tokenIntDivide
 	tokenLessThan
 	tokenMoreThan
 	tokenColon
@@ -48,7 +50,7 @@ var (
 		"+":  tokenPlus,
 		"-":  tokenMinus,
 		"*":  tokenMultiply,
-		"/":  tokenDivide,
+		"/":  tokenFloatDivide,
 		"<":  tokenLessThan,
 		">":  tokenMoreThan,
 		":":  tokenColon,
@@ -65,6 +67,7 @@ var (
 		tokenArrow:       []int{tokenMinus, tokenMoreThan},
 		tokenAssign:      []int{tokenColon, tokenEqual},
 		tokenDoubleColon: []int{tokenColon, tokenColon},
+		tokenIntDivide:   []int{tokenFloatDivide, tokenFloatDivide},
 	}
 )
 
@@ -91,6 +94,8 @@ func (t token) string() string {
 		return "tokenNewLine"
 	case tokenNumber:
 		return "tokenNumber"
+	case tokenFloat:
+		return "tokenFloat"
 	case tokenOpenBody:
 		return "tokenOpenBody"
 	case tokenPlus:
@@ -99,8 +104,10 @@ func (t token) string() string {
 		return "tokenMinus"
 	case tokenMultiply:
 		return "tokenMultiply"
-	case tokenDivide:
-		return "tokenDivide"
+	case tokenFloatDivide:
+		return "tokenFloatDivide"
+	case tokenIntDivide:
+		return "tokenIntDivide"
 	case tokenOpenBracket:
 		return "tokenOpenBracket"
 	case tokenCloseBracket:
@@ -119,6 +126,9 @@ func parseBuffer(buffer *string, tokens *[]token) {
 		if i, err := strconv.Atoi(*buffer); err == nil {
 			// Buffer contains a number
 			*tokens = append(*tokens, token{tokenNumber, i})
+		} else if i, err := strconv.ParseFloat(*buffer, 32); err == nil {
+			// Buffer contains a float
+			*tokens = append(*tokens, token{tokenFloat, float32(i)})
 		} else if val, found := nameMap[*buffer]; found {
 			// Buffer contains a control name
 			*tokens = append(*tokens, token{val, *buffer})

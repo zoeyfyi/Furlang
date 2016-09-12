@@ -119,15 +119,18 @@ func (t multiplication) compile(function llvmFunction) llvm.Value {
 		function.nextTempName())
 }
 
-func (t division) compile(function llvmFunction) llvm.Value {
+func (t floatDivision) compile(function llvmFunction) llvm.Value {
 	return function.builder.CreateFDiv(
 		t.lhs.compile(function),
 		t.rhs.compile(function),
 		function.nextTempName())
 }
 
-func (t maths) compile(function llvmFunction) llvm.Value {
-	return t.root.compile(function)
+func (t intDivision) compile(function llvmFunction) llvm.Value {
+	return function.builder.CreateUDiv(
+		t.lhs.compile(function),
+		t.rhs.compile(function),
+		function.nextTempName())
 }
 
 func (t number) compile(function llvmFunction) llvm.Value {
