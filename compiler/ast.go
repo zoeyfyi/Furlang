@@ -88,11 +88,22 @@ type call struct {
 	args     []int
 }
 
+// TODO: Move above structs next to their compile functions
+
+type functionDefinition struct {
+	name          string
+	start         int
+	end           int
+	argumentCount int
+}
+
 func ast(tokens []token) (functions []function) {
 	// Find the function positions and names
-	var functionPositions []block
-	current := block{}
-	var functionNames []string
+	current := functionDefinition{}
+	// TODO: allocate correct ammount of functions
+	functionDefinitions := make(map[string]functionDefinition, 1000)
+	arrow := false
+
 	for i, t := range tokens {
 		switch t.tokenType {
 		case tokenDoubleColon:
@@ -100,18 +111,29 @@ func ast(tokens []token) (functions []function) {
 				panic("Expected function to start with name")
 			}
 
-			functionNames = append(functionNames, tokens[i-1].value.(string))
+			current.name = tokens[i-1].value.(string)
 			current.start = i - 1
+		case tokenInt32:
+			if arrow {
+				current.argumentCount++
+			}
+		case tokenFloat32:
+			if arrow {
+				current.argumentCount++
+			}
+		case tokenArrow:
+			arrow = true
 		case tokenCloseBody:
 			current.end = i
-			functionPositions = append(functionPositions, current)
+			functionDefinitions[current.name] = current
+			current = functionDefinition{}
 		}
 	}
 
 	// Parse functions
-	for _, position := range functionPositions {
+	for _, definition := range functionDefinitions {
 
-		fTokens := tokens[position.start:position.end]
+		fTokens := tokens[definition.start:definition.end]
 		function := function{}
 
 		// Set function name
@@ -163,7 +185,7 @@ func ast(tokens []token) (functions []function) {
 					returnTokens := tokenBuffer[1:]
 					for i, t := range returnTokens {
 						if t.tokenType == tokenComma || i == len(returnTokens)-1 {
-							exp := infixToTree(returnTokens[lastComma : i+1])
+							exp := infixToTree(returnTokens[lastComma:i+1], functionDefinitions)
 							retExpression.returns = append(retExpression.returns, exp)
 							lastComma = i
 						}
@@ -175,12 +197,12 @@ func ast(tokens []token) (functions []function) {
 						// Line is a assignment
 						lineExpression = assignment{
 							name:  tokenBuffer[0].value.(string),
-							value: infixToTree(tokenBuffer[2:]),
+							value: infixToTree(tokenBuffer[2:], functionDefinitions),
 						}
 
 					} else {
 						// Line is a function call
-						lineExpression = infixToTree(tokenBuffer)
+						lineExpression = infixToTree(tokenBuffer, functionDefinitions)
 					}
 				}
 
@@ -202,7 +224,7 @@ func ast(tokens []token) (functions []function) {
 	return functions
 }
 
-func infixToTree(tokens []token) maths {
+func infixToTree(tokens []token, functionDefinitions map[string]functionDefinition) maths {
 	opMap := map[int]operator{
 		tokenPlus:     operator{2, false},
 		tokenMinus:    operator{2, false},
@@ -210,28 +232,19 @@ func infixToTree(tokens []token) maths {
 		tokenDivide:   operator{3, false},
 	}
 
-	stringInSlice := func(a string, list []string) bool {
-		for _, b := range list {
-			if b == a {
-				return true
-			}
-		}
-		return false
-	}
-
 	isOp := func(t token) bool {
 		return t.tokenType == tokenPlus || t.tokenType == tokenMinus || t.tokenType == tokenMultiply || t.tokenType == tokenDivide
 	}
 
-	functionNames := []string{"add"}
 	outQueue := lane.NewQueue()
 	stack := lane.NewStack()
+	isFloat := false
 
 	for i, t := range tokens {
 		if t.tokenType == tokenNumber {
 			outQueue.Enqueue(t)
 		} else if i+1 < len(tokens) && t.tokenType == tokenName && tokens[i+1].tokenType == tokenOpenBracket {
-			if stringInSlice(t.value.(string), functionNames) {
+			if _, found := functionDefinitions[t.value.(string)]; found {
 				stack.Push(t)
 			} else {
 				outQueue.Enqueue(t)
@@ -242,6 +255,10 @@ func infixToTree(tokens []token) maths {
 			}
 		} else if isOp(t) {
 			op := opMap[t.tokenType]
+
+			if t.tokenType == tokenDivide {
+				isFloat = true
+			}
 
 			for !stack.Empty() &&
 				isOp(stack.Head().(token)) &&
@@ -262,7 +279,7 @@ func infixToTree(tokens []token) maths {
 			stack.Pop() // pop open bracket off
 
 			if t.tokenType == tokenName {
-				if stringInSlice(t.value.(string), functionNames) {
+				if _, found := functionDefinitions[t.value.(string)]; found {
 					outQueue.Enqueue(stack.Pop())
 				}
 			}
@@ -276,7 +293,6 @@ func infixToTree(tokens []token) maths {
 	}
 
 	resolve := lane.NewStack()
-	isFloat := false
 
 	for !outQueue.Empty() {
 		t := outQueue.Dequeue().(token)
@@ -292,14 +308,13 @@ func infixToTree(tokens []token) maths {
 			case tokenMultiply:
 				exp = multiplication{lhs, rhs}
 			case tokenDivide:
-				isFloat = true
 				exp = division{lhs, rhs}
 			}
 
 			resolve.Push(exp)
 		} else if t.tokenType == tokenName {
 			// Token is a function
-			if stringInSlice(t.value.(string), functionNames) {
+			if _, found := functionDefinitions[t.value.(string)]; found {
 				var args []expression
 				// TODO: replace 3 with actual parameter count
 				for i := 0; i < 2; i++ {
@@ -318,7 +333,11 @@ func infixToTree(tokens []token) maths {
 			}
 
 		} else if t.tokenType == tokenNumber {
-			resolve.Push(number{t.value.(int)})
+			if isFloat {
+				resolve.Push(float{float32(t.value.(int))})
+			} else {
+				resolve.Push(number{t.value.(int)})
+			}
 		} else {
 			panic("Cant handle " + t.string())
 		}

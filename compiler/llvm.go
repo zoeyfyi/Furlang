@@ -131,12 +131,7 @@ func (t maths) compile(function llvmFunction) llvm.Value {
 }
 
 func (t number) compile(function llvmFunction) llvm.Value {
-
 	return llvm.ConstInt(llvm.Int32Type(), uint64(t.value), false)
-
-	// 	return llvm.ConstFloat(llvm.FloatType(), float64(t.value))
-
-	// return llvm.Value{}
 }
 
 func (t float) compile(function llvmFunction) llvm.Value {
