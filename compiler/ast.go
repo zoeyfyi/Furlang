@@ -1,6 +1,8 @@
 package compiler
 
 import (
+	"bitbucket.com/bongo227/cmap"
+
 	"llvm.org/llvm/bindings/go/llvm"
 
 	lane "gopkg.in/oleiade/lane.v1"
@@ -102,6 +104,8 @@ func ast(tokens []token) (functions []function) {
 	current := functionDefinition{}
 	// TODO: allocate correct ammount of functions
 	functionDefinitions := make(map[string]functionDefinition, 1000)
+	// TODO: compute this based on order of calls
+	var functionOrder []string
 	arrow := false
 
 	for i, t := range tokens {
@@ -114,11 +118,11 @@ func ast(tokens []token) (functions []function) {
 			current.name = tokens[i-1].value.(string)
 			current.start = i - 1
 		case tokenInt32:
-			if arrow {
+			if !arrow {
 				current.argumentCount++
 			}
 		case tokenFloat32:
-			if arrow {
+			if !arrow {
 				current.argumentCount++
 			}
 		case tokenArrow:
@@ -126,12 +130,14 @@ func ast(tokens []token) (functions []function) {
 		case tokenCloseBody:
 			current.end = i
 			functionDefinitions[current.name] = current
+			functionOrder = append(functionOrder, current.name)
 			current = functionDefinition{}
 		}
 	}
 
 	// Parse functions
-	for _, definition := range functionDefinitions {
+	for _, fkey := range functionOrder {
+		definition := functionDefinitions[fkey]
 
 		fTokens := tokens[definition.start:definition.end]
 		function := function{}
@@ -206,6 +212,7 @@ func ast(tokens []token) (functions []function) {
 					}
 				}
 
+				cmap.Dump(lineExpression, "lineExpression")
 				function.lines = append(function.lines, lineExpression)
 
 				tokenBuffer = nil
