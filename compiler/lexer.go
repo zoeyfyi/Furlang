@@ -1,10 +1,15 @@
 package compiler
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 type token struct {
 	tokenType int
 	value     interface{}
+	line      int
+	column    int
 }
 
 // Token type constants
@@ -73,68 +78,73 @@ var (
 
 // Converts token to printable string
 func (t token) string() string {
+	tokenString := ""
 	switch t.tokenType {
 	case tokenArrow:
-		return "tokenArrow"
+		tokenString = "tokenArrow"
 	case tokenAssign:
-		return "tokenAssign"
+		tokenString = "tokenAssign"
 	case tokenCloseBody:
-		return "tokenCloseBody"
+		tokenString = "tokenCloseBody"
 	case tokenComma:
-		return "tokenComma"
+		tokenString = "tokenComma"
 	case tokenDoubleColon:
-		return "tokenDoubleColon"
+		tokenString = "tokenDoubleColon"
 	case tokenInt32:
-		return "tokenInt32"
+		tokenString = "tokenInt32"
 	case tokenFloat32:
-		return "tokenFloat32"
+		tokenString = "tokenFloat32"
 	case tokenName:
-		return "tokenName"
+		tokenString = "tokenName"
 	case tokenNewLine:
-		return "tokenNewLine"
+		tokenString = "tokenNewLine"
 	case tokenNumber:
-		return "tokenNumber"
+		tokenString = "tokenNumber"
 	case tokenFloat:
-		return "tokenFloat"
+		tokenString = "tokenFloat"
 	case tokenOpenBody:
-		return "tokenOpenBody"
+		tokenString = "tokenOpenBody"
 	case tokenPlus:
-		return "tokenPlus"
+		tokenString = "tokenPlus"
 	case tokenMinus:
-		return "tokenMinus"
+		tokenString = "tokenMinus"
 	case tokenMultiply:
-		return "tokenMultiply"
+		tokenString = "tokenMultiply"
 	case tokenFloatDivide:
-		return "tokenFloatDivide"
+		tokenString = "tokenFloatDivide"
 	case tokenIntDivide:
-		return "tokenIntDivide"
+		tokenString = "tokenIntDivide"
 	case tokenOpenBracket:
-		return "tokenOpenBracket"
+		tokenString = "tokenOpenBracket"
 	case tokenCloseBracket:
-		return "tokenCloseBracket"
+		tokenString = "tokenCloseBracket"
 	case tokenReturn:
-		return "tokenReturn"
+		tokenString = "tokenReturn"
 	default:
-		return "Undefined token"
+		tokenString = "Undefined token"
 	}
+
+	return fmt.Sprintf("%s, line: %d, column: %d", tokenString, t.line, t.column)
 }
 
 // Parsers what ever is in the the buffer
-func parseBuffer(buffer *string, tokens *[]token) {
+func parseBuffer(buffer *string, tokens *[]token, line int, column int) {
 
 	if *buffer != "" {
+		bufferLength := len(*buffer)
+
 		if i, err := strconv.Atoi(*buffer); err == nil {
 			// Buffer contains a number
-			*tokens = append(*tokens, token{tokenNumber, i})
+			*tokens = append(*tokens, token{tokenNumber, i, line, column - bufferLength})
 		} else if i, err := strconv.ParseFloat(*buffer, 32); err == nil {
 			// Buffer contains a float
-			*tokens = append(*tokens, token{tokenFloat, float32(i)})
+			*tokens = append(*tokens, token{tokenFloat, float32(i), line, column - bufferLength})
 		} else if val, found := nameMap[*buffer]; found {
 			// Buffer contains a control name
-			*tokens = append(*tokens, token{val, *buffer})
+			*tokens = append(*tokens, token{val, *buffer, line, column - bufferLength})
 		} else {
 			// Buffer contains a name
-			*tokens = append(*tokens, token{tokenName, *buffer})
+			*tokens = append(*tokens, token{tokenName, *buffer, line, column - bufferLength})
 		}
 
 		*buffer = ""
@@ -147,19 +157,27 @@ func lexer(in string) (tokens []token) {
 	buffer := ""
 
 	// Parse all single character tokens, names and numbers
+	lineIndex := 1
+	columnIndex := 0
 characterLoop:
 	for _, char := range in {
+		columnIndex++
+
 		// Handle whitespace
 		if string(char) == " " {
-			parseBuffer(&buffer, &tokens)
+			parseBuffer(&buffer, &tokens, lineIndex, columnIndex)
 			continue characterLoop
 		}
 
 		// Handle symbol character
 		for symbol, symbolToken := range symbolMap {
 			if string(char) == symbol {
-				parseBuffer(&buffer, &tokens)
-				tokens = append(tokens, token{symbolToken, string(char)})
+				parseBuffer(&buffer, &tokens, lineIndex, columnIndex)
+				tokens = append(tokens, token{symbolToken, string(char), lineIndex, columnIndex})
+				if symbolToken == tokenNewLine {
+					lineIndex++
+					columnIndex = 0
+				}
 				continue characterLoop
 			}
 		}
@@ -181,7 +199,7 @@ characterLoop:
 
 			// Collapse tokens in group into a single token
 			if equal {
-				lower := append(tokens[:i], token{symbolsToken, nil})
+				lower := append(tokens[:i], token{symbolsToken, nil, lineIndex, columnIndex})
 				tokens = append(lower, tokens[i+len(symbols):]...)
 			}
 		}
