@@ -1,8 +1,6 @@
 package compiler
 
 import (
-	"bitbucket.com/bongo227/cmap"
-
 	"llvm.org/llvm/bindings/go/llvm"
 
 	lane "gopkg.in/oleiade/lane.v1"
@@ -212,7 +210,6 @@ func ast(tokens []token) (functions []function) {
 					}
 				}
 
-				cmap.Dump(lineExpression, "lineExpression")
 				function.lines = append(function.lines, lineExpression)
 
 				tokenBuffer = nil
