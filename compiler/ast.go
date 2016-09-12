@@ -318,10 +318,9 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 			resolve.Push(exp)
 		} else if t.tokenType == tokenName {
 			// Token is a function
-			if _, found := functionDefinitions[t.value.(string)]; found {
+			if def, found := functionDefinitions[t.value.(string)]; found {
 				var args []expression
-				// TODO: replace 3 with actual parameter count
-				for i := 0; i < 2; i++ {
+				for i := 0; i < def.argumentCount; i++ {
 					args = append(args, resolve.Pop().(expression))
 				}
 
