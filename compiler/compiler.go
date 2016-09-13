@@ -18,10 +18,9 @@ func Tokens(data string) string {
 func AbstractSyntaxTree(data string) (string, error) {
 	tokens := lexer(data)
 	functions, err := ast(tokens)
-	cmap.Dump(functions, "functions")
+	s := cmap.SDump(functions, "functions")
 
-	// TODO: Make this return the real ast
-	return "", err
+	return s, err
 }
 
 // Compile produces llvm ir code from the input program

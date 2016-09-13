@@ -83,8 +83,9 @@ func main() {
 	// Create abstract syntax tree
 	if *outputAst {
 		step("Printing abstract syntax tree")
-		fmt.Print("\n")
-		compiler.AbstractSyntaxTree(program)
+		fmt.Println()
+		s, _ := compiler.AbstractSyntaxTree(program)
+		fmt.Println(s)
 	}
 
 	// Compile
