@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"bitbucket.com/bongo227/furlang/compiler"
@@ -24,6 +25,8 @@ func step(name string) {
 }
 
 func main() {
+	cerror := color.New(color.FgHiRed).SprintfFunc()
+
 	// Parse command line flags
 	outputTokens := flag.Bool("tokens", false, "Create a file with the tokens")
 	outputAst := flag.Bool("ast", false, "Create file with the abstract syntax tree")
@@ -86,7 +89,19 @@ func main() {
 
 	// Compile
 	step("Compiling")
-	s := compiler.Compile(program)
+	s, err := compiler.Compile(program)
+	if err != nil {
+		if err, ok := err.(compiler.Error); ok {
+			line := err.Line()
+			clow, chigh := err.ColumnRange()
+			lines := strings.Split(program, "\n")
+			fmt.Printf("\n%s\n%s\n%s%s\n", cerror("Error: %s", err.Error()), lines[line], strings.Repeat(" ", clow), cerror(strings.Repeat("^", chigh)))
+		} else {
+			panic("Unexpected error type")
+		}
+
+		return
+	}
 
 	step("Writing to file")
 	f.WriteString(s)

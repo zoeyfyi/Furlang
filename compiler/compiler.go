@@ -15,20 +15,24 @@ func Tokens(data string) string {
 }
 
 // AbstractSyntaxTree returns the abstract sytax tree in a pretty printed tree
-func AbstractSyntaxTree(data string) string {
+func AbstractSyntaxTree(data string) (string, error) {
 	tokens := lexer(data)
-	functions := ast(tokens)
+	functions, err := ast(tokens)
 	cmap.Dump(functions, "functions")
 
 	// TODO: Make this return the real ast
-	return ""
+	return "", err
 }
 
 // Compile produces llvm ir code from the input program
-func Compile(data string) string {
+func Compile(data string) (string, error) {
 	tokens := lexer(data)
-	functions := ast(tokens)
+	functions, err := ast(tokens)
+	if err != nil {
+		return "", err
+	}
+
 	llvm := Llvm(functions)
 
-	return llvm
+	return llvm, err
 }
