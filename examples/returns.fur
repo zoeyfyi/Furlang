@@ -3,5 +3,5 @@ add :: i32 a, i32 b -> i32 {
 }
 
 main :: -> i32 {
-    return add(4, 9)
+    return add(4+5, 9)
 }

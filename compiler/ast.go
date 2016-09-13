@@ -81,7 +81,7 @@ type float struct {
 
 type call struct {
 	function string
-	args     []int
+	args     []expression
 }
 
 type functionDefinition struct {
@@ -347,14 +347,7 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 					args = append(args, resolve.Pop().(expression))
 				}
 
-				fmt.Println("args: ", args)
-				// TODO: change call to except expressions
-				var intargs []int
-				for _, a := range args {
-					intargs = append(intargs, a.(number).value)
-				}
-
-				resolve.Push(call{t.value.(string), intargs})
+				resolve.Push(call{t.value.(string), args})
 			} else {
 				resolve.Push(name{t.value.(string)})
 			}
