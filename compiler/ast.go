@@ -82,8 +82,6 @@ type call struct {
 	args     []int
 }
 
-// TODO: Move above structs next to their compile functions
-
 type functionDefinition struct {
 	name          string
 	start         int
@@ -154,21 +152,20 @@ func ast(tokens []token) (functions []function, err error) {
 				}
 			}
 
-			// TODO: Convert to switch
-			if t.tokenType == tokenInt32 {
+			switch t.tokenType {
+			case tokenInt32:
 				currentTypedName.nameType = typeInt32
-			} else if t.tokenType == tokenFloat32 {
+			case tokenFloat32:
 				currentTypedName.nameType = typeFloat32
-			} else if t.tokenType == tokenArrow {
+			case tokenArrow:
 				arrow = true
 				continue
-			} else if t.tokenType == tokenOpenBody {
+			case tokenOpenBody:
 				startBody = i + 2
 				break
-			} else if t.tokenType == tokenName {
+			case tokenName:
 				currentTypedName.name = t.value.(string)
 			}
-
 		}
 
 		// Parse each line
