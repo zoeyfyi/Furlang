@@ -1,10 +1,6 @@
 package compiler
 
-import (
-	"fmt"
-
-	lane "gopkg.in/oleiade/lane.v1"
-)
+import lane "gopkg.in/oleiade/lane.v1"
 
 const (
 	typeInt32 = iota + 100
@@ -188,9 +184,7 @@ func ast(tokens []token) (functions []function, err error) {
 						if (t.tokenType == tokenComma && bracketDepth == 0) ||
 							i == len(returnTokens)-1 {
 
-							fmt.Println(tokenBuffer[lastComma : i+1])
 							exp, err := infixToTree(returnTokens[lastComma:i+1], functionDefinitions)
-							fmt.Println(exp)
 							if err != nil {
 								return nil, err
 							}
@@ -340,7 +334,6 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 			resolve.Push(exp)
 		} else if t.tokenType == tokenName {
 			// Token is a function
-			fmt.Println(functionDefinitions, t.value.(string))
 			if def, found := functionDefinitions[t.value.(string)]; found {
 				var args []expression
 				for i := 0; i < def.argumentCount; i++ {
