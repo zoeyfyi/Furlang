@@ -10,11 +10,20 @@ import (
 	"llvm.org/llvm/bindings/go/llvm"
 )
 
-type value llvm.Value
-type build llvm.Builder
+type llvmFunction struct {
+	functions map[string]llvm.Value
+	names     map[string]llvm.Value
+	builder   llvm.Builder
+	tempCount *int
+}
+
+func (lf llvmFunction) nextTempName() string {
+	*(lf.tempCount)++
+	return fmt.Sprintf("tmp%d", *(lf.tempCount))
+}
 
 type expression interface {
-	compile(llvmFunction) value
+	compile(llvmFunction) llvm.Value
 }
 
 // Llvm compiles functions to llvm ir
@@ -143,7 +152,7 @@ func (t float) compile(function llvmFunction) llvm.Value {
 func (t call) compile(function llvmFunction) llvm.Value {
 	args := []llvm.Value{}
 	for _, a := range t.args {
-		args = append(args, number{a}.compile(function))
+		args = append(args, a.compile(function))
 	}
 
 	return function.builder.CreateCall(

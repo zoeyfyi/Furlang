@@ -2,12 +2,22 @@
 
 package compiler
 
-type value interface{}
-type builder interface{}
+import "fmt"
+
+type llvmFunction struct {
+	functions map[string]interface{}
+	names     map[string]interface{}
+	builder   interface{}
+	tempCount *int
+}
+
+func (lf llvmFunction) nextTempName() string {
+	*(lf.tempCount)++
+	return fmt.Sprintf("tmp%d", *(lf.tempCount))
+}
 
 type expression interface{}
 
-// Llvm returns a empty program because it wasnt compiled with llvm support
 func Llvm(funcs []function) string {
-	return "Compiler build with no LLVM"
+	return "Compiled without llvm"
 }
