@@ -1,10 +1,6 @@
 package compiler
 
-import (
-	"llvm.org/llvm/bindings/go/llvm"
-
-	lane "gopkg.in/oleiade/lane.v1"
-)
+import lane "gopkg.in/oleiade/lane.v1"
 
 const (
 	typeInt32 = iota + 100
@@ -16,9 +12,7 @@ type typedName struct {
 	name     string
 }
 
-type expression interface {
-	compile(llvmFunction) llvm.Value
-}
+type expression interface{}
 
 type function struct {
 	name    string

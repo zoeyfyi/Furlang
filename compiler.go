@@ -85,11 +85,11 @@ func main() {
 	}
 
 	// Compile
-	step("Compiling")
-	s := compiler.Compile(program)
+	// step("Compiling")
+	// s := compiler.Compile(program)
 
-	step("Writing to file")
-	f.WriteString(s)
+	// step("Writing to file")
+	// f.WriteString(s)
 
 	// Confirm the writes
 	f.Sync()

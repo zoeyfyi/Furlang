@@ -25,10 +25,10 @@ func AbstractSyntaxTree(data string) string {
 }
 
 // Compile produces llvm ir code from the input program
-func Compile(data string) string {
-	tokens := lexer(data)
-	functions := ast(tokens)
-	llvm := Llvm(functions)
+// func Compile(data string) string {
+// 	tokens := lexer(data)
+// 	functions := ast(tokens)
+// 	llvm := llcompiler.Llvm(functions)
 
-	return llvm
-}
+// 	return llvm
+// }

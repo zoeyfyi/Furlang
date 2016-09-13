@@ -1,4 +1,4 @@
-package compiler
+package llcompiler
 
 import (
 	"fmt"
@@ -7,6 +7,10 @@ import (
 
 	"llvm.org/llvm/bindings/go/llvm"
 )
+
+type expression interface {
+	compile(llvmFunction) llvm.Value
+}
 
 type llvmFunction struct {
 	functions map[string]llvm.Value
