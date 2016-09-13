@@ -10,6 +10,7 @@ type token struct {
 	value     interface{}
 	line      int
 	column    int
+	length    int
 }
 
 // Token type constants
@@ -135,16 +136,40 @@ func parseBuffer(buffer *string, tokens *[]token, line int, column int) {
 
 		if i, err := strconv.Atoi(*buffer); err == nil {
 			// Buffer contains a number
-			*tokens = append(*tokens, token{tokenNumber, i, line, column - bufferLength})
+			*tokens = append(*tokens, token{
+				tokenType: tokenNumber,
+				value:     i,
+				line:      line,
+				column:    column - bufferLength,
+				length:    bufferLength,
+			})
 		} else if i, err := strconv.ParseFloat(*buffer, 32); err == nil {
 			// Buffer contains a float
-			*tokens = append(*tokens, token{tokenFloat, float32(i), line, column - bufferLength})
+			*tokens = append(*tokens, token{
+				tokenType: tokenFloat,
+				value:     float32(i),
+				line:      line,
+				column:    column - bufferLength,
+				length:    bufferLength,
+			})
 		} else if val, found := nameMap[*buffer]; found {
 			// Buffer contains a control name
-			*tokens = append(*tokens, token{val, *buffer, line, column - bufferLength})
+			*tokens = append(*tokens, token{
+				tokenType: val,
+				value:     *buffer,
+				line:      line,
+				column:    column - bufferLength,
+				length:    bufferLength,
+			})
 		} else {
 			// Buffer contains a name
-			*tokens = append(*tokens, token{tokenName, *buffer, line, column - bufferLength})
+			*tokens = append(*tokens, token{
+				tokenType: tokenName,
+				value:     *buffer,
+				line:      line,
+				column:    column - bufferLength,
+				length:    bufferLength,
+			})
 		}
 
 		*buffer = ""
@@ -173,7 +198,13 @@ characterLoop:
 		for symbol, symbolToken := range symbolMap {
 			if string(char) == symbol {
 				parseBuffer(&buffer, &tokens, lineIndex, columnIndex)
-				tokens = append(tokens, token{symbolToken, string(char), lineIndex, columnIndex})
+				tokens = append(tokens, token{
+					tokenType: symbolToken,
+					value:     string(char),
+					line:      lineIndex,
+					column:    columnIndex,
+					length:    1,
+				})
 				if symbolToken == tokenNewLine {
 					lineIndex++
 					columnIndex = 0
@@ -199,7 +230,13 @@ characterLoop:
 
 			// Collapse tokens in group into a single token
 			if equal {
-				lower := append(tokens[:i], token{symbolsToken, nil, lineIndex, columnIndex})
+				lower := append(tokens[:i], token{
+					tokenType: symbolsToken,
+					value:     nil,
+					line:      lineIndex,
+					column:    columnIndex,
+					length:    1,
+				})
 				tokens = append(lower, tokens[i+len(symbols):]...)
 			}
 		}

@@ -1,6 +1,8 @@
 package compiler
 
-import lane "gopkg.in/oleiade/lane.v1"
+import (
+	lane "gopkg.in/oleiade/lane.v1"
+)
 
 const (
 	typeInt32 = iota + 100
@@ -11,8 +13,6 @@ type typedName struct {
 	nameType int
 	name     string
 }
-
-type expression interface{}
 
 type function struct {
 	name    string
@@ -91,7 +91,7 @@ type functionDefinition struct {
 	argumentCount int
 }
 
-func ast(tokens []token) (functions []function) {
+func ast(tokens []token) (functions []function, err error) {
 	// Find the function positions and names
 	current := functionDefinition{}
 	// TODO: allocate correct ammount of functions
@@ -104,7 +104,10 @@ func ast(tokens []token) (functions []function) {
 		switch t.tokenType {
 		case tokenDoubleColon:
 			if tokens[i-1].tokenType != tokenName {
-				panic("Expected function to start with name")
+				return nil, Error{
+					err:        "Expected function to start with name",
+					tokenRange: []token{tokens[i-1]},
+				}
 			}
 
 			current.name = tokens[i-1].value.(string)
@@ -219,7 +222,7 @@ func ast(tokens []token) (functions []function) {
 		functions = append(functions, function)
 	}
 
-	return functions
+	return functions, nil
 }
 
 func infixToTree(tokens []token, functionDefinitions map[string]functionDefinition) expression {

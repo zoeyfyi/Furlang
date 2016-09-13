@@ -1,4 +1,6 @@
-package llcompiler
+// +build llvm
+
+package compiler
 
 import (
 	"fmt"
@@ -8,20 +10,11 @@ import (
 	"llvm.org/llvm/bindings/go/llvm"
 )
 
+type value llvm.Value
+type build llvm.Builder
+
 type expression interface {
-	compile(llvmFunction) llvm.Value
-}
-
-type llvmFunction struct {
-	functions map[string]llvm.Value
-	names     map[string]llvm.Value
-	builder   llvm.Builder
-	tempCount *int
-}
-
-func (lf llvmFunction) nextTempName() string {
-	*(lf.tempCount)++
-	return fmt.Sprintf("tmp%d", *(lf.tempCount))
+	compile(llvmFunction) value
 }
 
 // Llvm compiles functions to llvm ir
