@@ -1,6 +1,10 @@
 package compiler
 
-import lane "gopkg.in/oleiade/lane.v1"
+import (
+	"fmt"
+
+	lane "gopkg.in/oleiade/lane.v1"
+)
 
 const (
 	typeInt32 = iota + 100
@@ -239,7 +243,6 @@ func ast(tokens []token) (functions []function, err error) {
 	return functions, nil
 }
 
-// TODO: add errors to shunting yard (i.e. miss matched brackets etc)
 func infixToTree(tokens []token, functionDefinitions map[string]functionDefinition) (expression, error) {
 	opMap := map[int]operator{
 		tokenPlus:        operator{2, false},
@@ -263,7 +266,9 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 	for i, t := range tokens {
 		if t.tokenType == tokenNumber {
 			outQueue.Enqueue(t)
-		} else if i+1 < len(tokens) && t.tokenType == tokenName && tokens[i+1].tokenType == tokenOpenBracket {
+		} else if i+1 < len(tokens) && t.tokenType == tokenName &&
+			tokens[i+1].tokenType == tokenOpenBracket {
+
 			if _, found := functionDefinitions[t.value.(string)]; found {
 				// Token is a function name
 				stack.Push(t)
@@ -274,6 +279,13 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 		} else if t.tokenType == tokenComma {
 			for stack.Head().(token).tokenType != tokenOpenBracket {
 				outQueue.Enqueue(stack.Pop())
+			}
+
+			if stack.Empty() {
+				return nil, Error{
+					err:        "Misplaced comma or mismatched parentheses",
+					tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
+				}
 			}
 		} else if isOp(t) {
 			op := opMap[t.tokenType]
@@ -290,8 +302,24 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 		} else if t.tokenType == tokenOpenBracket {
 			stack.Push(t)
 		} else if t.tokenType == tokenCloseBracket {
-			for stack.Head().(token).tokenType != tokenOpenBracket {
+			if stack.Empty() {
+				return nil, Error{
+					err:        "Mismatched parentheses",
+					tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
+				}
+			}
+
+			fmt.Printf("%+v\n", stack.Size())
+
+			for !stack.Empty() && stack.Head().(token).tokenType != tokenOpenBracket {
 				outQueue.Enqueue(stack.Pop())
+			}
+
+			if stack.Empty() {
+				return nil, Error{
+					err:        "Mismatched parentheses",
+					tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
+				}
 			}
 
 			stack.Pop() // pop open bracket off
@@ -307,6 +335,13 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 	}
 
 	for !stack.Empty() {
+		head := stack.Head().(token)
+		if head.tokenType == tokenOpenBracket || head.tokenType == tokenCloseBracket {
+			return nil, Error{
+				err:        "Mismatched parentheses",
+				tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
+			}
+		}
 		outQueue.Enqueue(stack.Pop())
 	}
 
