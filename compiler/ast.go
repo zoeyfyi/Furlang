@@ -337,7 +337,14 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 			if def, found := functionDefinitions[t.value.(string)]; found {
 				var args []expression
 				for i := 0; i < def.argumentCount; i++ {
-					args = append(args, resolve.Pop().(expression))
+					exp, ok := resolve.Pop().(expression)
+					if !ok {
+						return nil, Error{
+							err:        "Expected function to have arguments",
+							tokenRange: []token{t},
+						}
+					}
+					args = append(args, exp)
 				}
 
 				resolve.Push(call{t.value.(string), args})
