@@ -1,5 +1,7 @@
 # Fur #
+
 ---
+
 ## Design Philosophy ##
 
 ### Garbage collection ###
@@ -7,7 +9,9 @@ Their is a massive problem for performance applications such as games, with equi
 
 ### Object Oriented Programming ###
 Programs are data and transformations on data, the object oriented para-dime takes the programmed away from the data in favour of atomic encapsulation. Encapsulation try's to solve maintainability by making programs almost impossible to maintain. Large code base's end up with impossible to follow inheritance trees with surprise edge cases as a result of generalising your problems. Fur stays far away from object oriented programming because their is no case in which you gain anything from using it.
+
 ---
+
 ## Objectives ##
 * Types:
     * Integer (int, i32, i64, u8, u16, u32, u64)
@@ -30,5 +34,3 @@ Programs are data and transformations on data, the object oriented para-dime tak
 * Match:
     * Multiple cases
     * Optial fallthrow
-
-1
