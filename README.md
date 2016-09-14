@@ -10,7 +10,10 @@ Programs are data and transformations on data, the object oriented para-dime tak
 ---
 ## Objectives ##
 * Types:
-⋅⋅* Integer
+    * Integer (int, i32, i64, u8, u16, u32, u64)
+    * Float (float, f32, f64)
+    * Bool (bool)
+
 * Primitive types: integer, float, bool, arrays, runes/chars
 * Derived types: enums, slices, strings
 * Functions
