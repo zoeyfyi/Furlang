@@ -13,8 +13,22 @@ Programs are data and transformations on data, the object oriented para-dime tak
     * Integer (int, i32, i64, u8, u16, u32, u64)
     * Float (float, f32, f64)
     * Bool (bool)
+    * Arrays
+    * Slices
+    * Runes (unicode character)
+    * Strings (rune slice)
+* Functions:
+    * Multiple return values
+    * Function overloading
+    * Functions in functions
+    * Named returns
+    * Varible argument functions
+* Structs:
+    * Unions and tagged unions
+    * Named/nameless assignment
+    * Subtyping
+* Match:
+    * Multiple cases
+    * Optial fallthrow
 
-* Primitive types: integer, float, bool, arrays, runes/chars
-* Derived types: enums, slices, strings
-* Functions
 1
