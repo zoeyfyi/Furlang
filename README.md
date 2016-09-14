@@ -1,11 +1,8 @@
-# go-compiler
+# Fur #
 
-Compiler steps
-1. Parse through file and convert single characters and names to a list of tokens
-2. Group some single tokens and convert names to other tokens (i.e. types, returns etc)
-3. Generate an abstract syntax tree from the list of tokens
-4. Infer types of assignments in abstract syntax tree
-5. Validate abstract syntax tree
-6. Compile abstract syntax tree to llvm
+## Design Philosophy ##
+### Garbage collection ###
+Their is a massive problem for performance applications such as games, with equipment enabling frame rates as high as 144 fps, games need to update and render in less than 7ms. Go's gc is around 10ms, making it almost unusable due to the frequent freezes/stuttering which would occur due to the stop-the-world gc. Garbage collection has no place in games so it has no place in Fur.
 
-Lexer -> 
+### Object Oriented Programming ###
+Programs are data and transformations on data, the object oriented para-dime takes the programmed away from the data in favour of atomic encapsulation. Encapsulation try's to solve maintainability by making programs almost impossible to maintain. Large code base's end up with impossible to follow inheritance trees with surprise edge cases as a result of generalising your problems. Fur stays far away from object oriented programming because their is no case in which you gain anything from using it.
