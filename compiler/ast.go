@@ -1,10 +1,6 @@
 package compiler
 
-import (
-	"fmt"
-
-	lane "gopkg.in/oleiade/lane.v1"
-)
+import lane "gopkg.in/oleiade/lane.v1"
 
 const (
 	typeInt32 = iota + 100
@@ -308,8 +304,6 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 					tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
 				}
 			}
-
-			fmt.Printf("%+v\n", stack.Size())
 
 			for !stack.Empty() && stack.Head().(token).tokenType != tokenOpenBracket {
 				outQueue.Enqueue(stack.Pop())
