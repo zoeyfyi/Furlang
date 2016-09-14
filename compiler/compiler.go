@@ -33,6 +33,11 @@ func Compile(data string) (string, error) {
 		return "", err
 	}
 
+	err = check(functions)
+	if err != nil {
+		return "", err
+	}
+
 	llvm := Llvm(functions)
 
 	return llvm, err

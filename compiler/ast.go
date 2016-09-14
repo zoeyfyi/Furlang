@@ -14,6 +14,7 @@ type typedName struct {
 
 type function struct {
 	name    string
+	names   []typedName
 	args    []typedName
 	returns []typedName
 	lines   []expression

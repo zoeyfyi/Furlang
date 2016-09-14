@@ -8,7 +8,8 @@
             "mode": "debug",
             "program": "${workspaceRoot}",
             "env": {},
-            "args": ["examples/function.fur"]
+            "buildFlags": "-tags 'nollvm'",
+            "args": ["examples/error.fur"]
         }
     ]
 }
