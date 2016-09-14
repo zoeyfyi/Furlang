@@ -1,6 +1,8 @@
 package compiler
 
 import (
+	"fmt"
+
 	lane "gopkg.in/oleiade/lane.v1"
 )
 
@@ -79,10 +81,8 @@ type float struct {
 
 type call struct {
 	function string
-	args     []int
+	args     []expression
 }
-
-// TODO: Move above structs next to their compile functions
 
 type functionDefinition struct {
 	name          string
@@ -154,21 +154,20 @@ func ast(tokens []token) (functions []function, err error) {
 				}
 			}
 
-			// TODO: Convert to switch
-			if t.tokenType == tokenInt32 {
+			switch t.tokenType {
+			case tokenInt32:
 				currentTypedName.nameType = typeInt32
-			} else if t.tokenType == tokenFloat32 {
+			case tokenFloat32:
 				currentTypedName.nameType = typeFloat32
-			} else if t.tokenType == tokenArrow {
+			case tokenArrow:
 				arrow = true
 				continue
-			} else if t.tokenType == tokenOpenBody {
+			case tokenOpenBody:
 				startBody = i + 2
 				break
-			} else if t.tokenType == tokenName {
+			case tokenName:
 				currentTypedName.name = t.value.(string)
 			}
-
 		}
 
 		// Parse each line
@@ -184,11 +183,21 @@ func ast(tokens []token) (functions []function, err error) {
 
 					lastComma := 0
 					returnTokens := tokenBuffer[1:]
+					bracketDepth := 0
 					for i, t := range returnTokens {
-						if t.tokenType == tokenComma || i == len(returnTokens)-1 {
-							exp := infixToTree(returnTokens[lastComma:i+1], functionDefinitions)
+						if (t.tokenType == tokenComma && bracketDepth == 0) ||
+							i == len(returnTokens)-1 {
+
+							exp, err := infixToTree(returnTokens[lastComma:i+1], functionDefinitions)
+							if err != nil {
+								return nil, err
+							}
 							retExpression.returns = append(retExpression.returns, exp)
 							lastComma = i
+						} else if t.tokenType == tokenOpenBracket {
+							bracketDepth++
+						} else if t.tokenType == tokenCloseBracket {
+							bracketDepth--
 						}
 					}
 
@@ -196,14 +205,23 @@ func ast(tokens []token) (functions []function, err error) {
 				case tokenName:
 					if tokenBuffer[1].tokenType == tokenAssign {
 						// Line is a assignment
+						tree, err := infixToTree(tokenBuffer[2:], functionDefinitions)
+						if err != nil {
+							return nil, err
+						}
+
 						lineExpression = assignment{
 							name:  tokenBuffer[0].value.(string),
-							value: infixToTree(tokenBuffer[2:], functionDefinitions),
+							value: tree,
 						}
 
 					} else {
 						// Line is a function call
-						lineExpression = infixToTree(tokenBuffer, functionDefinitions)
+						tree, err := infixToTree(tokenBuffer, functionDefinitions)
+						lineExpression = tree
+						if err != nil {
+							return nil, err
+						}
 					}
 				}
 
@@ -225,7 +243,7 @@ func ast(tokens []token) (functions []function, err error) {
 	return functions, nil
 }
 
-func infixToTree(tokens []token, functionDefinitions map[string]functionDefinition) expression {
+func infixToTree(tokens []token, functionDefinitions map[string]functionDefinition) (expression, error) {
 	opMap := map[int]operator{
 		tokenPlus:        operator{2, false},
 		tokenMinus:       operator{2, false},
@@ -248,7 +266,9 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 	for i, t := range tokens {
 		if t.tokenType == tokenNumber {
 			outQueue.Enqueue(t)
-		} else if i+1 < len(tokens) && t.tokenType == tokenName && tokens[i+1].tokenType == tokenOpenBracket {
+		} else if i+1 < len(tokens) && t.tokenType == tokenName &&
+			tokens[i+1].tokenType == tokenOpenBracket {
+
 			if _, found := functionDefinitions[t.value.(string)]; found {
 				// Token is a function name
 				stack.Push(t)
@@ -259,6 +279,13 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 		} else if t.tokenType == tokenComma {
 			for stack.Head().(token).tokenType != tokenOpenBracket {
 				outQueue.Enqueue(stack.Pop())
+			}
+
+			if stack.Empty() {
+				return nil, Error{
+					err:        "Misplaced comma or mismatched parentheses",
+					tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
+				}
 			}
 		} else if isOp(t) {
 			op := opMap[t.tokenType]
@@ -275,8 +302,24 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 		} else if t.tokenType == tokenOpenBracket {
 			stack.Push(t)
 		} else if t.tokenType == tokenCloseBracket {
-			for stack.Head().(token).tokenType != tokenOpenBracket {
+			if stack.Empty() {
+				return nil, Error{
+					err:        "Mismatched parentheses",
+					tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
+				}
+			}
+
+			fmt.Printf("%+v\n", stack.Size())
+
+			for !stack.Empty() && stack.Head().(token).tokenType != tokenOpenBracket {
 				outQueue.Enqueue(stack.Pop())
+			}
+
+			if stack.Empty() {
+				return nil, Error{
+					err:        "Mismatched parentheses",
+					tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
+				}
 			}
 
 			stack.Pop() // pop open bracket off
@@ -292,6 +335,13 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 	}
 
 	for !stack.Empty() {
+		head := stack.Head().(token)
+		if head.tokenType == tokenOpenBracket || head.tokenType == tokenCloseBracket {
+			return nil, Error{
+				err:        "Mismatched parentheses",
+				tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
+			}
+		}
 		outQueue.Enqueue(stack.Pop())
 	}
 
@@ -322,16 +372,17 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 			if def, found := functionDefinitions[t.value.(string)]; found {
 				var args []expression
 				for i := 0; i < def.argumentCount; i++ {
-					args = append(args, resolve.Pop().(expression))
+					exp, ok := resolve.Pop().(expression)
+					if !ok {
+						return nil, Error{
+							err:        "Expected function to have arguments",
+							tokenRange: []token{t},
+						}
+					}
+					args = append(args, exp)
 				}
 
-				// TODO: change call to except expressions
-				var intargs []int
-				for _, a := range args {
-					intargs = append(intargs, a.(number).value)
-				}
-
-				resolve.Push(call{t.value.(string), intargs})
+				resolve.Push(call{t.value.(string), args})
 			} else {
 				resolve.Push(name{t.value.(string)})
 			}
@@ -341,9 +392,12 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 		} else if t.tokenType == tokenFloat {
 			resolve.Push(float{t.value.(float32)})
 		} else {
-			panic("Cant handle " + t.string())
+			return nil, Error{
+				err:        "Unexpected token",
+				tokenRange: []token{t},
+			}
 		}
 	}
 
-	return resolve.Head().(expression)
+	return resolve.Head().(expression), nil
 }
