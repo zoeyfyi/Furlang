@@ -22,6 +22,10 @@ const (
 	tokenInt32
 	tokenFloat32
 	tokenReturn
+	tokenIf
+	tokenElse
+	tokenTrue
+	tokenFalse
 
 	tokenArrow
 	tokenAssign
@@ -67,6 +71,10 @@ var (
 		"return": tokenReturn,
 		"i32":    tokenInt32,
 		"f32":    tokenFloat32,
+		"if":     tokenIf,
+		"else":   tokenElse,
+		"true":   tokenTrue,
+		"false":  tokenFalse,
 	}
 
 	multiSymbolMap = map[int][]int{
@@ -121,6 +129,14 @@ func (t token) string() string {
 		tokenString = "tokenCloseBracket"
 	case tokenReturn:
 		tokenString = "tokenReturn"
+	case tokenIf:
+		tokenString = "tokenIf"
+	case tokenElse:
+		tokenString = "tokenElse"
+	case tokenTrue:
+		tokenString = "tokenTrue"
+	case tokenFalse:
+		tokenString = "tokenFalse"
 	default:
 		tokenString = "Undefined token"
 	}
