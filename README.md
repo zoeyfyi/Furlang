@@ -10,6 +10,9 @@ This is a massive problem for performance applications such as games. With equip
 ### Object Oriented Programming ###
 Programs are data and transformations on data, the object oriented para-dime takes the programmer away from the data in favour of atomic encapsulation. Encapsulation try's to solve maintainability by making programs almost impossible to maintain. Large code base's end up with impossible to follow inheritance trees with surprise edge cases as a result of generalising your problems. Fur stays far away from object oriented programming because their is no case in which you gain anything from using it.
 
+### Usage ###
+You should be able to download the compiler binary and compile strait away, no unnecessary install process or limitations. More advanced tools may be built on top of this but their should alway be the option of downloading just the compiler.
+
 ---
 
 ## Objectives ##
