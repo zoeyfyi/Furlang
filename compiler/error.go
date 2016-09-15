@@ -13,13 +13,14 @@ type Error struct {
 	tokenRange []token
 }
 
+var cerror = color.New(color.FgHiRed).SprintfFunc()
+
 func (e Error) Error() string {
 	return e.err
 }
 
 func (e Error) FormatedError(lines []string) string {
 	if e.tokenRange != nil {
-		cerror := color.New(color.FgHiRed).SprintfFunc()
 		clow, chigh := e.ColumnRange()
 
 		return fmt.Sprintf("\n%s\n%s\n%s%s\n",
@@ -27,6 +28,9 @@ func (e Error) FormatedError(lines []string) string {
 			lines[e.Line()], strings.Repeat(" ", clow),
 			cerror(strings.Repeat("^", chigh-clow)))
 	}
+
+	return fmt.Sprintf("\n%s\n",
+		cerror("Error: %s", e.err))
 
 }
 
