@@ -27,7 +27,7 @@ type expression interface {
 }
 
 // Llvm compiles functions to llvm ir
-func Llvm(funcs []function) string {
+func Llvm(ast *abstractSyntaxTree) string {
 	context := llvm.NewContext()
 	module := context.NewModule("ben")
 	builder := llvm.NewBuilder()
@@ -47,7 +47,7 @@ func Llvm(funcs []function) string {
 		}
 	}
 
-	for _, f := range funcs {
+	for _, f := range ast.functions {
 		// Add function definintion to module
 		var argumentTypes []llvm.Type
 		for _, a := range f.args {
