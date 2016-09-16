@@ -249,9 +249,9 @@ characterLoop:
 				lower := append(tokens[:i], token{
 					tokenType: symbolsToken,
 					value:     nil,
-					line:      lineIndex,
-					column:    columnIndex,
-					length:    1,
+					line:      tokens[i].line,
+					column:    tokens[i].column,
+					length:    2, //TODO: make this work with varible length multisymbols
 				})
 				tokens = append(lower, tokens[i+len(symbols):]...)
 			}

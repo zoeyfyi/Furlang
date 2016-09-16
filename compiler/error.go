@@ -49,6 +49,9 @@ func (e Error) ColumnRange() (int, int) {
 		first := e.tokenRange[0]
 		last := e.tokenRange[len(e.tokenRange)-1]
 		return first.column - 1, last.column - 1 + last.length
+	} else if len(e.tokenRange) >= 1 {
+		toke := e.tokenRange[0]
+		return toke.column - 1, toke.column - 1 + toke.length
 	}
 
 	return 0, 0

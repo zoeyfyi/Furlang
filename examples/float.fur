@@ -4,6 +4,6 @@ half :: -> f32 {
 }
 
 main :: -> i32 {
-    a := half()
+    b := half()
     return 1
 }

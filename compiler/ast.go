@@ -12,17 +12,14 @@ type typedName struct {
 	name     string
 }
 
+// TODO: do we need names in here?
 type function struct {
-	name    string
-	names   []typedName
-	args    []typedName
-	returns []typedName
-	lines   []expression
-}
-
-type block struct {
-	start int
-	end   int
+	name     string
+	position block
+	names    []typedName
+	args     []typedName
+	returns  []typedName
+	lines    []expression
 }
 
 type operator struct {
@@ -81,167 +78,35 @@ type call struct {
 	args     []expression
 }
 
-type functionDefinition struct {
+type block struct {
+	start int
+	end   int
+}
+
+type functionBlock struct {
+	position      block
 	name          string
-	start         int
-	end           int
 	argumentCount int
 }
 
-func ast(tokens []token) (functions []function, err error) {
-	// Find the function positions and names
-	current := functionDefinition{}
-	// TODO: allocate correct ammount of functions
-	functionDefinitions := make(map[string]functionDefinition, 1000)
-	// TODO: compute this based on order of calls
-	var functionOrder []string
-	arrow := false
-
-	for i, t := range tokens {
-		switch t.tokenType {
-		case tokenDoubleColon:
-			if tokens[i-1].tokenType != tokenName {
-				return nil, Error{
-					err:        "Expected function to start with name",
-					tokenRange: []token{tokens[i-1]},
-				}
-			}
-
-			current.name = tokens[i-1].value.(string)
-			current.start = i - 1
-		case tokenInt32:
-			if !arrow {
-				current.argumentCount++
-			}
-		case tokenFloat32:
-			if !arrow {
-				current.argumentCount++
-			}
-		case tokenArrow:
-			arrow = true
-		case tokenCloseBody:
-			current.end = i
-			functionDefinitions[current.name] = current
-			functionOrder = append(functionOrder, current.name)
-			current = functionDefinition{}
-		}
-	}
-
-	// Parse functions
-	for _, fkey := range functionOrder {
-		definition := functionDefinitions[fkey]
-
-		fTokens := tokens[definition.start:definition.end]
-		function := function{}
-
-		// Set function name
-		function.name = fTokens[0].value.(string)
-
-		// Set function arguments and returns
-		arrow := false
-		startBody := -1
-		currentTypedName := typedName{}
-		for i, t := range fTokens[2:] {
-			if currentTypedName.nameType != 0 &&
-				(t.tokenType == tokenComma || t.tokenType == tokenOpenBody || t.tokenType == tokenArrow) {
-				if arrow {
-					function.returns = append(function.returns, currentTypedName)
-				} else {
-					function.args = append(function.args, currentTypedName)
-				}
-			}
-
-			switch t.tokenType {
-			case tokenInt32:
-				currentTypedName.nameType = typeInt32
-			case tokenFloat32:
-				currentTypedName.nameType = typeFloat32
-			case tokenArrow:
-				arrow = true
-				continue
-			case tokenOpenBody:
-				startBody = i + 2
-				break
-			case tokenName:
-				currentTypedName.name = t.value.(string)
-			}
-		}
-
-		// Parse each line
-		var tokenBuffer []token
-		for _, t := range fTokens[startBody+1:] {
-			if t.tokenType == tokenNewLine && tokenBuffer != nil {
-				// Line has ended pass line
-				var lineExpression expression
-				switch tokenBuffer[0].tokenType {
-				case tokenReturn:
-					// Line is a return statement
-					retExpression := ret{}
-
-					lastComma := 0
-					returnTokens := tokenBuffer[1:]
-					bracketDepth := 0
-					for i, t := range returnTokens {
-						if (t.tokenType == tokenComma && bracketDepth == 0) ||
-							i == len(returnTokens)-1 {
-
-							exp, err := infixToTree(returnTokens[lastComma:i+1], functionDefinitions)
-							if err != nil {
-								return nil, err
-							}
-							retExpression.returns = append(retExpression.returns, exp)
-							lastComma = i
-						} else if t.tokenType == tokenOpenBracket {
-							bracketDepth++
-						} else if t.tokenType == tokenCloseBracket {
-							bracketDepth--
-						}
-					}
-
-					lineExpression = retExpression
-				case tokenName:
-					if tokenBuffer[1].tokenType == tokenAssign {
-						// Line is a assignment
-						tree, err := infixToTree(tokenBuffer[2:], functionDefinitions)
-						if err != nil {
-							return nil, err
-						}
-
-						lineExpression = assignment{
-							name:  tokenBuffer[0].value.(string),
-							value: tree,
-						}
-
-					} else {
-						// Line is a function call
-						tree, err := infixToTree(tokenBuffer, functionDefinitions)
-						lineExpression = tree
-						if err != nil {
-							return nil, err
-						}
-					}
-				}
-
-				function.lines = append(function.lines, lineExpression)
-
-				tokenBuffer = nil
-			} else {
-				// Append to buffer
-				if t.tokenType != tokenNewLine && t.tokenType != tokenCloseBody {
-					tokenBuffer = append(tokenBuffer, t)
-				}
-			}
-		}
-
-		// Add function to slice
-		functions = append(functions, function)
-	}
-
-	return functions, nil
+type abstractSyntaxTree struct {
+	functions []function
 }
 
-func infixToTree(tokens []token, functionDefinitions map[string]functionDefinition) (expression, error) {
-	opMap := map[int]operator{
+const (
+	stateFunctionNone = iota
+	stateFunctionArgs
+	stateFunctionReturns
+	stateFunctionLines
+
+	stateLineNone
+	stateLineReturn
+	stateLineAssignment
+	stateLineFunctionCall
+)
+
+var (
+	opMap = map[int]operator{
 		tokenPlus:        operator{2, false},
 		tokenMinus:       operator{2, false},
 		tokenMultiply:    operator{3, false},
@@ -249,150 +114,403 @@ func infixToTree(tokens []token, functionDefinitions map[string]functionDefiniti
 		tokenIntDivide:   operator{3, false},
 	}
 
-	isOp := func(t token) bool {
-		return t.tokenType == tokenPlus ||
-			t.tokenType == tokenMinus ||
-			t.tokenType == tokenMultiply ||
-			t.tokenType == tokenFloatDivide ||
-			t.tokenType == tokenIntDivide
+	StateError = Error{
+		err:        "Unexpected state",
+		tokenRange: nil,
 	}
+)
 
-	outQueue := lane.NewQueue()
-	stack := lane.NewStack()
+func ast(tokens []token) (*abstractSyntaxTree, error) {
+	ast := abstractSyntaxTree{}
+	functionArgMap := make(map[string]int, 1000) //TODO: compute this
+	{
+		state := stateFunctionNone
+		var currentFunction *function
+		var currentType *typedName
 
-	for i, t := range tokens {
-		if t.tokenType == tokenNumber {
-			outQueue.Enqueue(t)
-		} else if i+1 < len(tokens) && t.tokenType == tokenName &&
-			tokens[i+1].tokenType == tokenOpenBracket {
-
-			if _, found := functionDefinitions[t.value.(string)]; found {
-				// Token is a function name
-				stack.Push(t)
-			} else {
-				// Token is a varible * somthing in brackets
-				outQueue.Enqueue(t)
-			}
-		} else if t.tokenType == tokenComma {
-			for stack.Head().(token).tokenType != tokenOpenBracket {
-				outQueue.Enqueue(stack.Pop())
-			}
-
-			if stack.Empty() {
-				return nil, Error{
-					err:        "Misplaced comma or mismatched parentheses",
-					tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
-				}
-			}
-		} else if isOp(t) {
-			op := opMap[t.tokenType]
-
-			for !stack.Empty() &&
-				isOp(stack.Head().(token)) &&
-				((!op.right && op.precendence <= opMap[stack.Head().(token).tokenType].precendence) ||
-					(op.right && op.precendence < opMap[stack.Head().(token).tokenType].precendence)) {
-
-				outQueue.Enqueue(stack.Pop())
-			}
-
-			stack.Push(t)
-		} else if t.tokenType == tokenOpenBracket {
-			stack.Push(t)
-		} else if t.tokenType == tokenCloseBracket {
-			if stack.Empty() {
-				return nil, Error{
-					err:        "Mismatched parentheses",
-					tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
-				}
-			}
-
-			for !stack.Empty() && stack.Head().(token).tokenType != tokenOpenBracket {
-				outQueue.Enqueue(stack.Pop())
-			}
-
-			if stack.Empty() {
-				return nil, Error{
-					err:        "Mismatched parentheses",
-					tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
-				}
-			}
-
-			stack.Pop() // pop open bracket off
-
-			if t.tokenType == tokenName {
-				if _, found := functionDefinitions[t.value.(string)]; found {
-					outQueue.Enqueue(stack.Pop())
-				}
-			}
-		} else {
-			outQueue.Enqueue(t)
-		}
-	}
-
-	for !stack.Empty() {
-		head := stack.Head().(token)
-		if head.tokenType == tokenOpenBracket || head.tokenType == tokenCloseBracket {
-			return nil, Error{
-				err:        "Mismatched parentheses",
-				tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
-			}
-		}
-		outQueue.Enqueue(stack.Pop())
-	}
-
-	resolve := lane.NewStack()
-
-	for !outQueue.Empty() {
-		t := outQueue.Dequeue().(token)
-		if isOp(t) {
-			var exp expression
-			rhs, lhs := resolve.Pop().(expression), resolve.Pop().(expression)
-
+		for i, t := range tokens {
 			switch t.tokenType {
-			case tokenPlus:
-				exp = addition{lhs, rhs}
-			case tokenMinus:
-				exp = subtraction{lhs, rhs}
-			case tokenMultiply:
-				exp = multiplication{lhs, rhs}
-			case tokenFloatDivide:
-				exp = floatDivision{lhs, rhs}
-			case tokenIntDivide:
-				exp = intDivision{lhs, rhs}
+			case tokenDoubleColon:
+				state = stateFunctionArgs
+
+			case tokenInt32:
+				currentType = &typedName{}
+				currentType.nameType = typeInt32
+
+			case tokenFloat32:
+				currentType = &typedName{}
+				currentType.nameType = typeFloat32
+
+			case tokenName:
+				switch state {
+				case stateFunctionNone:
+					currentFunction = &function{}
+					currentFunction.name = t.value.(string)
+
+				case stateFunctionArgs:
+					// TODO: handle if nil
+					if currentType != nil {
+						currentType.name = t.value.(string)
+					}
+				case stateFunctionReturns:
+					if currentType != nil {
+						currentFunction.name = t.value.(string)
+					}
+				}
+
+			case tokenComma:
+				// TODO: handle stateFunctionNone, stateFunctionLines
+				switch state {
+				case stateFunctionArgs:
+					if currentType != nil {
+						currentFunction.args = append(currentFunction.args, *currentType)
+					}
+				case stateFunctionReturns:
+					if currentType != nil {
+						currentFunction.returns = append(currentFunction.returns, *currentType)
+					}
+				}
+
+				// Zero out currentType
+				currentType.name = ""
+				currentType.nameType = 0
+
+			case tokenArrow:
+				// TODO: handle other states
+				switch state {
+				case stateFunctionArgs:
+					if currentType != nil {
+						currentFunction.args = append(currentFunction.args, *currentType)
+					}
+
+					currentType = nil
+					state = stateFunctionReturns
+				}
+
+			case tokenOpenBody:
+				// TODO: handle other states
+				switch state {
+				case stateFunctionReturns:
+					if currentType != nil {
+						currentFunction.returns = append(currentFunction.returns, *currentType)
+					}
+
+					state = stateFunctionLines
+					currentFunction.position.start = i + 1
+
+					functionArgMap[currentFunction.name] = len(currentFunction.args)
+				}
+
+			case tokenCloseBody:
+				// TODO: handle other state
+				switch state {
+				case stateFunctionLines:
+					currentFunction.position.end = i
+					ast.functions = append(ast.functions, *currentFunction)
+					state = stateFunctionNone
+				}
+
+			}
+		}
+
+		//  Remove Empty function
+		if currentFunction == nil {
+			ast.functions = ast.functions[:len(ast.functions)-1]
+		}
+
+	}
+
+	{
+		createExpression := func(stack *lane.Stack, outQueue *lane.Queue) (expression, error) {
+			// Clear any items on stack
+			for !stack.Empty() {
+				head := stack.Head().(token)
+				if head.tokenType == tokenOpenBracket || head.tokenType == tokenCloseBracket {
+					return nil, Error{
+						err:        "Mismatched parentheses",
+						tokenRange: []token{tokens[0], tokens[len(tokens)-1]},
+					}
+				}
+				outQueue.Enqueue(stack.Pop())
 			}
 
-			resolve.Push(exp)
-		} else if t.tokenType == tokenName {
-			// Token is a function
-			if def, found := functionDefinitions[t.value.(string)]; found {
-				var args []expression
-				for i := 0; i < def.argumentCount; i++ {
-					exp, ok := resolve.Pop().(expression)
-					if !ok {
+			// Resolve out queue
+			resolve := lane.NewStack()
+
+			for !outQueue.Empty() {
+				t := outQueue.Dequeue().(token)
+				switch t.tokenType {
+				case tokenPlus, tokenMinus, tokenMultiply, tokenFloatDivide, tokenIntDivide:
+					// Token is a maths operator
+					rhs, lhs := resolve.Pop().(expression), resolve.Pop().(expression)
+					switch t.tokenType {
+					case tokenPlus:
+						resolve.Push(addition{lhs, rhs})
+					case tokenMinus:
+						resolve.Push(subtraction{lhs, rhs})
+					case tokenMultiply:
+						resolve.Push(multiplication{lhs, rhs})
+					case tokenFloatDivide:
+						resolve.Push(floatDivision{lhs, rhs})
+					case tokenIntDivide:
+						resolve.Push(intDivision{lhs, rhs})
+					}
+				case tokenName:
+					if argCount, found := functionArgMap[t.value.(string)]; found {
+						// Token is a function call
+						args := make([]expression, argCount)
+						for i := 0; i < argCount; i++ {
+							exp, ok := resolve.Pop().(expression)
+							if !ok {
+								return nil, Error{
+									err:        "Expected function to have arguments",
+									tokenRange: []token{t},
+								}
+							}
+							args[len(args)] = exp
+						}
+
+						resolve.Push(call{t.value.(string), args})
+					} else {
+						// Token is a varible
+						resolve.Push(name{t.value.(string)})
+					}
+				case tokenNumber:
+					resolve.Push(number{t.value.(int)})
+				case tokenFloat:
+					resolve.Push(float{t.value.(float32)})
+				default:
+					return nil, Error{
+						err:        "Unexpected token",
+						tokenRange: []token{t},
+					}
+				}
+			}
+
+			return resolve.Head().(expression), nil
+		}
+
+		for i := 0; i < len(ast.functions); i++ {
+			parseFunction := &ast.functions[i]
+
+			state := stateLineNone
+			var currectExpression expression
+			// TODO: make custom stack and queue
+			outQueue := lane.NewQueue()
+			stack := lane.NewStack()
+
+			// TODO: handle other cases
+			innerTokens := tokens[parseFunction.position.start:parseFunction.position.end]
+		tokenLoop:
+			for i, t := range innerTokens {
+				switch t.tokenType {
+				// Return expression
+				case tokenReturn:
+					switch state {
+					case stateLineNone:
+						state = stateLineReturn
+						currectExpression = ret{}
+					}
+
+				// Assignment, Function call or varible
+				case tokenName:
+					switch state {
+					case stateLineNone:
+						switch innerTokens[i+1].tokenType {
+						// Assignment expression
+						case tokenAssign:
+							state = stateLineAssignment
+							newAssignment := assignment{}
+							newAssignment.name = t.value.(string)
+							currectExpression = newAssignment
+
+						// Function call expression
+						case tokenOpenBracket:
+							state = stateLineFunctionCall
+						}
+
+					case stateLineAssignment, stateLineFunctionCall, stateLineReturn:
+						if _, found := functionArgMap[t.value.(string)]; found {
+							// Token is a function name
+							stack.Push(t)
+						} else {
+							// Token is a varible
+							outQueue.Enqueue(t)
+						}
+					default:
+						return nil, StateError
+					}
+
+				// Assignment
+				case tokenAssign:
+					if _, ok := currectExpression.(assignment); !ok {
 						return nil, Error{
-							err:        "Expected function to have arguments",
+							err:        "Misplaced assignment",
 							tokenRange: []token{t},
 						}
 					}
-					args = append(args, exp)
+
+				// Newline
+				case tokenNewLine:
+					switch state {
+					case stateLineNone:
+						// Ignore blank lines
+
+					case stateLineAssignment:
+						exp, err := createExpression(stack, outQueue)
+						if err != nil {
+							return nil, err
+						}
+
+						assignmentExpression := currectExpression.(assignment)
+						assignmentExpression.value = exp
+						parseFunction.lines = append(parseFunction.lines, assignmentExpression)
+
+					case stateLineFunctionCall:
+						exp, err := createExpression(stack, outQueue)
+						if err != nil {
+							return nil, err
+						}
+
+						parseFunction.lines = append(parseFunction.lines, exp)
+
+					case stateLineReturn:
+						exp, err := createExpression(stack, outQueue)
+						if err != nil {
+							return nil, err
+						}
+
+						retExpression := currectExpression.(ret)
+						retExpression.returns = append(retExpression.returns, exp)
+						parseFunction.lines = append(parseFunction.lines, retExpression)
+
+					default:
+						return nil, StateError
+					}
+					state = stateLineNone
+					continue tokenLoop
+
+				// Number token
+				case tokenNumber, tokenFloat:
+					switch state {
+					case stateLineNone:
+						return nil, Error{
+							err:        "Unexpected number",
+							tokenRange: []token{t},
+						}
+					case stateLineAssignment, stateLineFunctionCall, stateLineReturn:
+						outQueue.Enqueue(t)
+					default:
+						return nil, StateError
+					}
+
+				// Comma token
+				case tokenComma:
+					switch state {
+					case stateLineNone:
+						return nil, Error{
+							err:        "Unexpected comma",
+							tokenRange: []token{t},
+						}
+					case stateLineReturn:
+						for stack.Head().(token).tokenType != tokenOpenBracket {
+							outQueue.Enqueue(stack.Pop())
+						}
+
+						if stack.Empty() && len(parseFunction.returns) < len(currectExpression.(ret).returns) {
+							// Comma is seperating multiple return values
+							retExpression := currectExpression.(ret)
+							exp, err := createExpression(stack, outQueue)
+							if err != nil {
+								return nil, err
+							}
+							retExpression.returns = append(retExpression.returns, exp)
+						} else if stack.Empty() {
+							// Comma is out of place
+							return nil, Error{
+								err:        "Misplaced comma or mismatched parentheses",
+								tokenRange: []token{t},
+							}
+						}
+
+					case stateLineAssignment, stateLineFunctionCall:
+						for stack.Head().(token).tokenType != tokenOpenBracket {
+							outQueue.Enqueue(stack.Pop())
+						}
+
+						if stack.Empty() {
+							// Comma is out of place
+							return nil, Error{
+								err:        "Misplaced comma or mismatched parentheses",
+								tokenRange: []token{t},
+							}
+						}
+					default:
+						return nil, StateError
+					}
+
+				// Mathmatical operator
+				case tokenPlus, tokenMinus, tokenMultiply, tokenIntDivide, tokenFloatDivide:
+					op := opMap[t.tokenType]
+
+					for !stack.Empty() &&
+						(stack.Head().(token).tokenType == tokenPlus ||
+							stack.Head().(token).tokenType == tokenMinus ||
+							stack.Head().(token).tokenType == tokenMultiply ||
+							stack.Head().(token).tokenType == tokenFloatDivide ||
+							stack.Head().(token).tokenType == tokenIntDivide) &&
+						((!op.right && op.precendence <= opMap[stack.Head().(token).tokenType].precendence) ||
+							(op.right && op.precendence < opMap[stack.Head().(token).tokenType].precendence)) {
+
+						outQueue.Enqueue(stack.Pop())
+					}
+
+					stack.Push(t)
+
+				// Open bracket
+				case tokenOpenBracket:
+					stack.Push(t)
+
+				// Close bracket
+				case tokenCloseBracket:
+					if stack.Empty() {
+						return nil, Error{
+							err:        "Mismatched parentheses",
+							tokenRange: []token{t},
+						}
+					}
+
+					for !stack.Empty() && stack.Head().(token).tokenType != tokenOpenBracket {
+						outQueue.Enqueue(stack.Pop())
+					}
+
+					if stack.Empty() {
+						return nil, Error{
+							err:        "Mismatched parentheses",
+							tokenRange: []token{t},
+						}
+					}
+
+					stack.Pop() // pop open bracket off
+
+					if t.tokenType == tokenName {
+						if _, found := functionArgMap[t.value.(string)]; found {
+							outQueue.Enqueue(stack.Pop())
+						}
+					}
+
+				// Default case
+				default:
+					return nil, Error{
+						err:        "Unexpected token",
+						tokenRange: []token{t},
+					}
 				}
 
-				resolve.Push(call{t.value.(string), args})
-			} else {
-				resolve.Push(name{t.value.(string)})
-			}
-
-		} else if t.tokenType == tokenNumber {
-			resolve.Push(number{t.value.(int)})
-		} else if t.tokenType == tokenFloat {
-			resolve.Push(float{t.value.(float32)})
-		} else {
-			return nil, Error{
-				err:        "Unexpected token",
-				tokenRange: []token{t},
 			}
 		}
 	}
 
-	return resolve.Head().(expression), nil
+	return &ast, nil
+
 }

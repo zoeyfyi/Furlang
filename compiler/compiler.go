@@ -17,12 +17,12 @@ func Tokens(data string) string {
 // AbstractSyntaxTree returns the abstract sytax tree in a pretty printed tree
 func AbstractSyntaxTree(data string) (string, error) {
 	tokens := lexer(data)
-	functions, err := ast(tokens)
+	ast, err := ast(tokens)
 	if err != nil {
 		return "", err
 	}
 
-	return cmap.SDump(functions, "functions"), nil
+	return cmap.SDump(*ast, "functions"), nil
 }
 
 // Compile produces llvm ir code from the input program

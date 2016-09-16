@@ -83,11 +83,19 @@ func main() {
 	// Create abstract syntax tree
 	if *outputAst {
 		step("Printing abstract syntax tree")
+		astFile, err := os.Create("build/ast.txt")
+		if err != nil {
+			fmt.Printf("Problem making ast file")
+			return
+		}
+		defer f.Close()
+
 		fmt.Println()
 		s, err := compiler.AbstractSyntaxTree(program)
 		if err != nil {
 			fmt.Println(cerror("Unable to print ast, their was an error"))
 		} else {
+			astFile.WriteString(s)
 			fmt.Println(s)
 		}
 	}
@@ -97,13 +105,8 @@ func main() {
 	s, err := compiler.Compile(program)
 	if err != nil {
 		if err, ok := err.(compiler.Error); ok {
-			line := err.Line()
-			clow, chigh := err.ColumnRange()
 			lines := strings.Split(program, "\n")
-			fmt.Printf("\n%s\n%s\n%s%s\n",
-				cerror("Error: %s", err.Error()),
-				lines[line], strings.Repeat(" ", clow),
-				cerror(strings.Repeat("^", chigh-clow)))
+			fmt.Println(err.FormatedError(lines))
 		} else {
 			panic("Unexpected error type")
 		}

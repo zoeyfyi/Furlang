@@ -9,7 +9,7 @@
             "program": "${workspaceRoot}",
             "env": {},
             "buildFlags": "-tags 'nollvm'",
-            "args": ["examples/error.fur"]
+            "args": ["examples/float.fur"]
         }
     ]
 }
