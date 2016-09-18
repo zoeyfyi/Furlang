@@ -5,5 +5,5 @@ half :: -> f32 {
 
 main :: -> i32 {
     b := half()
-    return 1
+    return 123
 }
