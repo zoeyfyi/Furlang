@@ -1,6 +1,6 @@
 package compiler
 
-import "bitbucket.com/bongo227/cmap"
+import "github.com/bongo227/cmap"
 
 // Tokens compiles a list of tokens representing the input program
 func Tokens(data string) string {
