@@ -114,6 +114,7 @@ var (
 		tokenIntDivide:   operator{3, false},
 	}
 
+	// StateError occors when the parser enters an invalid state
 	StateError = Error{
 		err:        "Unexpected state",
 		tokenRange: nil,
