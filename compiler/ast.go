@@ -155,7 +155,7 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 					}
 				case stateFunctionReturns:
 					if currentType != nil {
-						currentFunction.name = t.value.(string)
+						currentType.name = t.value.(string)
 					}
 				}
 
@@ -198,7 +198,6 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 
 					state = stateFunctionLines
 					currentFunction.position.start = i + 1
-
 					functionArgMap[currentFunction.name] = len(currentFunction.args)
 				}
 
@@ -268,7 +267,7 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 									tokenRange: []token{t},
 								}
 							}
-							args[len(args)] = exp
+							args[i] = exp
 						}
 
 						resolve.Push(call{t.value.(string), args})

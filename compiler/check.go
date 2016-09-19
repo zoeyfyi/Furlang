@@ -5,6 +5,7 @@ import "fmt"
 func check(ast *abstractSyntaxTree) error {
 	for i := 0; i < len(ast.functions); i++ {
 		f := &ast.functions[i]
+		f.names = append(f.names, f.args...)
 		for _, line := range f.lines {
 			switch line := line.(type) {
 			case ret:
