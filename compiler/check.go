@@ -3,33 +3,33 @@ package compiler
 import "fmt"
 
 func check(ast *abstractSyntaxTree) error {
-	for i := 0; i < len(ast.functions); i++ {
-		f := &ast.functions[i]
-		f.names = append(f.names, f.args...)
-		for _, line := range f.lines {
-			switch line := line.(type) {
-			case ret:
-				for i, r := range line.returns {
-					eType, err := checkMaths(r, ast.functions, i)
-					if err != nil {
-						return err
-					}
-					if eType != f.returns[i].nameType {
-						return Error{
-							err:        "Wrong return type",
-							tokenRange: []token{},
-						}
-					}
-				}
-			case assignment:
-				eType, err := checkMaths(line.value, ast.functions, i)
-				if err != nil {
-					return err
-				}
-				f.names = append(f.names, typedName{eType, line.name})
-			}
-		}
-	}
+	// for i := 0; i < len(ast.functions); i++ {
+	// 	f := &ast.functions[i]
+	// 	f.names = append(f.names, f.args...)
+	// 	for _, line := range f.lines {
+	// 		switch line := line.(type) {
+	// 		case ret:
+	// 			for i, r := range line.returns {
+	// 				eType, err := checkMaths(r, ast.functions, i)
+	// 				if err != nil {
+	// 					return err
+	// 				}
+	// 				if eType != f.returns[i].nameType {
+	// 					return Error{
+	// 						err:        "Wrong return type",
+	// 						tokenRange: []token{},
+	// 					}
+	// 				}
+	// 			}
+	// 		case assignment:
+	// 			eType, err := checkMaths(line.value, ast.functions, i)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 			f.names = append(f.names, typedName{eType, line.name})
+	// 		}
+	// 	}
+	// }
 
 	return nil
 }
@@ -72,11 +72,11 @@ func checkMaths(e expression, functions []function, fkey int) (int, error) {
 	case float:
 		return typeFloat32, nil
 	case name:
-		for _, tn := range functions[fkey].names {
-			if e.name == tn.name {
-				return tn.nameType, nil
-			}
-		}
+		// for _, tn := range functions[fkey].names {
+		// 	if e.name == tn.name {
+		// 		return tn.nameType, nil
+		// 	}
+		// }
 
 		return 0, Error{
 			err:        fmt.Sprintf("Varible %s not defined", e.name),
