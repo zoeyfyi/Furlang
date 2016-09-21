@@ -1,6 +1,10 @@
 package compiler
 
-import "github.com/davecgh/go-spew/spew"
+import (
+	"fmt"
+
+	"github.com/bongo227/cmap"
+)
 
 // Tokens compiles a list of tokens representing the input program
 func Tokens(data string) string {
@@ -22,9 +26,10 @@ func AbstractSyntaxTree(data string) (string, error) {
 		return "", err
 	}
 
-	return spew.Sdump(ast), nil
+	// return spew.Sdump(ast), nil
 	// return fmt.Sprintf("AbstractSyntaxTree: %+v\n", ast), nil
-	// return cmap.SDump(*ast, "functions"), nil
+	fmt.Println()
+	return cmap.SDump(*ast, "functions"), nil
 }
 
 // Compile produces llvm ir code from the input program

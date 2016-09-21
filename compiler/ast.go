@@ -2,7 +2,8 @@ package compiler
 
 import (
 	"fmt"
-	"unsafe"
+
+	"github.com/fatih/color"
 
 	lane "gopkg.in/oleiade/lane.v1"
 )
@@ -19,19 +20,14 @@ type typedName struct {
 
 type function struct {
 	name    string
-	args    []*typedName
+	args    []typedName
 	arrow   bool
-	returns []*typedName
-	block   *block
+	returns []typedName
+	block   block
 }
 
 type block struct {
 	expressions []expression
-}
-
-type positon struct {
-	start int
-	end   int
 }
 
 type operator struct {
@@ -44,41 +40,41 @@ type name struct {
 }
 
 type ret struct {
-	returns []*expression
+	returns []expression
 }
 
 type assignment struct {
 	name  string
-	value *expression
+	value expression
 }
 
 type maths struct {
-	expression *expression
+	expression expression
 }
 
 type addition struct {
-	lhs *expression
-	rhs *expression
+	lhs expression
+	rhs expression
 }
 
 type subtraction struct {
-	lhs *expression
-	rhs *expression
+	lhs expression
+	rhs expression
 }
 
 type multiplication struct {
-	lhs *expression
-	rhs *expression
+	lhs expression
+	rhs expression
 }
 
 type floatDivision struct {
-	lhs *expression
-	rhs *expression
+	lhs expression
+	rhs expression
 }
 
 type intDivision struct {
-	lhs *expression
-	rhs *expression
+	lhs expression
+	rhs expression
 }
 
 type number struct {
@@ -91,17 +87,11 @@ type float struct {
 
 type call struct {
 	function string
-	args     []*expression
-}
-
-type functionBlock struct {
-	position      *block
-	name          string
-	argumentCount int
+	args     []expression
 }
 
 type abstractSyntaxTree struct {
-	functions []*function
+	functions []function
 }
 
 const (
@@ -115,6 +105,8 @@ const (
 	stateLineAssignment
 	stateLineFunctionCall
 )
+
+const debugStack = false
 
 var (
 	opMap = map[int]operator{
@@ -143,6 +135,8 @@ var (
 // TODO: get rid of appends (almost) everywere
 // TODO: sort switchs alphabeticly (is their a formatter for this?)
 // TODO: fix todos!
+// TODO: get rid of arrow in function
+
 func ast(tokens []token) (*abstractSyntaxTree, error) {
 	ast := abstractSyntaxTree{}
 
@@ -154,18 +148,21 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 	stack := lane.NewStack()
 
 	for i, t := range tokens {
+		if debugStack {
+			mag := color.New(color.FgMagenta).SprintfFunc()
+			fmt.Printf("\n%d)\t- %s", i, mag(t.string()))
+		}
+
 		// Check for top-level function definitions
 		if parseStack.Empty() {
 			switch t.tokenType {
 			case tokenNewLine:
 				continue
 			case tokenName:
-				newFunction := &function{
+				// Push new function on to stack
+				parseStack.Push(&function{
 					name: t.value.(string),
-				}
-
-				ast.functions = append(ast.functions, newFunction)
-				parseStack.Push(newFunction)
+				})
 				continue
 
 			default:
@@ -185,7 +182,6 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 				}
 			}
 
-		// TODO: merge int and float types
 		case tokenInt32, tokenFloat32:
 			var tokenType int
 			switch t.tokenType {
@@ -195,15 +191,11 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 				tokenType = typeFloat32
 			}
 
-			switch e := parseStack.Head().(type) {
+			switch parseStack.Head().(type) {
 			case *function:
-				newTypedName := &typedName{nameType: tokenType}
-				if e.arrow {
-					e.returns = append(e.returns, newTypedName)
-				} else {
-					e.args = append(e.args, newTypedName)
-				}
-				parseStack.Push(newTypedName)
+				parseStack.Push(&typedName{
+					nameType: tokenType,
+				})
 			default:
 				return nil, Error{
 					err:        "Unexpected i32",
@@ -216,7 +208,6 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 			// named argument or named return
 			case *typedName:
 				e.name = t.value.(string)
-				parseStack.Pop() // Pop typed name off stack
 
 			// Function call or assignment
 			case *block:
@@ -224,22 +215,13 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 				switch tokens[i+1].tokenType {
 				// Name of assignment
 				case tokenAssign:
-					n := expression(assignment{})
-					e.expressions = append(e.expressions, n)
-					newAssignment := (*assignment)(unsafe.Pointer(&e.expressions[len(e.expressions)-1]))
-					parseStack.Push(newAssignment)
-					/*
-						NOTE:
-						the problem is that:
-							e.expressions is of type []expression
-							parseStack needs a pointer to an assignment
+					parseStack.Push(&assignment{
+						name: t.value.(string),
+					})
 
-					*/
 				// Function call
 				case tokenOpenBracket:
-					e.expressions = append(e.expressions, maths{})
-					newMaths := e.expressions[len(e.expressions)-1].(maths)
-					parseStack.Push(&newMaths)
+					parseStack.Push(&maths{})
 				}
 
 			// Varible or function call
@@ -343,13 +325,9 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 		case tokenComma:
 			// TODO: handle multiple returns
 			switch parseStack.Head().(type) {
-			case *function:
-				// type name,
-				//          ^
-			case *typedName:
-				// type,
-				//     ^
-				parseStack.Pop() // Pop typed name off stack
+			case *typedName, *function:
+				// Argument/return seperator
+				popOff(parseStack, &ast)
 
 			case *maths:
 				for stack.Head().(token).tokenType != tokenOpenBracket {
@@ -373,14 +351,10 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 		case tokenArrow:
 			switch e := parseStack.Head().(type) {
 			case *function:
-				// type name ->
-				//           ^^
 				e.arrow = true
 
 			case *typedName:
-				// type ->
-				//      ^^
-				parseStack.Pop() // Pop typed name off stack
+				popOff(parseStack, &ast)
 				function := parseStack.Head().(*function)
 				function.arrow = true
 
@@ -392,24 +366,12 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 			}
 
 		case tokenOpenBody:
-			switch e := parseStack.Head().(type) {
-			case *typedName:
-				// type {
-				//      ^
-				parseStack.Pop() // Pop typed name off stack
-				function := parseStack.Head().(*function)
+			switch parseStack.Head().(type) {
+			case *typedName, *function:
+				popOff(parseStack, &ast)
 
 				// Start new block
-				function.block = block{}
-				parseStack.Push(&function.block)
-
-			case *function:
-				// type name {
-				//           ^
-
-				// Start new block
-				e.block = block{}
-				parseStack.Push(&e.block)
+				parseStack.Push(&block{})
 
 			default:
 				return nil, Error{
@@ -419,13 +381,9 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 			}
 
 		case tokenAssign:
-			switch e := parseStack.Head().(type) {
+			switch parseStack.Head().(type) {
 			case *assignment:
-				// Prepare for maths
-				e.name = "testing"
-				e.value = maths{}
-				newMaths := e.value.(maths)
-				parseStack.Push(&newMaths)
+				parseStack.Push(&maths{})
 
 			default:
 				fmt.Printf("%+v\n", *parseStack.Head().(*expression))
@@ -436,15 +394,13 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 			}
 
 		case tokenReturn:
-			switch e := parseStack.Head().(type) {
+			switch parseStack.Head().(type) {
 			case *block:
-				e.expressions = append(e.expressions, ret{
-					returns: []expression{maths{}},
-				})
-
 				// TODO: support multiple returns
-				maths := e.expressions[len(e.expressions)-1].(ret).returns[0].(maths)
-				parseStack.Push(&maths)
+				// Prehaps push arg length worth of maths on to stack then when you pop them
+				// of, add the expressions in reverse order. Does that work?
+				parseStack.Push(&ret{})
+				parseStack.Push(&maths{})
 
 			default:
 				return nil, Error{
@@ -466,18 +422,84 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 				// Pop the stack until we reach the block expression
 				_, ok := parseStack.Head().(*block)
 				for !ok {
-					parseStack.Pop()
+					popOff(parseStack, &ast)
 					_, ok = parseStack.Head().(*block)
 				}
 			}
 
 		case tokenCloseBody:
-			parseStack.Pop() // Pop block
-			parseStack.Pop() // Pop function
+			popOff(parseStack, &ast) // Pop block
+			popOff(parseStack, &ast) // Pop function
 		}
+
+		if debugStack {
+			tempStack := lane.NewStack()
+			psSize := parseStack.Size()
+
+			for !parseStack.Empty() {
+				item := parseStack.Pop()
+				fmt.Printf("\n\t%d. %+v", psSize, item)
+				tempStack.Push(item)
+				psSize--
+			}
+
+			for !tempStack.Empty() {
+				parseStack.Push(tempStack.Pop())
+			}
+		}
+
 	}
 
 	return &ast, nil
+}
+
+// Pops the child of the parseStack and adds it to its parent node
+func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree) {
+	if parseStack.Empty() {
+		panic("Empty stack")
+	}
+
+	child := parseStack.Pop()
+
+	// If the child is a function add function to ast
+	if function, ok := child.(*function); ok {
+		ast.functions = append(ast.functions, *function)
+		return
+	}
+
+	// Add child to parent
+	switch parent := parseStack.Head().(type) {
+	case *assignment:
+		parent.value = *child.(*maths)
+	case *ret:
+		parent.returns = append(parent.returns, expression(*child.(*maths)))
+	case *call:
+		parent.args = append(parent.args, expression(*child.(*maths)))
+	case *block:
+		switch child := child.(type) {
+		case *assignment:
+			parent.expressions = append(parent.expressions, expression(*child))
+		case *ret:
+			parent.expressions = append(parent.expressions, expression(*child))
+		case *maths:
+			parent.expressions = append(parent.expressions, expression(*child))
+		}
+	case *function:
+		switch child := child.(type) {
+		// End of function block
+		case *block:
+			parent.block = *child
+		// End of argument or return definition
+		case *typedName:
+			if parent.arrow {
+				parent.returns = append(parent.returns, *child)
+			} else {
+				parent.args = append(parent.args, *child)
+			}
+		}
+	default:
+		panic("\nUnhandled parent")
+	}
 }
 
 // Resolve infix to expression tree

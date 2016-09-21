@@ -30,6 +30,7 @@ func main() {
 	// Parse command line flags
 	outputTokens := flag.Bool("tokens", false, "Create a file with the tokens")
 	outputAst := flag.Bool("ast", false, "Create file with the abstract syntax tree")
+	noCompile := flag.Bool("nocode", false, "Stop the compiler before it generates llvm ir")
 	flag.Parse()
 
 	// Start compiler timer
@@ -101,21 +102,23 @@ func main() {
 	}
 
 	// Compile
-	step("Compiling")
-	s, err := compiler.Compile(program)
-	if err != nil {
-		if err, ok := err.(compiler.Error); ok {
-			lines := strings.Split(program, "\n")
-			fmt.Println(err.FormatedError(lines))
-		} else {
-			panic("Unexpected error type")
+	if !*noCompile {
+		step("Compiling")
+		s, err := compiler.Compile(program)
+		if err != nil {
+			if err, ok := err.(compiler.Error); ok {
+				lines := strings.Split(program, "\n")
+				fmt.Println(err.FormatedError(lines))
+			} else {
+				panic("Unexpected error type")
+			}
+
+			return
 		}
 
-		return
+		step("Writing to file")
+		f.WriteString(s)
 	}
-
-	step("Writing to file")
-	f.WriteString(s)
 
 	// Confirm the writes
 	f.Sync()

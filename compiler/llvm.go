@@ -72,7 +72,7 @@ func Llvm(ast *abstractSyntaxTree) string {
 
 		// Compile all expressions
 		lfunction := llvmFunction{functions, names, builder, &tempCount}
-		for _, l := range f.lines {
+		for _, l := range f.block.expressions {
 			l.compile(lfunction)
 		}
 	}
@@ -89,6 +89,10 @@ func (t name) compile(function llvmFunction) llvm.Value {
 	}
 
 	return val
+}
+
+func (t maths) compile(function llvmFunction) llvm.Value {
+	return t.expression.compile(function)
 }
 
 func (t ret) compile(function llvmFunction) llvm.Value {
