@@ -55,3 +55,13 @@ go build -tags='llvm' -o=furlang compiler.go
     echo "$output"
     [ "$status" -eq 123 ]
 }
+
+@test "blocks example" {
+    run ./furlang examples/blocks.fur
+    echo "$output"
+    [ "$status" -eq 0 ]
+
+    run lli build/ben.ll
+    echo "$output"
+    [ "$status" -eq 123 ]
+}
