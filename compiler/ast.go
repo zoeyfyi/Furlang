@@ -105,6 +105,7 @@ const (
 	stateLineFunctionCall
 )
 
+// Print parse stack at every token
 const debugStack = false
 
 var (
