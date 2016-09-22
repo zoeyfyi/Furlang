@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/fatih/color"
 
@@ -51,6 +52,10 @@ type maths struct {
 	expression expression
 }
 
+type boolean struct {
+	value bool
+}
+
 type addition struct {
 	lhs expression
 	rhs expression
@@ -87,6 +92,16 @@ type float struct {
 type call struct {
 	function string
 	args     []expression
+}
+
+// TODO: decide on naming convention
+type If struct {
+	blocks []ifBlock
+}
+
+type ifBlock struct {
+	condition expression
+	block     block
 }
 
 type abstractSyntaxTree struct {
@@ -135,6 +150,24 @@ var (
 	}
 )
 
+func printDebugStack(parseStack *lane.Stack) {
+	if debugStack {
+		tempStack := lane.NewStack()
+		psSize := parseStack.Size()
+
+		for !parseStack.Empty() {
+			item := parseStack.Pop()
+			fmt.Printf("\n\t%d. %s - %+v", psSize, reflect.TypeOf(item).String(), item)
+			tempStack.Push(item)
+			psSize--
+		}
+
+		for !tempStack.Empty() {
+			parseStack.Push(tempStack.Pop())
+		}
+	}
+}
+
 func ast(tokens []token) (*abstractSyntaxTree, error) {
 	ast := abstractSyntaxTree{}
 
@@ -148,6 +181,8 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 	// Are we parsing arguments or returns
 	arrow := false
 
+	defer printDebugStack(parseStack)
+
 	for i, t := range tokens {
 		if debugStack {
 			mag := color.New(color.FgMagenta).SprintfFunc()
@@ -158,13 +193,12 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 		if parseStack.Empty() {
 			switch t.tokenType {
 			case tokenNewLine:
-				continue
+
 			case tokenName:
 				// Push new function on to stack
 				parseStack.Push(&function{
 					name: t.value.(string),
 				})
-				continue
 
 			default:
 				return nil, Error{
@@ -172,6 +206,9 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 					tokenRange: []token{t},
 				}
 			}
+
+			printDebugStack(parseStack)
+			continue
 		}
 
 		switch t.tokenType {
@@ -328,7 +365,9 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 			switch parseStack.Head().(type) {
 			case *typedName, *function:
 				// Argument/return seperator
-				popOff(parseStack, &ast, arrow)
+				if err := popOff(parseStack, &ast, arrow, tokens, stack, outQueue); err != nil {
+					return nil, err
+				}
 
 			case *maths:
 				for stack.Head().(token).tokenType != tokenOpenBracket {
@@ -355,7 +394,9 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 				arrow = true
 
 			case *typedName:
-				popOff(parseStack, &ast, arrow)
+				if err := popOff(parseStack, &ast, arrow, tokens, stack, outQueue); err != nil {
+					return nil, err
+				}
 				arrow = true
 
 			default:
@@ -368,9 +409,22 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 		case tokenOpenBody:
 			switch parseStack.Head().(type) {
 			case *typedName, *function:
-				popOff(parseStack, &ast, arrow)
+				if err := popOff(parseStack, &ast, arrow, tokens, stack, outQueue); err != nil {
+					return nil, err
+				}
 
 				// Start new block
+				parseStack.Push(&block{})
+
+			// Start of if block
+			case *maths:
+				if err := popOff(parseStack, &ast, arrow, tokens, stack, outQueue); err != nil {
+					return nil, err
+				}
+				parseStack.Push(&block{})
+
+			// Start of else block
+			case *ifBlock:
 				parseStack.Push(&block{})
 
 			default:
@@ -386,9 +440,44 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 				parseStack.Push(&maths{})
 
 			default:
-				fmt.Printf("%+v\n", *parseStack.Head().(*expression))
 				return nil, Error{
 					err:        "Unexpected assignment",
+					tokenRange: []token{t},
+				}
+			}
+
+		case tokenIf:
+			switch parseStack.Head().(type) {
+			case *block:
+				parseStack.Push(&If{})
+				parseStack.Push(&ifBlock{})
+				parseStack.Push(&maths{})
+			default:
+				return nil, Error{
+					err:        "Unexpected if statement",
+					tokenRange: []token{t},
+				}
+			}
+
+		case tokenElse:
+			switch parseStack.Head().(type) {
+			case *If:
+				parseStack.Push(&ifBlock{})
+			default:
+				fmt.Println(parseStack.Head())
+				return nil, Error{
+					err:        "Unexpected else statement",
+					tokenRange: []token{t},
+				}
+			}
+
+		case tokenTrue:
+			switch parseStack.Head().(type) {
+			case *maths:
+				outQueue.Enqueue(t)
+			default:
+				return nil, Error{
+					err:        "Unexpected true",
 					tokenRange: []token{t},
 				}
 			}
@@ -422,39 +511,46 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 				// Pop the stack until we reach the block expression
 				_, ok := parseStack.Head().(*block)
 				for !ok {
-					popOff(parseStack, &ast, arrow)
+					if err := popOff(parseStack, &ast, arrow, tokens, stack, outQueue); err != nil {
+						return nil, err
+					}
 					_, ok = parseStack.Head().(*block)
 				}
+
+			case *If:
+				if err := popOff(parseStack, &ast, arrow, tokens, stack, outQueue); err != nil {
+					return nil, err
+				} // Pop if
 			}
 
 		case tokenCloseBody:
-			popOff(parseStack, &ast, arrow) // Pop block
-			popOff(parseStack, &ast, arrow) // Pop function
-		}
-
-		if debugStack {
-			tempStack := lane.NewStack()
-			psSize := parseStack.Size()
-
-			for !parseStack.Empty() {
-				item := parseStack.Pop()
-				fmt.Printf("\n\t%d. %+v", psSize, item)
-				tempStack.Push(item)
-				psSize--
-			}
-
-			for !tempStack.Empty() {
-				parseStack.Push(tempStack.Pop())
+			if err := popOff(parseStack, &ast, arrow, tokens, stack, outQueue); err != nil {
+				return nil, err
+			} // Pop block
+			if _, ok := parseStack.Head().(*function); ok {
+				if err := popOff(parseStack, &ast, arrow, tokens, stack, outQueue); err != nil {
+					return nil, err
+				} // Pop function
+			} else if _, ok := parseStack.Head().(*ifBlock); ok {
+				if err := popOff(parseStack, &ast, arrow, tokens, stack, outQueue); err != nil {
+					return nil, err
+				} // Pop ifBlock
 			}
 		}
 
+		printDebugStack(parseStack)
 	}
 
 	return &ast, nil
 }
 
 // Pops the child of the parseStack and adds it to its parent node
-func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree, arrow bool) {
+func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree,
+	arrow bool,
+	tokens []token,
+	stack *lane.Stack,
+	outQueue *lane.Queue) error {
+
 	if parseStack.Empty() {
 		panic("Empty stack")
 	}
@@ -465,7 +561,7 @@ func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree, arrow bool) {
 	if function, ok := child.(*function); ok {
 		arrow = false
 		ast.functions = append(ast.functions, *function)
-		return
+		return nil
 	}
 
 	// Add child to parent
@@ -474,6 +570,19 @@ func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree, arrow bool) {
 		parent.value = *child.(*maths)
 	case *ret:
 		parent.returns = append(parent.returns, expression(*child.(*maths)))
+	case *If:
+		parent.blocks = append(parent.blocks, *child.(*ifBlock))
+	case *ifBlock:
+		switch child := child.(type) {
+		case *block:
+			parent.block = *child
+		case *maths:
+			exp, err := createExpression(tokens, stack, outQueue)
+			if err != nil {
+				return err
+			}
+			parent.condition = exp
+		}
 	case *call:
 		parent.args = append(parent.args, expression(*child.(*maths)))
 	case *block:
@@ -483,6 +592,8 @@ func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree, arrow bool) {
 		case *ret:
 			parent.expressions = append(parent.expressions, expression(*child))
 		case *maths:
+			parent.expressions = append(parent.expressions, expression(*child))
+		case *If:
 			parent.expressions = append(parent.expressions, expression(*child))
 		}
 	case *function:
@@ -501,6 +612,8 @@ func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree, arrow bool) {
 	default:
 		panic("\nUnhandled parent")
 	}
+
+	return nil
 }
 
 // Resolve infix to expression tree
@@ -562,6 +675,10 @@ func createExpression(tokens []token, stack *lane.Stack, outQueue *lane.Queue) (
 			resolve.Push(number{t.value.(int)})
 		case tokenFloat:
 			resolve.Push(float{t.value.(float32)})
+		case tokenTrue:
+			resolve.Push(boolean{true})
+		case tokenFalse:
+			resolve.Push(boolean{true})
 		default:
 			return nil, Error{
 				err:        "Unexpected token",
