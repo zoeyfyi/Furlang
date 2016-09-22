@@ -427,6 +427,10 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 			case *ifBlock:
 				parseStack.Push(&block{})
 
+			// Start of a block
+			case *block:
+				parseStack.Push(&block{})
+
 			default:
 				return nil, Error{
 					err:        "Unexpected open body",
@@ -595,6 +599,13 @@ func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree,
 			parent.expressions = append(parent.expressions, expression(*child))
 		case *If:
 			parent.expressions = append(parent.expressions, expression(*child))
+		case *block:
+			parent.expressions = append(parent.expressions, expression(*child))
+		default:
+			return Error{
+				err:        "Child is of unkown type",
+				tokenRange: nil,
+			}
 		}
 	case *function:
 		switch child := child.(type) {
