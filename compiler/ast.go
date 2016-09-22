@@ -21,7 +21,6 @@ type typedName struct {
 type function struct {
 	name    string
 	args    []typedName
-	arrow   bool
 	returns []typedName
 	block   block
 }
@@ -131,12 +130,6 @@ var (
 	}
 )
 
-// TODO: research golang concurency
-// TODO: get rid of appends (almost) everywere
-// TODO: sort switchs alphabeticly (is their a formatter for this?)
-// TODO: fix todos!
-// TODO: get rid of arrow in function
-
 func ast(tokens []token) (*abstractSyntaxTree, error) {
 	ast := abstractSyntaxTree{}
 
@@ -146,6 +139,9 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 	// Stack and queue for coversion to infix
 	outQueue := lane.NewQueue()
 	stack := lane.NewStack()
+
+	// Are we parsing arguments or returns
+	arrow := false
 
 	for i, t := range tokens {
 		if debugStack {
@@ -327,7 +323,7 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 			switch parseStack.Head().(type) {
 			case *typedName, *function:
 				// Argument/return seperator
-				popOff(parseStack, &ast)
+				popOff(parseStack, &ast, arrow)
 
 			case *maths:
 				for stack.Head().(token).tokenType != tokenOpenBracket {
@@ -349,14 +345,13 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 			}
 
 		case tokenArrow:
-			switch e := parseStack.Head().(type) {
+			switch parseStack.Head().(type) {
 			case *function:
-				e.arrow = true
+				arrow = true
 
 			case *typedName:
-				popOff(parseStack, &ast)
-				function := parseStack.Head().(*function)
-				function.arrow = true
+				popOff(parseStack, &ast, arrow)
+				arrow = true
 
 			default:
 				return nil, Error{
@@ -368,7 +363,7 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 		case tokenOpenBody:
 			switch parseStack.Head().(type) {
 			case *typedName, *function:
-				popOff(parseStack, &ast)
+				popOff(parseStack, &ast, arrow)
 
 				// Start new block
 				parseStack.Push(&block{})
@@ -422,14 +417,14 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 				// Pop the stack until we reach the block expression
 				_, ok := parseStack.Head().(*block)
 				for !ok {
-					popOff(parseStack, &ast)
+					popOff(parseStack, &ast, arrow)
 					_, ok = parseStack.Head().(*block)
 				}
 			}
 
 		case tokenCloseBody:
-			popOff(parseStack, &ast) // Pop block
-			popOff(parseStack, &ast) // Pop function
+			popOff(parseStack, &ast, arrow) // Pop block
+			popOff(parseStack, &ast, arrow) // Pop function
 		}
 
 		if debugStack {
@@ -454,7 +449,7 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 }
 
 // Pops the child of the parseStack and adds it to its parent node
-func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree) {
+func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree, arrow bool) {
 	if parseStack.Empty() {
 		panic("Empty stack")
 	}
@@ -463,6 +458,7 @@ func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree) {
 
 	// If the child is a function add function to ast
 	if function, ok := child.(*function); ok {
+		arrow = false
 		ast.functions = append(ast.functions, *function)
 		return
 	}
@@ -491,7 +487,7 @@ func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree) {
 			parent.block = *child
 		// End of argument or return definition
 		case *typedName:
-			if parent.arrow {
+			if arrow {
 				parent.returns = append(parent.returns, *child)
 			} else {
 				parent.args = append(parent.args, *child)
