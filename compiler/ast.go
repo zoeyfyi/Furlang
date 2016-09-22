@@ -94,8 +94,7 @@ type call struct {
 	args     []expression
 }
 
-// TODO: decide on naming convention
-type If struct {
+type ifExpression struct {
 	blocks []ifBlock
 }
 
@@ -453,7 +452,7 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 		case tokenIf:
 			switch parseStack.Head().(type) {
 			case *block:
-				parseStack.Push(&If{})
+				parseStack.Push(&ifExpression{})
 				parseStack.Push(&ifBlock{})
 				parseStack.Push(&maths{})
 			default:
@@ -465,7 +464,7 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 
 		case tokenElse:
 			switch parseStack.Head().(type) {
-			case *If:
+			case *ifExpression:
 				parseStack.Push(&ifBlock{})
 			default:
 				fmt.Println(parseStack.Head())
@@ -521,7 +520,7 @@ func ast(tokens []token) (*abstractSyntaxTree, error) {
 					_, ok = parseStack.Head().(*block)
 				}
 
-			case *If:
+			case *ifExpression:
 				if err := popOff(parseStack, &ast, arrow, tokens, stack, outQueue); err != nil {
 					return nil, err
 				} // Pop if
@@ -574,7 +573,7 @@ func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree,
 		parent.value = *child.(*maths)
 	case *ret:
 		parent.returns = append(parent.returns, expression(*child.(*maths)))
-	case *If:
+	case *ifExpression:
 		parent.blocks = append(parent.blocks, *child.(*ifBlock))
 	case *ifBlock:
 		switch child := child.(type) {
@@ -597,7 +596,7 @@ func popOff(parseStack *lane.Stack, ast *abstractSyntaxTree,
 			parent.expressions = append(parent.expressions, expression(*child))
 		case *maths:
 			parent.expressions = append(parent.expressions, expression(*child))
-		case *If:
+		case *ifExpression:
 			parent.expressions = append(parent.expressions, expression(*child))
 		case *block:
 			parent.expressions = append(parent.expressions, expression(*child))
