@@ -1,0 +1,11 @@
+loop :: -> i32 {
+    a := 0
+    for i := 0; i < 123; i++ {
+        a = i
+    }
+    return i
+}
+
+main :: -> {
+    return loop()
+}
