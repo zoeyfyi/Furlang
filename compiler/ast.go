@@ -124,6 +124,10 @@ var (
 	}
 
 	//TODO: compute this
+	// To do this we need to modify the shunting yard algorithum to track
+	// the depth of brackets, if the line ends on the wrong depth their is
+	// a parentheses mismatch, if we reach a closing bracket of the correct
+	// depth we know we have reached the end
 	functionArgMap = map[string]int{
 		"add":  2,
 		"main": 0,
