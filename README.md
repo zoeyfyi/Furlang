@@ -1,5 +1,5 @@
 # Fur #
-https://api.shippable.com/projects/57dc08c50aacef0f003561ee/badge?branch=master
+
 ---
 
 ## Design Philosophy ##
