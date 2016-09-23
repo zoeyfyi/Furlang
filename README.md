@@ -37,3 +37,12 @@ You should be able to download the compiler binary and compile strait away, no u
 * Match:
     * Multiple cases
     * Optial fallthrow
+
+## TODO's ##
+* ast.go - compute the number of function arguments
+* ast.go - simplify the ast structure
+* ast.go - handle multiple returns
+* ast.go - check openBody case, if its at a block should it push a block?
+* check.go - Re add commented code
+* check.go - Add token range to errors
+* lexer.go - make multitokens work with a varible number of tokens
