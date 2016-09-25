@@ -4,4 +4,5 @@ pipelines:
     - step:
         script:
           - echo "Starting tests!"
+          - ls
           - bats examples.bats
