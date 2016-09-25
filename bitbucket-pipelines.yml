@@ -1,0 +1,9 @@
+image: bongo227/furlang
+pipelines:
+  default:
+    - step:
+        script:
+          - echo "Starting tests!"
+          - cd /go/src/bitbucket.com/bongo227/furlang
+          - mv /opt/atlassian/bitbucketci/agent/build/* ./
+          - bats examples.bats
