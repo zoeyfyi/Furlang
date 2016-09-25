@@ -46,3 +46,4 @@ You should be able to download the compiler binary and compile strait away, no u
 * check.go - Re add commented code
 * check.go - Add token range to errors
 * lexer.go - make multitokens work with a varible number of tokens
+* llvm.go - Add else if support to ifExpression compililation

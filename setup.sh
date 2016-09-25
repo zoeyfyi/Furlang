@@ -5,7 +5,8 @@
 
 alias build="go build -o furlang -tags 'llvm'"
 alias buildn="go build -o furlang -tags 'nollvm'"
-alias compile="sudo ./furlang"
+alias clean="rm build/*"
+alias compile="./furlang"
 alias run="lli build/ben.ll"
 alias ret="echo \$?"
 alias dockerbuild="docker build -t furlang ."

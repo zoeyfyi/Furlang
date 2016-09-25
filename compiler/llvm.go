@@ -11,8 +11,11 @@ import (
 )
 
 type llvmFunction struct {
+	function  llvm.Value
 	functions map[string]llvm.Value
-	names     map[string]llvm.Value
+	scope     [](map[string]llvm.Value)
+	level     int
+	blocks    []llvm.BasicBlock
 	builder   llvm.Builder
 	tempCount *int
 }
@@ -33,7 +36,11 @@ func Llvm(ast *abstractSyntaxTree) string {
 	builder := llvm.NewBuilder()
 
 	functions := make(map[string]llvm.Value)
-	names := make(map[string]llvm.Value)
+	scope := make([](map[string]llvm.Value), 1000)
+	for i := 0; i < 1000; i++ {
+		scope[i] = make(map[string]llvm.Value)
+	}
+
 	tempCount := 0
 
 	toType := func(t int) llvm.Type {
@@ -63,7 +70,7 @@ func Llvm(ast *abstractSyntaxTree) string {
 
 		// Add function parameters to names map
 		for i, a := range f.args {
-			names[a.name] = function.Param(i)
+			scope[0][a.name] = function.Param(i)
 		}
 
 		// Create entry block and set builder cursor
@@ -71,7 +78,14 @@ func Llvm(ast *abstractSyntaxTree) string {
 		builder.SetInsertPointAtEnd(entry)
 
 		// Compile all expressions
-		lfunction := llvmFunction{functions, names, builder, &tempCount}
+		lfunction := llvmFunction{
+			function:  function,
+			functions: functions,
+			scope:     scope,
+			level:     0,
+			builder:   builder,
+			tempCount: &tempCount,
+		}
 		for _, l := range f.block.expressions {
 			l.compile(lfunction)
 		}
@@ -82,9 +96,17 @@ func Llvm(ast *abstractSyntaxTree) string {
 	return strings.Replace(s, "source_filename = \"ben\"\n", "", 1)
 }
 
-func (t name) compile(function llvmFunction) llvm.Value {
-	val, ok := function.names[t.name]
-	if !ok {
+func (t name) compile(function llvmFunction) (val llvm.Value) {
+	found := false
+	for i := function.level; i >= 0; i-- {
+		if v, ok := function.scope[i][t.name]; ok {
+			val = v
+			found = true
+			break
+		}
+	}
+
+	if !found {
 		panic(fmt.Sprintf("Variable '%s' not in scope", t.name))
 	}
 
@@ -95,6 +117,41 @@ func (t maths) compile(function llvmFunction) llvm.Value {
 	return t.expression.compile(function)
 }
 
+func (t boolean) compile(function llvmFunction) llvm.Value {
+	if t.value {
+		return llvm.ConstInt(llvm.Int1Type(), 1, false)
+	} else {
+		return llvm.ConstInt(llvm.Int1Type(), 0, false)
+	}
+}
+
+func (t block) compileBlock(function llvmFunction) llvm.BasicBlock {
+	// Save refrence to parent block
+	parentBlock := function.builder.GetInsertBlock()
+
+	// Create a new block
+	function.level++
+	childBlock := llvm.AddBasicBlock(function.function, function.nextTempName())
+	function.builder.SetInsertPointAtEnd(childBlock)
+
+	// Compile all expressions in child block
+	for _, e := range t.expressions {
+		e.compile(function)
+	}
+
+	// Restore parent block position
+	function.builder.SetInsertPointAtEnd(parentBlock)
+
+	return childBlock
+}
+
+func (t block) compile(function llvmFunction) llvm.Value {
+	// Create a branch to block
+	newBlock := t.compileBlock(function)
+	branch := function.builder.CreateBr(newBlock)
+	return branch
+}
+
 func (t ret) compile(function llvmFunction) llvm.Value {
 	val := t.returns[0].compile(function)
 
@@ -103,9 +160,16 @@ func (t ret) compile(function llvmFunction) llvm.Value {
 
 func (t assignment) compile(function llvmFunction) llvm.Value {
 	val := t.value.compile(function)
-	function.names[t.name] = val
+	function.scope[function.level][t.name] = val
 
 	return val
+}
+
+func (t ifExpression) compile(function llvmFunction) llvm.Value {
+	ifBranch := t.blocks[0].block.compileBlock(function)
+	elseBranch := t.blocks[1].block.compileBlock(function)
+	condition := t.blocks[0].condition.compile(function)
+	return function.builder.CreateCondBr(condition, ifBranch, elseBranch)
 }
 
 func (t addition) compile(function llvmFunction) llvm.Value {
