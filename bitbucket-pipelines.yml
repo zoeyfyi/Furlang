@@ -1,0 +1,7 @@
+image: bongo227/furlang
+pipelines:
+  default:
+    - step:
+        script:
+          - echo "Starting tests!"
+          - bats examples.bats
