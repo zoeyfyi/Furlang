@@ -6,4 +6,8 @@ pipelines:
           - echo "Starting tests!"
           - ls
           - pwd
+          - cd /go/src/bitbucket.com/bongo227/furlang
+          - mv /opt/atlassian/bitbucketci/agent/build/* ./
+          - ls
+          - pwd
           - bats examples.bats
