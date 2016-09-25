@@ -1,6 +1,10 @@
 package compiler
 
-import "github.com/bongo227/cmap"
+import (
+	"fmt"
+
+	"github.com/bongo227/cmap"
+)
 
 // Tokens compiles a list of tokens representing the input program
 func Tokens(data string) string {
@@ -22,6 +26,9 @@ func AbstractSyntaxTree(data string) (string, error) {
 		return "", err
 	}
 
+	// return spew.Sdump(ast), nil
+	// return fmt.Sprintf("AbstractSyntaxTree: %+v\n", ast), nil
+	fmt.Println()
 	return cmap.SDump(*ast, "functions"), nil
 }
 
