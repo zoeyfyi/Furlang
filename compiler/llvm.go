@@ -142,14 +142,23 @@ func (t block) compileBlock(function llvmFunction) llvm.BasicBlock {
 	// Restore parent block position
 	function.builder.SetInsertPointAtEnd(parentBlock)
 
+	// Check if block has instructions
+	if childBlock.FirstInstruction().IsNil() {
+		childBlock.EraseFromParent()
+		return llvm.BasicBlock{}
+	}
+
 	return childBlock
 }
 
 func (t block) compile(function llvmFunction) llvm.Value {
 	// Create a branch to block
 	newBlock := t.compileBlock(function)
-	branch := function.builder.CreateBr(newBlock)
-	return branch
+	if newBlock.IsNil() {
+		return llvm.Value{}
+	}
+
+	return function.builder.CreateBr(newBlock)
 }
 
 func (t ret) compile(function llvmFunction) llvm.Value {
