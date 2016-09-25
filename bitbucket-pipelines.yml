@@ -5,4 +5,5 @@ pipelines:
         script:
           - echo "Starting tests!"
           - ls
+          - pwd
           - bats examples.bats
