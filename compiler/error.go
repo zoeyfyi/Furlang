@@ -10,7 +10,7 @@ import (
 // Error is an error realting to compilation
 type Error struct {
 	err        string
-	tokenRange []token
+	tokenRange []Token
 }
 
 var cerror = color.New(color.FgHiRed).SprintfFunc()
