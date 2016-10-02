@@ -105,11 +105,11 @@ type SyntaxTree struct {
 }
 
 func (s *SyntaxTree) Print() {
-	cmap.Dump(s, "Ast")
+	cmap.Dump(*s, "Ast")
 }
 
 func (s *SyntaxTree) Write(f *os.File) {
-	f.WriteString(cmap.SDump(s, "Ast"))
+	f.WriteString(cmap.SDump(*s, "Ast"))
 }
 
 type Parser struct {
