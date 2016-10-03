@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/bongo227/cmap"
+	"github.com/oleiade/lane"
 )
 
 const (
@@ -111,6 +112,17 @@ func (s *SyntaxTree) Print() {
 func (s *SyntaxTree) Write(f *os.File) {
 	f.WriteString(cmap.SDump(*s, "Ast"))
 }
+
+var (
+	// Maps tokens onto operators
+	opMap = map[int]operator{
+		tokenPlus:        operator{2, false},
+		tokenMinus:       operator{2, false},
+		tokenMultiply:    operator{3, false},
+		tokenFloatDivide: operator{3, false},
+		tokenIntDivide:   operator{3, false},
+	}
+)
 
 type Parser struct {
 	tokens            []Token
@@ -236,16 +248,162 @@ func (p *Parser) interger() number {
 	return number{value}
 }
 
+// Uses shunting yard algoritum to convert
+func (p *Parser) shuntingYard(tokens []Token) expression {
+	outputStack := lane.NewStack()
+	operatorStack := lane.NewStack()
+	arityStack := lane.NewStack()
+
+	checkOperatorStack := func(op operator) bool {
+		return !operatorStack.Empty() &&
+			(operatorStack.Head().(Token).tokenType == tokenPlus ||
+				operatorStack.Head().(Token).tokenType == tokenMinus ||
+				operatorStack.Head().(Token).tokenType == tokenMultiply ||
+				operatorStack.Head().(Token).tokenType == tokenFloatDivide ||
+				operatorStack.Head().(Token).tokenType == tokenIntDivide) &&
+			((!op.right && op.precendence <= opMap[operatorStack.Head().(Token).tokenType].precendence) ||
+				(op.right && op.precendence < opMap[operatorStack.Head().(Token).tokenType].precendence))
+	}
+
+	popOperatorStack := func() {
+		second := outputStack.Pop()
+		first := outputStack.Pop()
+		operator := operatorStack.Pop()
+		token := operator.(Token)
+
+		switch token.tokenType {
+		case tokenPlus:
+			outputStack.Push(addition{
+				lhs: first,
+				rhs: second,
+			})
+		case tokenMinus:
+			outputStack.Push(subtraction{
+				lhs: first,
+				rhs: second,
+			})
+		case tokenMultiply:
+			outputStack.Push(multiplication{
+				lhs: first,
+				rhs: second,
+			})
+		case tokenFloatDivide:
+			outputStack.Push(floatDivision{
+				lhs: first,
+				rhs: second,
+			})
+		case tokenIntDivide:
+			outputStack.Push(intDivision{
+				lhs: first,
+				rhs: second,
+			})
+		case tokenName:
+			exp := call{function: token.value.(string)}
+			for i := 0; i < arityStack.Pop().(int); i++ {
+				exp.args = append(exp.args, outputStack.Pop().(expression))
+			}
+		}
+	}
+
+	for i, t := range tokens {
+		switch t.tokenType {
+
+		case tokenNumber:
+
+			outputStack.Push(number{t.value.(int)})
+
+		case tokenFloat:
+			outputStack.Push(float{t.value.(float32)})
+
+		case tokenPlus, tokenMinus, tokenMultiply, tokenFloatDivide, tokenIntDivide:
+			op := opMap[t.tokenType]
+
+			for checkOperatorStack(op) {
+				popOperatorStack()
+			}
+
+			operatorStack.Push(t)
+
+		case tokenName:
+			if tokens[i+1].tokenType == tokenOpenBracket {
+				// Token is a function name, push it onto the operator stack
+				operatorStack.Push(t)
+
+				// Push 0 if function dosnt have any arguments
+				// Push 1 if their is atleast 1 argument
+				if tokens[i+2].tokenType == tokenCloseBracket {
+					arityStack.Push(0)
+				} else {
+					arityStack.Push(1)
+				}
+			} else {
+				// Token is a varible name, push it onto the out queue
+				outputStack.Push(name{t.value.(string)})
+			}
+
+		case tokenOpenBracket:
+			operatorStack.Push(t)
+
+		case tokenCloseBracket:
+			if operatorStack.Empty() {
+				panic("Mismatched parentheses")
+				// return maths{}, Error{
+				// 	err:        "Mismatched parentheses",
+				// 	tokenRange: []Token{t},
+				// }
+			}
+
+		case tokenComma:
+			for operatorStack.Head().(Token).tokenType != tokenOpenBracket {
+				popOperatorStack()
+			}
+
+			if operatorStack.Empty() {
+				panic("Misplaced comma or mismatched parentheses")
+				// return maths{}, Error{
+				// 	err:        "Misplaced comma or mismatched parentheses",
+				// 	tokenRange: []Token{t},
+				// }
+			}
+
+		default:
+			panic("Unexpected math token")
+			// return maths{}, Error{
+			// 	err:        fmt.Sprintf("Unexpected math token: %s", t.String()),
+			// 	tokenRange: []Token{t},
+			// }
+		}
+	}
+
+	for !operatorStack.Empty() {
+		popOperatorStack()
+	}
+
+	return outputStack.Pop()
+}
+
+func (p *Parser) maths() expression {
+	var buffer []Token
+
+	for p.currentToken().tokenType != tokenNewLine &&
+		p.currentToken().tokenType != tokenSemiColon {
+
+		buffer = append(buffer, p.currentToken())
+		p.nextToken()
+	}
+	p.clearNewLines()
+
+	return p.shuntingYard(buffer)
+}
+
 func (p *Parser) expression() expression {
 	switch p.currentToken().tokenType {
 	case tokenDoubleColon:
 		return expression(p.function())
 	case tokenReturn:
 		return expression(p.ret())
-	case tokenNumber:
-		return expression(p.interger())
 	default:
-		p.nextToken()
+		return p.maths()
 	}
 
 	p.clearNewLines()

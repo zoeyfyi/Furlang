@@ -33,6 +33,7 @@ const (
 	tokenDoubleColon
 
 	tokenComma
+	tokenSemiColon
 	tokenNewLine
 	tokenOpenBody
 	tokenOpenBracket
@@ -65,6 +66,7 @@ var (
 		"<":  tokenLessThan,
 		">":  tokenMoreThan,
 		":":  tokenColon,
+		";":  tokenSemiColon,
 		"=":  tokenEqual,
 	}
 
