@@ -266,8 +266,8 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 	}
 
 	popOperatorStack := func() {
-		second := outputStack.Pop()
-		first := outputStack.Pop()
+		second := outputStack.Pop().(expression)
+		first := outputStack.Pop().(expression)
 		operator := operatorStack.Pop()
 		token := operator.(Token)
 
@@ -379,7 +379,7 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 		popOperatorStack()
 	}
 
-	return outputStack.Pop()
+	return outputStack.Pop().(expression)
 }
 
 func (p *Parser) maths() expression {

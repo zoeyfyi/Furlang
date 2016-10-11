@@ -4,6 +4,7 @@ if [ ! -d "build" ]; then
     mkdir build
 fi
 
+go get github.com/oleiade/lane
 go build -tags='llvm' -o=furlang compiler.go
 
 @test "main example" {
