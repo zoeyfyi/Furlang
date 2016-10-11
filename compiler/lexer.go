@@ -91,64 +91,67 @@ var (
 	}
 )
 
+// tokenType returns the string representation of tokenType
+func tokenTypeString(tokenType int) string {
+	switch tokenType {
+	case tokenArrow:
+		return "tokenArrow"
+	case tokenAssign:
+		return "tokenAssign"
+	case tokenCloseBody:
+		return "tokenCloseBody"
+	case tokenComma:
+		return "tokenComma"
+	case tokenDoubleColon:
+		return "tokenDoubleColon"
+	case tokenInt32:
+		return "tokenInt32"
+	case tokenFloat32:
+		return "tokenFloat32"
+	case tokenName:
+		return "tokenName"
+	case tokenNewLine:
+		return "tokenNewLine"
+	case tokenNumber:
+		return "tokenNumber"
+	case tokenFloat:
+		return "tokenFloat"
+	case tokenOpenBody:
+		return "tokenOpenBody"
+	case tokenPlus:
+		return "tokenPlus"
+	case tokenMinus:
+		return "tokenMinus"
+	case tokenMultiply:
+		return "tokenMultiply"
+	case tokenFloatDivide:
+		return "tokenFloatDivide"
+	case tokenIntDivide:
+		return "tokenIntDivide"
+	case tokenOpenBracket:
+		return "tokenOpenBracket"
+	case tokenCloseBracket:
+		return "tokenCloseBracket"
+	case tokenReturn:
+		return "tokenReturn"
+	case tokenIf:
+		return "tokenIf"
+	case tokenElse:
+		return "tokenElse"
+	case tokenTrue:
+		return "tokenTrue"
+	case tokenFalse:
+		return "tokenFalse"
+	case tokenType:
+		return "tokenType"
+	default:
+		return "Undefined token"
+	}
+}
+
 // Converts token to printable string
 func (t Token) String() string {
-	tokenString := ""
-	switch t.tokenType {
-	case tokenArrow:
-		tokenString = "tokenArrow"
-	case tokenAssign:
-		tokenString = "tokenAssign"
-	case tokenCloseBody:
-		tokenString = "tokenCloseBody"
-	case tokenComma:
-		tokenString = "tokenComma"
-	case tokenDoubleColon:
-		tokenString = "tokenDoubleColon"
-	case tokenInt32:
-		tokenString = "tokenInt32"
-	case tokenFloat32:
-		tokenString = "tokenFloat32"
-	case tokenName:
-		tokenString = "tokenName"
-	case tokenNewLine:
-		tokenString = "tokenNewLine"
-	case tokenNumber:
-		tokenString = "tokenNumber"
-	case tokenFloat:
-		tokenString = "tokenFloat"
-	case tokenOpenBody:
-		tokenString = "tokenOpenBody"
-	case tokenPlus:
-		tokenString = "tokenPlus"
-	case tokenMinus:
-		tokenString = "tokenMinus"
-	case tokenMultiply:
-		tokenString = "tokenMultiply"
-	case tokenFloatDivide:
-		tokenString = "tokenFloatDivide"
-	case tokenIntDivide:
-		tokenString = "tokenIntDivide"
-	case tokenOpenBracket:
-		tokenString = "tokenOpenBracket"
-	case tokenCloseBracket:
-		tokenString = "tokenCloseBracket"
-	case tokenReturn:
-		tokenString = "tokenReturn"
-	case tokenIf:
-		tokenString = "tokenIf"
-	case tokenElse:
-		tokenString = "tokenElse"
-	case tokenTrue:
-		tokenString = "tokenTrue"
-	case tokenFalse:
-		tokenString = "tokenFalse"
-	case tokenType:
-		tokenString = "tokenType"
-	default:
-		tokenString = "Undefined token"
-	}
-
+	tokenString := tokenTypeString(t.tokenType)
 	return fmt.Sprintf("%s, line: %d, column: %d", tokenString, t.line, t.column)
 }
 
