@@ -9,10 +9,7 @@ ENV LC_ALL "en_US.UTF-8"
 ENV LANG "en_US.UTF-8"
 ENV LANGUAGE "en_US.UTF-8"
 
-# Get dependencies
-RUN go get github.com/fatih/color
-RUN go get github.com/bongo227/cmap
-RUN go get gopkg.in/oleiade/lane.v1
+# Install llvm
 RUN go install llvm.org/llvm/bindings/go/llvm
 
 # Add usr/local/lib to linker path

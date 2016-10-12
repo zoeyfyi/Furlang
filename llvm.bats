@@ -4,7 +4,20 @@ if [ ! -d "build" ]; then
     mkdir build
 fi
 
+go get github.com/oleiade/lane
+go get github.com/bongo227/cmap
+go get github.com/fatih/color
 go build -tags='llvm' -o=furlang compiler.go
+
+@test "main example" {
+    run ./furlang examples/main.fur
+    echo "$output"
+    [ "$status" -eq 0 ]
+
+    run lli build/ben.ll
+    echo "$output"
+    [ "$status" -eq 123 ]
+}
 
 @test "function example" {
     run ./furlang examples/function.fur
@@ -18,16 +31,6 @@ go build -tags='llvm' -o=furlang compiler.go
 
 @test "float example" {
     run ./furlang examples/float.fur
-    echo "$output"
-    [ "$status" -eq 0 ]
-
-    run lli build/ben.ll
-    echo "$output"
-    [ "$status" -eq 123 ]
-}
-
-@test "main example" {
-    run ./furlang examples/main.fur
     echo "$output"
     [ "$status" -eq 0 ]
 

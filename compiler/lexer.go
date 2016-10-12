@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-type token struct {
+type Token struct {
 	tokenType int
 	value     interface{}
 	line      int
@@ -19,6 +19,7 @@ const (
 	tokenNumber
 	tokenFloat
 
+	tokenType
 	tokenInt32
 	tokenFloat32
 	tokenReturn
@@ -32,6 +33,7 @@ const (
 	tokenDoubleColon
 
 	tokenComma
+	tokenSemiColon
 	tokenNewLine
 	tokenOpenBody
 	tokenOpenBracket
@@ -64,13 +66,17 @@ var (
 		"<":  tokenLessThan,
 		">":  tokenMoreThan,
 		":":  tokenColon,
+		";":  tokenSemiColon,
 		"=":  tokenEqual,
+	}
+
+	typeMap = map[string]int{
+		"i32": typeInt32,
+		"f32": typeFloat32,
 	}
 
 	nameMap = map[string]int{
 		"return": tokenReturn,
-		"i32":    tokenInt32,
-		"f32":    tokenFloat32,
 		"if":     tokenIf,
 		"else":   tokenElse,
 		"true":   tokenTrue,
@@ -85,74 +91,79 @@ var (
 	}
 )
 
-// Converts token to printable string
-func (t token) string() string {
-	tokenString := ""
-	switch t.tokenType {
+// tokenType returns the string representation of tokenType
+func tokenTypeString(tokenType int) string {
+	switch tokenType {
 	case tokenArrow:
-		tokenString = "tokenArrow"
+		return "tokenArrow"
 	case tokenAssign:
-		tokenString = "tokenAssign"
+		return "tokenAssign"
 	case tokenCloseBody:
-		tokenString = "tokenCloseBody"
+		return "tokenCloseBody"
 	case tokenComma:
-		tokenString = "tokenComma"
+		return "tokenComma"
 	case tokenDoubleColon:
-		tokenString = "tokenDoubleColon"
+		return "tokenDoubleColon"
 	case tokenInt32:
-		tokenString = "tokenInt32"
+		return "tokenInt32"
 	case tokenFloat32:
-		tokenString = "tokenFloat32"
+		return "tokenFloat32"
 	case tokenName:
-		tokenString = "tokenName"
+		return "tokenName"
 	case tokenNewLine:
-		tokenString = "tokenNewLine"
+		return "tokenNewLine"
 	case tokenNumber:
-		tokenString = "tokenNumber"
+		return "tokenNumber"
 	case tokenFloat:
-		tokenString = "tokenFloat"
+		return "tokenFloat"
 	case tokenOpenBody:
-		tokenString = "tokenOpenBody"
+		return "tokenOpenBody"
 	case tokenPlus:
-		tokenString = "tokenPlus"
+		return "tokenPlus"
 	case tokenMinus:
-		tokenString = "tokenMinus"
+		return "tokenMinus"
 	case tokenMultiply:
-		tokenString = "tokenMultiply"
+		return "tokenMultiply"
 	case tokenFloatDivide:
-		tokenString = "tokenFloatDivide"
+		return "tokenFloatDivide"
 	case tokenIntDivide:
-		tokenString = "tokenIntDivide"
+		return "tokenIntDivide"
 	case tokenOpenBracket:
-		tokenString = "tokenOpenBracket"
+		return "tokenOpenBracket"
 	case tokenCloseBracket:
-		tokenString = "tokenCloseBracket"
+		return "tokenCloseBracket"
 	case tokenReturn:
-		tokenString = "tokenReturn"
+		return "tokenReturn"
 	case tokenIf:
-		tokenString = "tokenIf"
+		return "tokenIf"
 	case tokenElse:
-		tokenString = "tokenElse"
+		return "tokenElse"
 	case tokenTrue:
-		tokenString = "tokenTrue"
+		return "tokenTrue"
 	case tokenFalse:
-		tokenString = "tokenFalse"
+		return "tokenFalse"
+	case tokenType:
+		return "tokenType"
 	default:
-		tokenString = "Undefined token"
+		return "Undefined token"
 	}
+}
 
+// Converts token to printable string
+func (t Token) String() string {
+	tokenString := tokenTypeString(t.tokenType)
 	return fmt.Sprintf("%s, line: %d, column: %d", tokenString, t.line, t.column)
 }
 
 // Parsers what ever is in the the buffer
-func parseBuffer(buffer *string, tokens *[]token, line int, column int) {
+func parseBuffer(buffer *string, tokens *[]Token, line int, column int) {
 
 	if *buffer != "" {
 		bufferLength := len(*buffer)
 
 		if i, err := strconv.Atoi(*buffer); err == nil {
 			// Buffer contains a number
-			*tokens = append(*tokens, token{
+			*tokens = append(*tokens, Token{
 				tokenType: tokenNumber,
 				value:     i,
 				line:      line,
@@ -161,16 +172,25 @@ func parseBuffer(buffer *string, tokens *[]token, line int, column int) {
 			})
 		} else if i, err := strconv.ParseFloat(*buffer, 32); err == nil {
 			// Buffer contains a float
-			*tokens = append(*tokens, token{
+			*tokens = append(*tokens, Token{
 				tokenType: tokenFloat,
 				value:     float32(i),
 				line:      line,
 				column:    column - bufferLength,
 				length:    bufferLength,
 			})
+		} else if val, found := typeMap[*buffer]; found {
+			// Buffer contains a type identifyer
+			*tokens = append(*tokens, Token{
+				tokenType: tokenType,
+				value:     val,
+				line:      line,
+				column:    column - bufferLength,
+				length:    bufferLength,
+			})
 		} else if val, found := nameMap[*buffer]; found {
 			// Buffer contains a control name
-			*tokens = append(*tokens, token{
+			*tokens = append(*tokens, Token{
 				tokenType: val,
 				value:     *buffer,
 				line:      line,
@@ -179,7 +199,7 @@ func parseBuffer(buffer *string, tokens *[]token, line int, column int) {
 			})
 		} else {
 			// Buffer contains a name
-			*tokens = append(*tokens, token{
+			*tokens = append(*tokens, Token{
 				tokenType: tokenName,
 				value:     *buffer,
 				line:      line,
@@ -193,8 +213,8 @@ func parseBuffer(buffer *string, tokens *[]token, line int, column int) {
 
 }
 
-// Returns a sequential list of tokens from the input string
-func lexer(in string) (tokens []token) {
+// Lexer returns a sequential list of tokens from the input string
+func Lexer(in string) (tokens []Token) {
 	buffer := ""
 
 	// Parse all single character tokens, names and numbers
@@ -214,7 +234,7 @@ characterLoop:
 		for symbol, symbolToken := range symbolMap {
 			if string(char) == symbol {
 				parseBuffer(&buffer, &tokens, lineIndex, columnIndex)
-				tokens = append(tokens, token{
+				tokens = append(tokens, Token{
 					tokenType: symbolToken,
 					value:     string(char),
 					line:      lineIndex,
@@ -246,7 +266,7 @@ characterLoop:
 
 			// Collapse tokens in group into a single token
 			if equal {
-				lower := append(tokens[:i], token{
+				lower := append(tokens[:i], Token{
 					tokenType: symbolsToken,
 					value:     nil,
 					line:      tokens[i].line,

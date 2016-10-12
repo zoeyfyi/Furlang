@@ -30,7 +30,7 @@ type expression interface {
 }
 
 // Llvm compiles functions to llvm ir
-func Llvm(ast *abstractSyntaxTree) string {
+func Llvm(ast *SyntaxTree) string {
 	context := llvm.NewContext()
 	module := context.NewModule("ben")
 	builder := llvm.NewBuilder()
@@ -94,6 +94,11 @@ func Llvm(ast *abstractSyntaxTree) string {
 	// Remove weird line which stops code compiling
 	s := module.String()
 	return strings.Replace(s, "source_filename = \"ben\"\n", "", 1)
+}
+
+// TODO: rework compile methods
+func (t function) compile(function llvmFunction) (val llvm.Value) {
+	return llvm.Value{}
 }
 
 func (t name) compile(function llvmFunction) (val llvm.Value) {
