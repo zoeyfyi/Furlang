@@ -39,11 +39,17 @@ You should be able to download the compiler binary and compile strait away, no u
     * Optial fallthrow
 
 ## TODO's ##
-* ast.go - compute the number of function arguments
-* ast.go - simplify the ast structure
-* ast.go - handle multiple returns
-* ast.go - check openBody case, if its at a block should it push a block?
+* parser.go - simplify the ast structure
+* parser.go - handle multiple returns
+* parser.go - clean up new line handling
+* parser.go - Better end of file checking
+* parser.go - add error handling
+* parser.go - add go error handling
+
+* all - create a more unified interface
+
 * check.go - Re add commented code
 * check.go - Add token range to errors
+
 * lexer.go - make multitokens work with a varible number of tokens
 * llvm.go - Add else if support to ifExpression compililation
