@@ -6,4 +6,5 @@ pipelines:
           - echo "Starting tests!"
           - cd /go/src/bitbucket.com/bongo227/furlang
           - mv /opt/atlassian/bitbucketci/agent/build/* ./
+          - go get github.com/bongo227/cmap
           - bats llvm.bats

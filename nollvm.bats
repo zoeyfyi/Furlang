@@ -7,7 +7,6 @@ fi
 go get github.com/oleiade/lane
 go get github.com/bongo227/cmap
 go get github.com/fatih/color
-go get github.com/bongo227/cmap
 go build -tags='nollvm' -o=furlang compiler.go
 
 @test "main example" {
