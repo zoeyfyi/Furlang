@@ -106,7 +106,7 @@ type SyntaxTree struct {
 }
 
 func (s *SyntaxTree) Print() {
-	cmap.Dump(*s, "Ast")
+	cmap.Dump(*s)
 }
 
 func (s *SyntaxTree) Write(f *os.File) {
@@ -142,8 +142,9 @@ func (p *Parser) previousToken() Token {
 }
 
 func (p *Parser) clearNewLines() {
-	for p.currentToken().tokenType == tokenNewLine {
-		p.nextToken()
+	ok := p.accept(tokenNewLine)
+	for ok && p.currentTokenIndex != len(p.tokens)-1 {
+		ok = p.accept(tokenNewLine)
 	}
 }
 
@@ -156,6 +157,10 @@ func (p *Parser) nextToken() Token {
 	panic("Ran out of tokens")
 }
 
+func (p *Parser) peekNextToken() Token {
+	return p.tokens[p.currentTokenIndex+1]
+}
+
 func (p *Parser) expect(tokenType int) Token {
 	if p.currentToken().tokenType == tokenType {
 		prev := p.currentToken()
@@ -163,7 +168,20 @@ func (p *Parser) expect(tokenType int) Token {
 		return prev
 	}
 
-	panic("Unexpected: " + p.currentToken().String())
+	panic("Unexpected: " + p.currentToken().String() + "; Expected: " + tokenTypeString(tokenType))
+}
+
+func (p *Parser) accept(tokenType int) bool {
+	if p.currentToken().tokenType == tokenType && p.currentTokenIndex == len(p.tokens)-1 {
+		return true
+	}
+
+	if p.currentToken().tokenType == tokenType {
+		p.nextToken()
+		return true
+	}
+
+	return false
 }
 
 // typed name in the format: type name, where name is optional
@@ -173,7 +191,7 @@ func (p *Parser) typedName() typedName {
 	// type has a name
 	if p.currentToken().tokenType == tokenName {
 		return typedName{
-			name:     p.currentToken().value.(string),
+			name:     p.expect(tokenName).value.(string),
 			nameType: ftype,
 		}
 	}
@@ -197,7 +215,7 @@ func (p *Parser) typeList() []typedName {
 	ok := true
 	for ok {
 		names = append(names, p.typedName())
-		ok = p.currentToken().tokenType == tokenComma
+		ok = p.accept(tokenComma)
 	}
 
 	return names
@@ -266,10 +284,23 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 	}
 
 	popOperatorStack := func() {
-		second := outputStack.Pop().(expression)
-		first := outputStack.Pop().(expression)
 		operator := operatorStack.Pop()
 		token := operator.(Token)
+
+		if token.tokenType == tokenName {
+			argCount := arityStack.Pop().(int)
+
+			exp := call{function: token.value.(string)}
+			for i := 0; i < argCount; i++ {
+				exp.args = append(exp.args, outputStack.Pop().(expression))
+			}
+
+			outputStack.Push(exp)
+			return
+		}
+
+		second := outputStack.Pop().(expression)
+		first := outputStack.Pop().(expression)
 
 		switch token.tokenType {
 		case tokenPlus:
@@ -297,11 +328,6 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 				lhs: first,
 				rhs: second,
 			})
-		case tokenName:
-			exp := call{function: token.value.(string)}
-			for i := 0; i < arityStack.Pop().(int); i++ {
-				exp.args = append(exp.args, outputStack.Pop().(expression))
-			}
 		}
 	}
 
@@ -309,7 +335,6 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 		switch t.tokenType {
 
 		case tokenNumber:
-
 			outputStack.Push(number{t.value.(int)})
 
 		case tokenFloat:
@@ -325,10 +350,9 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 			operatorStack.Push(t)
 
 		case tokenName:
-			if tokens[i+1].tokenType == tokenOpenBracket {
+			if i < len(tokens)-1 && tokens[i+1].tokenType == tokenOpenBracket {
 				// Token is a function name, push it onto the operator stack
 				operatorStack.Push(t)
-
 				// Push 0 if function dosnt have any arguments
 				// Push 1 if their is atleast 1 argument
 				if tokens[i+2].tokenType == tokenCloseBracket {
@@ -345,15 +369,29 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 			operatorStack.Push(t)
 
 		case tokenCloseBracket:
-			if operatorStack.Empty() {
-				panic("Mismatched parentheses")
-				// return maths{}, Error{
-				// 	err:        "Mismatched parentheses",
-				// 	tokenRange: []Token{t},
-				// }
+			for operatorStack.Head().(Token).tokenType != tokenOpenBracket {
+				popOperatorStack()
 			}
 
+			operatorStack.Pop() // pop open bracket
+
+			if operatorStack.Head().(Token).tokenType == tokenName {
+				popOperatorStack()
+			}
+
+			// if operatorStack.Empty() {
+			// 	panic("Mismatched parentheses")
+			// 	// return maths{}, Error{
+			// 	// 	err:        "Mismatched parentheses",
+			// 	// 	tokenRange: []Token{t},
+			// 	// }
+			// }
+
 		case tokenComma:
+			// Increment argument count
+			as := arityStack.Pop().(int)
+			arityStack.Push(as + 1)
+
 			for operatorStack.Head().(Token).tokenType != tokenOpenBracket {
 				popOperatorStack()
 			}
@@ -367,7 +405,7 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 			}
 
 		default:
-			panic("Unexpected math token")
+			panic("Unexpected math token: " + t.String())
 			// return maths{}, Error{
 			// 	err:        fmt.Sprintf("Unexpected math token: %s", t.String()),
 			// 	tokenRange: []Token{t},
@@ -396,18 +434,34 @@ func (p *Parser) maths() expression {
 	return p.shuntingYard(buffer)
 }
 
+func (p *Parser) assignment() expression {
+	name := p.expect(tokenName).value.(string)
+	p.expect(tokenAssign)
+	value := p.maths()
+	cmap.Dump(value)
+
+	return assignment{
+		name:  name,
+		value: value,
+	}
+}
+
 func (p *Parser) expression() expression {
 	switch p.currentToken().tokenType {
 	case tokenDoubleColon:
 		return expression(p.function())
 	case tokenReturn:
 		return expression(p.ret())
+	case tokenName:
+		switch p.peekNextToken().tokenType {
+		case tokenAssign:
+			return p.assignment()
+		default:
+			return p.maths()
+		}
 	default:
 		return p.maths()
 	}
-
-	p.clearNewLines()
-	return nil
 }
 
 // NewParser creates a new parser
@@ -420,8 +474,14 @@ func NewParser(tokens []Token) *Parser {
 
 // Parse parses the file and returns the syntax tree
 func (p *Parser) Parse() SyntaxTree {
-	p.nextToken()
-	return SyntaxTree{
-		functions: []function{p.expression().(function)},
+	var functions []function
+
+	for p.currentTokenIndex < len(p.tokens)-1 {
+		p.nextToken()
+		nextFunction := p.expression()
+		functions = append(functions, nextFunction.(function))
+		p.clearNewLines()
 	}
+
+	return SyntaxTree{functions}
 }
