@@ -501,6 +501,8 @@ func (p *Parser) expression() expression {
 		return expression(p.function())
 	case tokenReturn:
 		return expression(p.ret())
+	case tokenOpenBody:
+		return p.block()
 	case tokenName:
 		switch p.peekNextToken().tokenType {
 		case tokenAssign:
