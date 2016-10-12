@@ -30,7 +30,7 @@ type expression interface {
 }
 
 // Llvm compiles functions to llvm ir
-func Llvm(ast *SyntaxTree) string {
+func Llvm(ast *syntaxTree) string {
 	context := llvm.NewContext()
 	module := context.NewModule("ben")
 	builder := llvm.NewBuilder()

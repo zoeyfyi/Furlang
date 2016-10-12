@@ -48,6 +48,8 @@ You should be able to download the compiler binary and compile strait away, no u
 
 * all - create a more unified interface
 
+* compiler.go - Use program name to create compiled file name
+
 * check.go - Re add commented code
 * check.go - Add token range to errors
 

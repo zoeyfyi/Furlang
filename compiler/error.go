@@ -10,7 +10,7 @@ import (
 // Error is an error realting to compilation
 type Error struct {
 	err        string
-	tokenRange []Token
+	tokenRange []token
 }
 
 var cerror = color.New(color.FgHiRed).SprintfFunc()
@@ -19,6 +19,7 @@ func (e Error) Error() string {
 	return e.err
 }
 
+// FormatedError returns the error message with an arrow pointing to the invalid part of the line(s)
 func (e Error) FormatedError(lines []string) string {
 	if e.tokenRange != nil {
 		clow, chigh := e.ColumnRange()

@@ -103,27 +103,15 @@ type ifBlock struct {
 	block     block
 }
 
-type SyntaxTree struct {
+type syntaxTree struct {
 	functions []function
 }
 
-func (s *SyntaxTree) Print() {
+func (s *syntaxTree) print() {
 	cmap.Dump(*s)
 }
 
-func (s *Parser) log(statement string, start bool) {
-	if !start {
-		s.depth--
-	}
-
-	fmt.Println(strings.Repeat(" ", s.depth), statement)
-
-	if start {
-		s.depth++
-	}
-}
-
-func (s *SyntaxTree) Write(f *os.File) {
+func (s *syntaxTree) Write(f *os.File) {
 	f.WriteString(cmap.SDump(*s, "Ast"))
 }
 
@@ -138,17 +126,29 @@ var (
 	}
 )
 
-type Parser struct {
-	tokens            []Token
+type parser struct {
+	tokens            []token
 	currentTokenIndex int
 	depth             int
 }
 
-func (p *Parser) currentToken() Token {
+func (p *parser) log(statement string, start bool) {
+	if !start {
+		p.depth--
+	}
+
+	fmt.Println(strings.Repeat(" ", p.depth), statement)
+
+	if start {
+		p.depth++
+	}
+}
+
+func (p *parser) currentToken() token {
 	return p.tokens[p.currentTokenIndex]
 }
 
-func (p *Parser) previousToken() Token {
+func (p *parser) previousToken() token {
 	if p.currentTokenIndex == 0 {
 		panic("At first token (no previous token)")
 	}
@@ -156,14 +156,14 @@ func (p *Parser) previousToken() Token {
 	return p.tokens[p.currentTokenIndex-1]
 }
 
-func (p *Parser) clearNewLines() {
+func (p *parser) clearNewLines() {
 	ok := p.accept(tokenNewLine)
 	for ok && p.currentTokenIndex != len(p.tokens)-1 {
 		ok = p.accept(tokenNewLine)
 	}
 }
 
-func (p *Parser) nextToken() Token {
+func (p *parser) nextToken() token {
 	if p.currentTokenIndex < len(p.tokens) {
 		p.currentTokenIndex++
 		return p.currentToken()
@@ -172,11 +172,11 @@ func (p *Parser) nextToken() Token {
 	panic("Ran out of tokens")
 }
 
-func (p *Parser) peekNextToken() Token {
+func (p *parser) peekNextToken() token {
 	return p.tokens[p.currentTokenIndex+1]
 }
 
-func (p *Parser) expect(tokenType int) Token {
+func (p *parser) expect(tokenType int) token {
 	if p.currentToken().tokenType == tokenType {
 		prev := p.currentToken()
 
@@ -190,7 +190,7 @@ func (p *Parser) expect(tokenType int) Token {
 	panic("Unexpected: " + p.currentToken().String() + "; Expected: " + tokenTypeString(tokenType))
 }
 
-func (p *Parser) accept(tokenType int) bool {
+func (p *parser) accept(tokenType int) bool {
 	if p.currentToken().tokenType == tokenType && p.currentTokenIndex == len(p.tokens)-1 {
 		return true
 	}
@@ -204,7 +204,7 @@ func (p *Parser) accept(tokenType int) bool {
 }
 
 // typed name in the format: type name, where name is optional
-func (p *Parser) typedName() typedName {
+func (p *parser) typedName() typedName {
 	p.log("Start TypedName", true)
 	defer p.log("End TypedName", false)
 
@@ -225,7 +225,7 @@ func (p *Parser) typedName() typedName {
 }
 
 // List in to format of type name, type name ...
-func (p *Parser) typeList() []typedName {
+func (p *parser) typeList() []typedName {
 	p.log("Start TypeList", true)
 	defer p.log("End TypeList", false)
 
@@ -246,7 +246,7 @@ func (p *Parser) typeList() []typedName {
 	return names
 }
 
-func (p *Parser) block() block {
+func (p *parser) block() block {
 	p.log("Start Block", true)
 	defer p.log("End Block", false)
 
@@ -263,7 +263,7 @@ func (p *Parser) block() block {
 	return block
 }
 
-func (p *Parser) function() function {
+func (p *parser) function() function {
 	p.log("Start Function", true)
 	defer p.log("End Function", false)
 
@@ -277,7 +277,7 @@ func (p *Parser) function() function {
 	return function{name, args, returns, block}
 }
 
-func (p *Parser) ret() ret {
+func (p *parser) ret() ret {
 	p.log("Start Return", true)
 	defer p.log("End Return", false)
 
@@ -295,7 +295,7 @@ func (p *Parser) ret() ret {
 	return ret{returns}
 }
 
-func (p *Parser) interger() number {
+func (p *parser) interger() number {
 	p.log("Start Number", true)
 	defer p.log("End Number", false)
 
@@ -305,7 +305,7 @@ func (p *Parser) interger() number {
 }
 
 // Uses shunting yard algoritum to convert
-func (p *Parser) shuntingYard(tokens []Token) expression {
+func (p *parser) shuntingYard(tokens []token) expression {
 	p.log("Start ShuntingYard", true)
 	defer p.log("End ShuntingYard", false)
 
@@ -315,18 +315,18 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 
 	checkOperatorStack := func(op operator) bool {
 		return !operatorStack.Empty() &&
-			(operatorStack.Head().(Token).tokenType == tokenPlus ||
-				operatorStack.Head().(Token).tokenType == tokenMinus ||
-				operatorStack.Head().(Token).tokenType == tokenMultiply ||
-				operatorStack.Head().(Token).tokenType == tokenFloatDivide ||
-				operatorStack.Head().(Token).tokenType == tokenIntDivide) &&
-			((!op.right && op.precendence <= opMap[operatorStack.Head().(Token).tokenType].precendence) ||
-				(op.right && op.precendence < opMap[operatorStack.Head().(Token).tokenType].precendence))
+			(operatorStack.Head().(token).tokenType == tokenPlus ||
+				operatorStack.Head().(token).tokenType == tokenMinus ||
+				operatorStack.Head().(token).tokenType == tokenMultiply ||
+				operatorStack.Head().(token).tokenType == tokenFloatDivide ||
+				operatorStack.Head().(token).tokenType == tokenIntDivide) &&
+			((!op.right && op.precendence <= opMap[operatorStack.Head().(token).tokenType].precendence) ||
+				(op.right && op.precendence < opMap[operatorStack.Head().(token).tokenType].precendence))
 	}
 
 	popOperatorStack := func() {
 		operator := operatorStack.Pop()
-		token := operator.(Token)
+		token := operator.(token)
 
 		if token.tokenType == tokenName {
 			argCount := arityStack.Pop().(int)
@@ -416,13 +416,13 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 			operatorStack.Push(t)
 
 		case tokenCloseBracket:
-			for operatorStack.Head().(Token).tokenType != tokenOpenBracket {
+			for operatorStack.Head().(token).tokenType != tokenOpenBracket {
 				popOperatorStack()
 			}
 
 			operatorStack.Pop() // pop open bracket
 
-			if operatorStack.Head().(Token).tokenType == tokenName {
+			if operatorStack.Head().(token).tokenType == tokenName {
 				popOperatorStack()
 			}
 
@@ -430,7 +430,7 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 			// 	panic("Mismatched parentheses")
 			// 	// return maths{}, Error{
 			// 	// 	err:        "Mismatched parentheses",
-			// 	// 	tokenRange: []Token{t},
+			// 	// 	tokenRange: []token{t},
 			// 	// }
 			// }
 
@@ -439,7 +439,7 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 			as := arityStack.Pop().(int)
 			arityStack.Push(as + 1)
 
-			for operatorStack.Head().(Token).tokenType != tokenOpenBracket {
+			for operatorStack.Head().(token).tokenType != tokenOpenBracket {
 				popOperatorStack()
 			}
 
@@ -447,7 +447,7 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 				panic("Misplaced comma or mismatched parentheses")
 				// return maths{}, Error{
 				// 	err:        "Misplaced comma or mismatched parentheses",
-				// 	tokenRange: []Token{t},
+				// 	tokenRange: []token{t},
 				// }
 			}
 
@@ -455,7 +455,7 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 			panic("Unexpected math token: " + t.String())
 			// return maths{}, Error{
 			// 	err:        fmt.Sprintf("Unexpected math token: %s", t.String()),
-			// 	tokenRange: []Token{t},
+			// 	tokenRange: []token{t},
 			// }
 		}
 	}
@@ -467,11 +467,11 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 	return outputStack.Pop().(expression)
 }
 
-func (p *Parser) maths() expression {
+func (p *parser) maths() expression {
 	p.log("Start Maths", true)
 	defer p.log("End Maths", false)
 
-	var buffer []Token
+	var buffer []token
 
 	for p.currentToken().tokenType != tokenNewLine &&
 		p.currentToken().tokenType != tokenSemiColon &&
@@ -485,7 +485,7 @@ func (p *Parser) maths() expression {
 	return p.shuntingYard(buffer)
 }
 
-func (p *Parser) assignment() expression {
+func (p *parser) assignment() expression {
 	p.log("Start Assignment", true)
 	defer p.log("End Assignment", false)
 
@@ -499,7 +499,7 @@ func (p *Parser) assignment() expression {
 	}
 }
 
-func (p *Parser) ifBranch() ifBlock {
+func (p *parser) ifBranch() ifBlock {
 	var condition expression
 	var block block
 
@@ -520,7 +520,7 @@ func (p *Parser) ifBranch() ifBlock {
 	}
 }
 
-func (p *Parser) ifBlock() ifExpression {
+func (p *parser) ifBlock() ifExpression {
 	ifBranch := p.ifBranch()
 	if p.currentToken().tokenType == tokenElse {
 		elseBranch := p.ifBranch()
@@ -535,7 +535,7 @@ func (p *Parser) ifBlock() ifExpression {
 	}
 }
 
-func (p *Parser) expression() expression {
+func (p *parser) expression() expression {
 	p.log("Start Expression", true)
 	defer p.log("End Expression", false)
 
@@ -561,15 +561,15 @@ func (p *Parser) expression() expression {
 }
 
 // NewParser creates a new parser
-func NewParser(tokens []Token) *Parser {
-	return &Parser{
+func newParser(tokens []token) *parser {
+	return &parser{
 		tokens:            tokens,
 		currentTokenIndex: 0,
 	}
 }
 
 // Parse parses the file and returns the syntax tree
-func (p *Parser) Parse() SyntaxTree {
+func (p *parser) Parse() syntaxTree {
 	var functions []function
 
 	for p.currentTokenIndex < len(p.tokens)-1 {
@@ -581,5 +581,5 @@ func (p *Parser) Parse() SyntaxTree {
 		p.clearNewLines()
 	}
 
-	return SyntaxTree{functions}
+	return syntaxTree{functions}
 }
