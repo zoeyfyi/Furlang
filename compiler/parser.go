@@ -375,6 +375,12 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 	for i, t := range tokens {
 		switch t.tokenType {
 
+		case tokenTrue:
+			outputStack.Push(boolean{true})
+
+		case tokenFalse:
+			outputStack.Push(boolean{false})
+
 		case tokenNumber:
 			outputStack.Push(number{t.value.(int)})
 
@@ -468,7 +474,8 @@ func (p *Parser) maths() expression {
 	var buffer []Token
 
 	for p.currentToken().tokenType != tokenNewLine &&
-		p.currentToken().tokenType != tokenSemiColon {
+		p.currentToken().tokenType != tokenSemiColon &&
+		p.currentToken().tokenType != tokenOpenBody {
 
 		buffer = append(buffer, p.currentToken())
 		p.nextToken()
@@ -492,6 +499,42 @@ func (p *Parser) assignment() expression {
 	}
 }
 
+func (p *Parser) ifBranch() ifBlock {
+	var condition expression
+	var block block
+
+	switch p.currentToken().tokenType {
+	case tokenIf:
+		p.expect(tokenIf)
+		condition = p.maths()
+		block = p.block()
+
+	case tokenElse:
+		p.expect(tokenElse)
+		block = p.block()
+	}
+
+	return ifBlock{
+		block:     block,
+		condition: condition,
+	}
+}
+
+func (p *Parser) ifBlock() ifExpression {
+	ifBranch := p.ifBranch()
+	if p.currentToken().tokenType == tokenElse {
+		elseBranch := p.ifBranch()
+
+		return ifExpression{
+			blocks: []ifBlock{ifBranch, elseBranch},
+		}
+	}
+
+	return ifExpression{
+		blocks: []ifBlock{ifBranch},
+	}
+}
+
 func (p *Parser) expression() expression {
 	p.log("Start Expression", true)
 	defer p.log("End Expression", false)
@@ -501,6 +544,8 @@ func (p *Parser) expression() expression {
 		return expression(p.function())
 	case tokenReturn:
 		return expression(p.ret())
+	case tokenIf:
+		return expression(p.ifBlock())
 	case tokenOpenBody:
 		return p.block()
 	case tokenName:
