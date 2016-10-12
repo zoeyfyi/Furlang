@@ -1,7 +1,9 @@
 package compiler
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/bongo227/cmap"
 	"github.com/oleiade/lane"
@@ -109,6 +111,18 @@ func (s *SyntaxTree) Print() {
 	cmap.Dump(*s)
 }
 
+func (s *Parser) log(statement string, start bool) {
+	if !start {
+		s.depth--
+	}
+
+	fmt.Println(strings.Repeat(" ", s.depth), statement)
+
+	if start {
+		s.depth++
+	}
+}
+
 func (s *SyntaxTree) Write(f *os.File) {
 	f.WriteString(cmap.SDump(*s, "Ast"))
 }
@@ -127,6 +141,7 @@ var (
 type Parser struct {
 	tokens            []Token
 	currentTokenIndex int
+	depth             int
 }
 
 func (p *Parser) currentToken() Token {
@@ -164,7 +179,11 @@ func (p *Parser) peekNextToken() Token {
 func (p *Parser) expect(tokenType int) Token {
 	if p.currentToken().tokenType == tokenType {
 		prev := p.currentToken()
-		p.nextToken()
+
+		if p.currentTokenIndex < len(p.tokens)-1 {
+			p.nextToken()
+		}
+
 		return prev
 	}
 
@@ -186,6 +205,9 @@ func (p *Parser) accept(tokenType int) bool {
 
 // typed name in the format: type name, where name is optional
 func (p *Parser) typedName() typedName {
+	p.log("Start TypedName", true)
+	defer p.log("End TypedName", false)
+
 	ftype := p.expect(tokenType).value.(int)
 
 	// type has a name
@@ -204,6 +226,9 @@ func (p *Parser) typedName() typedName {
 
 // List in to format of type name, type name ...
 func (p *Parser) typeList() []typedName {
+	p.log("Start TypeList", true)
+	defer p.log("End TypeList", false)
+
 	var names []typedName
 
 	// If its an empty list return nil
@@ -222,6 +247,9 @@ func (p *Parser) typeList() []typedName {
 }
 
 func (p *Parser) block() block {
+	p.log("Start Block", true)
+	defer p.log("End Block", false)
+
 	block := block{}
 	p.expect(tokenOpenBody)
 	p.clearNewLines()
@@ -231,10 +259,14 @@ func (p *Parser) block() block {
 	}
 
 	p.expect(tokenCloseBody)
+	p.clearNewLines()
 	return block
 }
 
 func (p *Parser) function() function {
+	p.log("Start Function", true)
+	defer p.log("End Function", false)
+
 	name := p.previousToken().value.(string)
 	p.expect(tokenDoubleColon)
 	args := p.typeList()
@@ -246,6 +278,9 @@ func (p *Parser) function() function {
 }
 
 func (p *Parser) ret() ret {
+	p.log("Start Return", true)
+	defer p.log("End Return", false)
+
 	p.expect(tokenReturn)
 
 	var returns []expression
@@ -261,6 +296,9 @@ func (p *Parser) ret() ret {
 }
 
 func (p *Parser) interger() number {
+	p.log("Start Number", true)
+	defer p.log("End Number", false)
+
 	value := p.expect(tokenNumber).value.(int)
 	p.clearNewLines()
 	return number{value}
@@ -268,6 +306,9 @@ func (p *Parser) interger() number {
 
 // Uses shunting yard algoritum to convert
 func (p *Parser) shuntingYard(tokens []Token) expression {
+	p.log("Start ShuntingYard", true)
+	defer p.log("End ShuntingYard", false)
+
 	outputStack := lane.NewStack()
 	operatorStack := lane.NewStack()
 	arityStack := lane.NewStack()
@@ -421,6 +462,9 @@ func (p *Parser) shuntingYard(tokens []Token) expression {
 }
 
 func (p *Parser) maths() expression {
+	p.log("Start Maths", true)
+	defer p.log("End Maths", false)
+
 	var buffer []Token
 
 	for p.currentToken().tokenType != tokenNewLine &&
@@ -435,10 +479,12 @@ func (p *Parser) maths() expression {
 }
 
 func (p *Parser) assignment() expression {
+	p.log("Start Assignment", true)
+	defer p.log("End Assignment", false)
+
 	name := p.expect(tokenName).value.(string)
 	p.expect(tokenAssign)
 	value := p.maths()
-	cmap.Dump(value)
 
 	return assignment{
 		name:  name,
@@ -447,6 +493,9 @@ func (p *Parser) assignment() expression {
 }
 
 func (p *Parser) expression() expression {
+	p.log("Start Expression", true)
+	defer p.log("End Expression", false)
+
 	switch p.currentToken().tokenType {
 	case tokenDoubleColon:
 		return expression(p.function())
@@ -477,7 +526,9 @@ func (p *Parser) Parse() SyntaxTree {
 	var functions []function
 
 	for p.currentTokenIndex < len(p.tokens)-1 {
+		fmt.Println(p.currentTokenIndex, len(p.tokens))
 		p.nextToken()
+		fmt.Println(p.currentToken().String())
 		nextFunction := p.expression()
 		functions = append(functions, nextFunction.(function))
 		p.clearNewLines()
