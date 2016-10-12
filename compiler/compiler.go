@@ -41,7 +41,7 @@ func (c *Compiler) Compile(buildDirector string) error {
 	start := time.Now()
 
 	// Run lexer
-	tokens := Lexer(c.program)
+	tokens := lexer(c.program)
 
 	// Optionaly write tokens to file
 	if c.OutputTokens {
@@ -57,18 +57,18 @@ func (c *Compiler) Compile(buildDirector string) error {
 	}
 
 	// Run parser
-	parser := NewParser(tokens)
+	parser := newParser(tokens)
 	ast := parser.Parse()
 
 	// Optionaly write ast to file (and print it)
 	if c.OutputAst {
 		f, err := os.Create(buildDirector + "/ast.txt")
 		if err != nil {
-			fmt.Errorf("Problem creating ast file: %s\n", err.Error())
+			return fmt.Errorf("Problem creating ast file: %s\n", err.Error())
 		}
 		defer f.Close()
 
-		ast.Print()
+		ast.print()
 		ast.Write(f)
 	}
 

@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-type Token struct {
+type token struct {
 	tokenType int
 	value     interface{}
 	line      int
@@ -13,7 +13,7 @@ type Token struct {
 	length    int
 }
 
-// Token type constants
+// token type constants
 const (
 	tokenName = iota
 	tokenNumber
@@ -150,20 +150,20 @@ func tokenTypeString(tokenType int) string {
 }
 
 // Converts token to printable string
-func (t Token) String() string {
+func (t token) String() string {
 	tokenString := tokenTypeString(t.tokenType)
 	return fmt.Sprintf("%s, line: %d, column: %d", tokenString, t.line, t.column)
 }
 
 // Parsers what ever is in the the buffer
-func parseBuffer(buffer *string, tokens *[]Token, line int, column int) {
+func parseBuffer(buffer *string, tokens *[]token, line int, column int) {
 
 	if *buffer != "" {
 		bufferLength := len(*buffer)
 
 		if i, err := strconv.Atoi(*buffer); err == nil {
 			// Buffer contains a number
-			*tokens = append(*tokens, Token{
+			*tokens = append(*tokens, token{
 				tokenType: tokenNumber,
 				value:     i,
 				line:      line,
@@ -172,7 +172,7 @@ func parseBuffer(buffer *string, tokens *[]Token, line int, column int) {
 			})
 		} else if i, err := strconv.ParseFloat(*buffer, 32); err == nil {
 			// Buffer contains a float
-			*tokens = append(*tokens, Token{
+			*tokens = append(*tokens, token{
 				tokenType: tokenFloat,
 				value:     float32(i),
 				line:      line,
@@ -181,7 +181,7 @@ func parseBuffer(buffer *string, tokens *[]Token, line int, column int) {
 			})
 		} else if val, found := typeMap[*buffer]; found {
 			// Buffer contains a type identifyer
-			*tokens = append(*tokens, Token{
+			*tokens = append(*tokens, token{
 				tokenType: tokenType,
 				value:     val,
 				line:      line,
@@ -190,7 +190,7 @@ func parseBuffer(buffer *string, tokens *[]Token, line int, column int) {
 			})
 		} else if val, found := nameMap[*buffer]; found {
 			// Buffer contains a control name
-			*tokens = append(*tokens, Token{
+			*tokens = append(*tokens, token{
 				tokenType: val,
 				value:     *buffer,
 				line:      line,
@@ -199,7 +199,7 @@ func parseBuffer(buffer *string, tokens *[]Token, line int, column int) {
 			})
 		} else {
 			// Buffer contains a name
-			*tokens = append(*tokens, Token{
+			*tokens = append(*tokens, token{
 				tokenType: tokenName,
 				value:     *buffer,
 				line:      line,
@@ -214,7 +214,7 @@ func parseBuffer(buffer *string, tokens *[]Token, line int, column int) {
 }
 
 // Lexer returns a sequential list of tokens from the input string
-func Lexer(in string) (tokens []Token) {
+func lexer(in string) (tokens []token) {
 	buffer := ""
 
 	// Parse all single character tokens, names and numbers
@@ -234,7 +234,7 @@ characterLoop:
 		for symbol, symbolToken := range symbolMap {
 			if string(char) == symbol {
 				parseBuffer(&buffer, &tokens, lineIndex, columnIndex)
-				tokens = append(tokens, Token{
+				tokens = append(tokens, token{
 					tokenType: symbolToken,
 					value:     string(char),
 					line:      lineIndex,
@@ -266,7 +266,7 @@ characterLoop:
 
 			// Collapse tokens in group into a single token
 			if equal {
-				lower := append(tokens[:i], Token{
+				lower := append(tokens[:i], token{
 					tokenType: symbolsToken,
 					value:     nil,
 					line:      tokens[i].line,
