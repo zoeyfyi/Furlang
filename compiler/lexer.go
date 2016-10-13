@@ -27,10 +27,14 @@ const (
 	tokenElse
 	tokenTrue
 	tokenFalse
+	tokenFor
+	tokenRange
 
 	tokenArrow
 	tokenAssign
 	tokenDoubleColon
+	tokenIncrement
+	tokenDecrement
 
 	tokenComma
 	tokenSemiColon
@@ -81,6 +85,8 @@ var (
 		"else":   tokenElse,
 		"true":   tokenTrue,
 		"false":  tokenFalse,
+		"for":    tokenFor,
+		"range":  tokenRange,
 	}
 
 	multiSymbolMap = map[int][]int{
@@ -88,6 +94,8 @@ var (
 		tokenAssign:      []int{tokenColon, tokenEqual},
 		tokenDoubleColon: []int{tokenColon, tokenColon},
 		tokenIntDivide:   []int{tokenFloatDivide, tokenFloatDivide},
+		tokenIncrement:   []int{tokenPlus, tokenPlus},
+		tokenDecrement:   []int{tokenMinus, tokenMinus},
 	}
 )
 
