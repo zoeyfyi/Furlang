@@ -18,6 +18,6 @@ func (lf llvmFunction) nextTempName() string {
 
 type expression interface{}
 
-func Llvm(ast *SyntaxTree) string {
+func Llvm(ast *syntaxTree) string {
 	return "Compiled without llvm"
 }

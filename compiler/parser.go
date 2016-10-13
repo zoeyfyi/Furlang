@@ -132,15 +132,19 @@ type parser struct {
 	depth             int
 }
 
+const debugLog = false
+
 func (p *parser) log(statement string, start bool) {
-	if !start {
-		p.depth--
-	}
+	if debugLog {
+		if !start {
+			p.depth--
+		}
 
-	fmt.Println(strings.Repeat(" ", p.depth), statement)
+		fmt.Println(strings.Repeat(" ", p.depth), statement)
 
-	if start {
-		p.depth++
+		if start {
+			p.depth++
+		}
 	}
 }
 
