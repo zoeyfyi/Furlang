@@ -1,244 +1,124 @@
-// +build llvm
-
 package compiler
 
-import (
-	"fmt"
-
-	"strings"
-
-	"llvm.org/llvm/bindings/go/llvm"
-)
-
-type llvmFunction struct {
-	function  llvm.Value
-	functions map[string]llvm.Value
-	scope     [](map[string]llvm.Value)
-	level     int
-	blocks    []llvm.BasicBlock
-	builder   llvm.Builder
-	tempCount *int
-}
-
-func (lf llvmFunction) nextTempName() string {
-	*(lf.tempCount)++
-	return fmt.Sprintf("tmp%d", *(lf.tempCount))
-}
+import "github.com/bongo227/goory"
 
 type expression interface {
-	compile(llvmFunction) llvm.Value
+	compile(*goory.Block, *scope) *goory.Instruction
 }
 
-// Llvm compiles functions to llvm ir
-func Llvm(ast *syntaxTree) string {
-	context := llvm.NewContext()
-	module := context.NewModule("ben")
-	builder := llvm.NewBuilder()
+type scope struct {
+	outerScope *scope
+	values     map[string]goory.Value
+}
 
-	functions := make(map[string]llvm.Value)
-	scope := make([](map[string]llvm.Value), 1000)
-	for i := 0; i < 1000; i++ {
-		scope[i] = make(map[string]llvm.Value)
+func (s *scope) push() *scope {
+	return &scope{
+		outerScope: s,
+		values:     make(map[string]goory.Value, 1000),
 	}
+}
 
-	tempCount := 0
+func (s *scope) pop() *scope {
+	return s.outerScope
+}
 
-	toType := func(t int) llvm.Type {
-		switch t {
-		case typeInt32:
-			return llvm.Int32Type()
-		case typeFloat32:
-			return llvm.FloatType()
-		default:
-			panic(fmt.Sprintf("Unkown type '%d'", t))
+func (s *scope) find(search string) goory.Value {
+	currentScope := s
+	for true {
+		if value := currentScope.values[search]; value != nil {
+			return value
 		}
+		if currentScope.outerScope == nil {
+			return nil
+		}
+		currentScope = currentScope.outerScope
 	}
+	return nil
+}
+
+func gooryType(t int) goory.Type {
+	switch t {
+	case typeInt32:
+		return goory.Int32Type
+	case typeFloat32:
+		return goory.Float32Type
+	default:
+		panic("Unkown type")
+	}
+}
+
+// Llvm compiles the syntax tree to llvm ir
+func Llvm(ast *syntaxTree) string {
+	module := goory.NewModule("ben")
 
 	for _, f := range ast.functions {
-		// Add function definintion to module
-		var argumentTypes []llvm.Type
-		for _, a := range f.args {
-			argumentTypes = append(argumentTypes, toType(a.nameType))
-		}
-
-		returnType := toType(f.returns[0].nameType)
-		functionType := llvm.FunctionType(returnType, argumentTypes, false)
-		function := llvm.AddFunction(module, f.name, functionType)
-
-		// Add function to function map
-		functions[f.name] = function
-
-		// Add function parameters to names map
+		returnType := gooryType(f.returns[0].nameType)
+		argType := make([]goory.Type, len(f.args))
 		for i, a := range f.args {
-			scope[0][a.name] = function.Param(i)
+			argType[i] = gooryType(a.nameType)
 		}
 
-		// Create entry block and set builder cursor
-		entry := llvm.AddBasicBlock(function, "entry")
-		builder.SetInsertPointAtEnd(entry)
+		function := module.NewFunction(f.name, returnType, argType...)
 
-		// Compile all expressions
-		lfunction := llvmFunction{
-			function:  function,
-			functions: functions,
-			scope:     scope,
-			level:     0,
-			builder:   builder,
-			tempCount: &tempCount,
+		rootScope := scope{
+			outerScope: nil,
+			values:     make(map[string]goory.Value, 1000),
 		}
-		for _, l := range f.block.expressions {
-			l.compile(lfunction)
+
+		for _, e := range f.block.expressions {
+			e.compile(function.Entry(), &rootScope)
 		}
 	}
 
-	// Remove weird line which stops code compiling
-	s := module.String()
-	return strings.Replace(s, "source_filename = \"ben\"\n", "", 1)
+	return module.LLVM()
 }
 
-// TODO: rework compile methods
-func (t function) compile(function llvmFunction) (val llvm.Value) {
-	return llvm.Value{}
-}
+func compileBlock(eBlock block, block *goory.Block, scope *scope) *goory.Block {
+	newBlock := block.Function().AddBlock()
 
-func (t name) compile(function llvmFunction) (val llvm.Value) {
-	found := false
-	for i := function.level; i >= 0; i-- {
-		if v, ok := function.scope[i][t.name]; ok {
-			val = v
-			found = true
-			break
-		}
+	scope.push()
+	for _, e := range eBlock.expressions {
+		e.compile(block, scope)
 	}
+	scope.pop()
 
-	if !found {
-		panic(fmt.Sprintf("Variable '%s' not in scope", t.name))
+	return newBlock
+}
+
+func (e block) compile(block *goory.Block, scope *scope) *goory.Instruction {
+	return block.Br(compileBlock(e, block, scope))
+}
+
+func (e assignment) compile(block *goory.Block, scope *scope) *goory.Instruction {
+	scope.values[e.name] = e.compile(block, scope).Value()
+	return nil
+}
+
+func (e function) compile(block *goory.Block, scope *scope) *goory.Instruction {
+	panic("Cannot embed instructions (yet)")
+}
+
+func (e ret) compile(block *goory.Block, scope *scope) *goory.Instruction {
+	return block.Ret(e.returns[0].compile(block, scope).Value())
+}
+
+func (e ifBlock) compile(block *goory.Block, scope *scope) *goory.Instruction {
+	return e.condition.compile(block, scope)
+}
+
+func (e ifExpression) compile(block *goory.Block, scope *scope) *goory.Instruction {
+	switch len(e.blocks) {
+	case 1:
+		return block.CondBr(
+			e.blocks[0].condition.compile(block, scope),
+			compileBlock(e.blocks[0].block, block, scope),
+			nil)
+	case 2:
+		return block.CondBr(
+			e.blocks[0].condition.compile(block, scope),
+			compileBlock(e.blocks[0].block, block, scope),
+			compileBlock(e.blocks[1].block, block, scope))
+	default:
+		panic("Cannot handle else if (yet)")
 	}
-
-	return val
-}
-
-func (t maths) compile(function llvmFunction) llvm.Value {
-	return t.expression.compile(function)
-}
-
-func (t boolean) compile(function llvmFunction) llvm.Value {
-	if t.value {
-		return llvm.ConstInt(llvm.Int1Type(), 1, false)
-	} else {
-		return llvm.ConstInt(llvm.Int1Type(), 0, false)
-	}
-}
-
-func (t block) compileBlock(function llvmFunction) llvm.BasicBlock {
-	// Save refrence to parent block
-	parentBlock := function.builder.GetInsertBlock()
-
-	// Create a new block
-	function.level++
-	childBlock := llvm.AddBasicBlock(function.function, function.nextTempName())
-	function.builder.SetInsertPointAtEnd(childBlock)
-
-	// Compile all expressions in child block
-	for _, e := range t.expressions {
-		e.compile(function)
-	}
-
-	// Restore parent block position
-	function.builder.SetInsertPointAtEnd(parentBlock)
-
-	// Check if block has instructions
-	if childBlock.FirstInstruction().IsNil() {
-		childBlock.EraseFromParent()
-		return llvm.BasicBlock{}
-	}
-
-	return childBlock
-}
-
-func (t block) compile(function llvmFunction) llvm.Value {
-	// Create a branch to block
-	newBlock := t.compileBlock(function)
-	if newBlock.IsNil() {
-		return llvm.Value{}
-	}
-
-	return function.builder.CreateBr(newBlock)
-}
-
-func (t ret) compile(function llvmFunction) llvm.Value {
-	val := t.returns[0].compile(function)
-
-	return function.builder.CreateRet(val)
-}
-
-func (t assignment) compile(function llvmFunction) llvm.Value {
-	val := t.value.compile(function)
-	function.scope[function.level][t.name] = val
-
-	return val
-}
-
-func (t ifExpression) compile(function llvmFunction) llvm.Value {
-	ifBranch := t.blocks[0].block.compileBlock(function)
-	elseBranch := t.blocks[1].block.compileBlock(function)
-	condition := t.blocks[0].condition.compile(function)
-	return function.builder.CreateCondBr(condition, ifBranch, elseBranch)
-}
-
-func (t addition) compile(function llvmFunction) llvm.Value {
-	return function.builder.CreateAdd(
-		t.lhs.compile(function),
-		t.rhs.compile(function),
-		function.nextTempName())
-}
-
-func (t subtraction) compile(function llvmFunction) llvm.Value {
-	return function.builder.CreateSub(
-		t.lhs.compile(function),
-		t.rhs.compile(function),
-		function.nextTempName())
-}
-
-func (t multiplication) compile(function llvmFunction) llvm.Value {
-	return function.builder.CreateMul(
-		t.lhs.compile(function),
-		t.rhs.compile(function),
-		function.nextTempName())
-}
-
-func (t floatDivision) compile(function llvmFunction) llvm.Value {
-	return function.builder.CreateFDiv(
-		t.lhs.compile(function),
-		t.rhs.compile(function),
-		function.nextTempName())
-}
-
-func (t intDivision) compile(function llvmFunction) llvm.Value {
-	return function.builder.CreateUDiv(
-		t.lhs.compile(function),
-		t.rhs.compile(function),
-		function.nextTempName())
-}
-
-func (t number) compile(function llvmFunction) llvm.Value {
-	return llvm.ConstInt(llvm.Int32Type(), uint64(t.value), false)
-}
-
-func (t float) compile(function llvmFunction) llvm.Value {
-	return llvm.ConstFloat(
-		llvm.FloatType(),
-		float64(t.value))
-}
-
-func (t call) compile(function llvmFunction) llvm.Value {
-	args := []llvm.Value{}
-	for _, a := range t.args {
-		args = append(args, a.compile(function))
-	}
-
-	return function.builder.CreateCall(
-		function.functions[t.function],
-		args,
-		function.nextTempName())
 }
