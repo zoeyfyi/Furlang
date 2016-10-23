@@ -6,9 +6,10 @@ import (
 	"strings"
 
 	"github.com/bongo227/dprint"
-
 	"github.com/oleiade/lane"
 )
+
+const enableLogging = false
 
 const (
 	typeInt32 = iota + 100
@@ -113,7 +114,7 @@ func (s *syntaxTree) print() {
 }
 
 func (s *syntaxTree) Write(f *os.File) {
-	f.WriteString(dprint.SDump(*s))
+	f.WriteString(dprint.STree(*s))
 }
 
 var (
@@ -136,7 +137,7 @@ type parser struct {
 const debugLog = false
 
 func (p *parser) log(statement string, start bool) {
-	if debugLog {
+	if enableLogging {
 		if !start {
 			p.depth--
 		}
