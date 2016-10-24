@@ -5,7 +5,9 @@ pipelines:
           - echo "Starting tests!"
           - apt-get install golang-go -y
           - apt-get install llvm-runtime -y
-          - apt-get install bats -y
+          - git clone https://github.com/sstephenson/bats.git
+          - cd bats
+          - ./install.sh /usr/local
           - export GOPATH="/go"
           - mkdir -p /go/src/bitbucket.com/bongo227/furlang
           - cd /go/src/bitbucket.com/bongo227/furlang
