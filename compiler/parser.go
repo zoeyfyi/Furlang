@@ -578,9 +578,7 @@ func (p *parser) Parse() syntaxTree {
 	var functions []function
 
 	for p.currentTokenIndex < len(p.tokens)-1 {
-		fmt.Println(p.currentTokenIndex, len(p.tokens))
 		p.nextToken()
-		fmt.Println(p.currentToken().String())
 		nextFunction := p.expression()
 		functions = append(functions, nextFunction.(function))
 		p.clearNewLines()
