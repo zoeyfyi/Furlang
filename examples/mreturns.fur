@@ -1,8 +1,0 @@
-swap :: i32 a, i32 b -> i32, i32 {
-    return b, a
-}
-
-main :: -> i32 {
-    a, b := swap(123, 432)
-    return b
-}

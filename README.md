@@ -38,6 +38,8 @@ You should be able to download the compiler binary and compile strait away, no u
     * Multiple cases
     * Optial fallthrow
 
+---
+
 ## TODO's ##
 * parser.go - simplify the ast structure
 * parser.go - handle multiple returns
@@ -55,3 +57,36 @@ You should be able to download the compiler binary and compile strait away, no u
 
 * lexer.go - make multitokens work with a varible number of tokens
 * llvm.go - Add else if support to ifExpression compililation
+
+---
+
+## Syntax ideas ##
+
+The following are ideas for syntax not yet implemented
+
+#### Multiple returns ####
+```
+swap :: i32 a, i32 b -> i32, i32 {
+    return b, a
+}
+
+main :: -> i32 {
+    a, b := swap(123, 432)
+    return b
+}
+```
+
+#### For loops ####
+```
+loop :: -> i32 {
+    a := 0
+    for i := 0; i < 123; i++ {
+        a = i
+    }
+    return i
+}
+
+main :: -> {
+    return loop()
+}
+```
