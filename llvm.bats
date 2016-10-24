@@ -4,11 +4,6 @@ if [ ! -d "build" ]; then
     mkdir build
 fi
 
-go get github.com/oleiade/lane
-go get github.com/bongo227/cmap
-go get github.com/fatih/color
-go build -tags='llvm' -o=furlang compiler.go
-
 @test "main example" {
     run ./furlang examples/main.fur
     echo "$output"

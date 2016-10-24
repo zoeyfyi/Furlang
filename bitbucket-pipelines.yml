@@ -1,12 +1,18 @@
-image: bongo227/furlang
 pipelines:
   default:
     - step:
         script:
           - echo "Starting tests!"
+          - apt-get install golang-go -y
+          - apt-get install llvm-runtime -y
+          - git clone https://github.com/sstephenson/bats.git
+          - cd bats
+          - ./install.sh /usr/local
+          - export GOPATH="/go"
+          - mkdir -p /go/src/bitbucket.com/bongo227/furlang
           - cd /go/src/bitbucket.com/bongo227/furlang
           - mv /opt/atlassian/bitbucketci/agent/build/* ./
-          - rm -rf $GOPATH/src/github.com/bongo227
-          - go get github.com/bongo227/dprint
-          - go get github.com/bongo227/goory
+          - go get ./...
+          - go build
+          - go test ./...
           - bats llvm.bats
