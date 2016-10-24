@@ -3,7 +3,8 @@ pipelines:
     - step:
         script:
           - echo "Starting tests!"
-          - apt-get install golang-go
+          - apt-get install golang-go -y
+          - apt-get install llvm-runtime -y
           - mkdir -p /go/src/bitbucket.com/bongo227/furlang
           - cd /go/src/bitbucket.com/bongo227/furlang
           - mv /opt/atlassian/bitbucketci/agent/build/* ./
