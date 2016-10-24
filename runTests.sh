@@ -21,6 +21,7 @@ do
   # Get the name of the file without folder or extension
   name=$(basename $f)
   name=${name%.*}
+  name=${name//_/ }
 
   # Create a test for the file
   echo "@test \"test: $name\" {
