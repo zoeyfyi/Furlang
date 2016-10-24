@@ -90,3 +90,18 @@ main :: -> {
     return loop()
 }
 ```
+```
+values := []int{1, 2, 3, 4}
+
+for _, v := range values {
+    # v is immutable
+}
+
+for _, v := map values {
+    # v is mutable
+}
+
+for _, v := filter values {
+    # return true/false keeps/removes v from values
+}
+```
