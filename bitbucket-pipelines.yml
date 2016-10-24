@@ -8,4 +8,5 @@ pipelines:
           - mv /opt/atlassian/bitbucketci/agent/build/* ./
           - rm -rf $GOPATH/src/github.com/bongo227
           - go get github.com/bongo227/dprint
+          - go get github.com/bongo227/goory
           - bats llvm.bats
