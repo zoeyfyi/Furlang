@@ -110,7 +110,7 @@ type syntaxTree struct {
 }
 
 func (s *syntaxTree) print() {
-	dprint.Dump(*s)
+	dprint.Tree(*s)
 }
 
 func (s *syntaxTree) Write(f *os.File) {
