@@ -226,7 +226,7 @@ characterLoop:
 		// Handle symbol character
 		for symbol, symbolToken := range symbolMap {
 			if string(char) == symbol {
-				parseBuffer(&buffer, &tokens, lineIndex, columnIndex)
+				parseBuffer(&buffer, &tokens, lineIndex, columnIndex-1)
 				tokens = append(tokens, token{
 					tokenType: symbolToken,
 					value:     string(char),
