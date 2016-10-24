@@ -3,7 +3,13 @@ package compiler
 import "github.com/bongo227/goory"
 
 type expression interface {
-	compile(*goory.Block, *scope) *goory.Instruction
+	compile(compileInfo) goory.Value
+}
+
+type compileInfo struct {
+	block     *goory.Block
+	scope     *scope
+	functions map[string]*goory.Function
 }
 
 type scope struct {
@@ -50,6 +56,7 @@ func gooryType(t int) goory.Type {
 // Llvm compiles the syntax tree to llvm ir
 func Llvm(ast *syntaxTree) string {
 	module := goory.NewModule("ben")
+	functions := make(map[string]*goory.Function, len(ast.functions))
 
 	for _, f := range ast.functions {
 		returnType := gooryType(f.returns[0].nameType)
@@ -59,6 +66,7 @@ func Llvm(ast *syntaxTree) string {
 		}
 
 		function := module.NewFunction(f.name, returnType, argType...)
+		functions[function.Name()] = function
 
 		rootScope := scope{
 			outerScope: nil,
@@ -66,59 +74,129 @@ func Llvm(ast *syntaxTree) string {
 		}
 
 		for _, e := range f.block.expressions {
-			e.compile(function.Entry(), &rootScope)
+			e.compile(compileInfo{
+				functions: functions,
+				block:     function.Entry(),
+				scope:     &rootScope,
+			})
 		}
 	}
 
 	return module.LLVM()
 }
 
-func compileBlock(eBlock block, block *goory.Block, scope *scope) *goory.Block {
-	newBlock := block.Function().AddBlock()
+func compileBlock(eBlock block, ci compileInfo) *goory.Block {
+	newBlock := ci.block.Function().AddBlock()
 
-	scope.push()
+	ci.scope.push()
 	for _, e := range eBlock.expressions {
-		e.compile(block, scope)
+		e.compile(ci)
 	}
-	scope.pop()
+	ci.scope.pop()
 
 	return newBlock
 }
 
-func (e block) compile(block *goory.Block, scope *scope) *goory.Instruction {
-	return block.Br(compileBlock(e, block, scope))
+// Blocks
+func (e block) compile(ci compileInfo) goory.Value {
+	return ci.block.Br(compileBlock(e, ci)).Value()
 }
 
-func (e assignment) compile(block *goory.Block, scope *scope) *goory.Instruction {
-	scope.values[e.name] = e.compile(block, scope).Value()
+// Assignment
+func (e assignment) compile(ci compileInfo) goory.Value {
+	ci.scope.values[e.name] = e.compile(ci)
 	return nil
 }
 
-func (e function) compile(block *goory.Block, scope *scope) *goory.Instruction {
+// Functions
+func (e function) compile(ci compileInfo) goory.Value {
 	panic("Cannot embed instructions (yet)")
 }
 
-func (e ret) compile(block *goory.Block, scope *scope) *goory.Instruction {
-	return block.Ret(e.returns[0].compile(block, scope).Value())
+// Returns
+func (e ret) compile(ci compileInfo) goory.Value {
+	return ci.block.Ret(e.returns[0].compile(ci)).Value()
 }
 
-func (e ifBlock) compile(block *goory.Block, scope *scope) *goory.Instruction {
-	return e.condition.compile(block, scope)
+// ifBlock
+func (e ifBlock) compile(ci compileInfo) goory.Value {
+	return e.condition.compile(ci)
 }
 
-func (e ifExpression) compile(block *goory.Block, scope *scope) *goory.Instruction {
+// ifExpression
+func (e ifExpression) compile(ci compileInfo) goory.Value {
 	switch len(e.blocks) {
 	case 1:
-		return block.CondBr(
-			e.blocks[0].condition.compile(block, scope),
-			compileBlock(e.blocks[0].block, block, scope),
-			nil)
+		return ci.block.CondBr(
+			e.blocks[0].condition.compile(ci),
+			compileBlock(e.blocks[0].block, ci),
+			nil).Value()
 	case 2:
-		return block.CondBr(
-			e.blocks[0].condition.compile(block, scope),
-			compileBlock(e.blocks[0].block, block, scope),
-			compileBlock(e.blocks[1].block, block, scope))
+		return ci.block.CondBr(
+			e.blocks[0].condition.compile(ci),
+			compileBlock(e.blocks[0].block, ci),
+			compileBlock(e.blocks[1].block, ci)).Value()
 	default:
 		panic("Cannot handle else if (yet)")
 	}
+}
+
+// Name
+func (e name) compile(ci compileInfo) goory.Value {
+	return ci.scope.find(e.name)
+}
+
+// Maths
+func (e maths) compile(ci compileInfo) goory.Value {
+	return e.expression.compile(ci)
+}
+
+// Boolean
+func (e boolean) compile(ci compileInfo) goory.Value {
+	return goory.ConstBool(e.value)
+}
+
+// Addition
+func (e addition) compile(ci compileInfo) goory.Value {
+	return ci.block.Fadd(e.lhs.compile(ci), e.rhs.compile(ci))
+}
+
+// Subtraction
+func (e subtraction) compile(ci compileInfo) goory.Value {
+	return ci.block.Fsub(e.lhs.compile(ci), e.rhs.compile(ci))
+}
+
+// Multiplication
+func (e multiplication) compile(ci compileInfo) goory.Value {
+	return ci.block.Fmul(e.lhs.compile(ci), e.rhs.compile(ci))
+}
+
+// floatDivision
+func (e floatDivision) compile(ci compileInfo) goory.Value {
+	return ci.block.Fdiv(e.lhs.compile(ci), e.rhs.compile(ci))
+}
+
+// intDivision
+func (e intDivision) compile(ci compileInfo) goory.Value {
+	return ci.block.Div(e.lhs.compile(ci), e.rhs.compile(ci))
+}
+
+// number
+func (e number) compile(ci compileInfo) goory.Value {
+	return goory.ConstInt32(int32(e.value))
+}
+
+// float
+func (e float) compile(ci compileInfo) goory.Value {
+	return goory.ConstFloat32(float32(e.value))
+}
+
+// call
+func (e call) compile(ci compileInfo) goory.Value {
+	args := make([]goory.Value, len(e.args))
+	for i, a := range e.args {
+		args[i] = a.compile(ci)
+	}
+
+	return ci.block.Call(ci.functions[e.function], args...)
 }

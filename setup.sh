@@ -3,9 +3,8 @@
 
 # Call source setup.sh to setup the aliases in your terminal
 
-alias build="go build -o furlang -tags 'llvm'"
-alias buildn="go build -o furlang -tags 'nollvm'"
-alias clean="rm build/*"
+alias build="go build -o furlang"
+alias clean="rm build/* && rm furlang"
 alias compile="./furlang"
 alias run="lli build/ben.ll"
 alias ret="echo \$?"
