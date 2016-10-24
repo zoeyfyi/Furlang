@@ -5,7 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bongo227/cmap"
+	"github.com/bongo227/dprint"
+
 	"github.com/oleiade/lane"
 )
 
@@ -108,11 +109,11 @@ type syntaxTree struct {
 }
 
 func (s *syntaxTree) print() {
-	cmap.Dump(*s)
+	dprint.Dump(*s)
 }
 
 func (s *syntaxTree) Write(f *os.File) {
-	f.WriteString(cmap.SDump(*s, "Ast"))
+	f.WriteString(dprint.SDump(*s))
 }
 
 var (
@@ -577,9 +578,7 @@ func (p *parser) Parse() syntaxTree {
 	var functions []function
 
 	for p.currentTokenIndex < len(p.tokens)-1 {
-		fmt.Println(p.currentTokenIndex, len(p.tokens))
 		p.nextToken()
-		fmt.Println(p.currentToken().String())
 		nextFunction := p.expression()
 		functions = append(functions, nextFunction.(function))
 		p.clearNewLines()
