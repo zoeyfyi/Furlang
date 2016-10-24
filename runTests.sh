@@ -6,7 +6,7 @@ if [ ! -d "build" ]; then
 fi
 
 # Clean build directory
-rm build/*
+rm build/* 2> /dev/null
 
 # Build a bats testing file
 
