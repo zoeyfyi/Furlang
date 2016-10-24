@@ -165,56 +165,41 @@ func (t token) String() string {
 
 // Parsers what ever is in the the buffer
 func parseBuffer(buffer *string, tokens *[]token, line int, column int) {
+	bufferLength := len([]rune(*buffer))
 
 	if *buffer != "" {
-		bufferLength := len(*buffer)
+		var ttype int
+		var value interface{}
 
 		if i, err := strconv.Atoi(*buffer); err == nil {
 			// Buffer contains a number
-			*tokens = append(*tokens, token{
-				tokenType: tokenNumber,
-				value:     i,
-				line:      line,
-				column:    column - bufferLength,
-				length:    bufferLength,
-			})
+			ttype = tokenNumber
+			value = i
 		} else if i, err := strconv.ParseFloat(*buffer, 32); err == nil {
 			// Buffer contains a float
-			*tokens = append(*tokens, token{
-				tokenType: tokenFloat,
-				value:     float32(i),
-				line:      line,
-				column:    column - bufferLength,
-				length:    bufferLength,
-			})
+			ttype = tokenFloat
+			value = float32(i)
 		} else if val, found := typeMap[*buffer]; found {
-			// Buffer contains a type identifyer
-			*tokens = append(*tokens, token{
-				tokenType: tokenType,
-				value:     val,
-				line:      line,
-				column:    column - bufferLength,
-				length:    bufferLength,
-			})
+			// Buffer contains a type identifier
+			ttype = tokenType
+			value = val
 		} else if val, found := nameMap[*buffer]; found {
 			// Buffer contains a control name
-			*tokens = append(*tokens, token{
-				tokenType: val,
-				value:     *buffer,
-				line:      line,
-				column:    column - bufferLength,
-				length:    bufferLength,
-			})
+			ttype = val
+			value = *buffer
 		} else {
 			// Buffer contains a name
-			*tokens = append(*tokens, token{
-				tokenType: tokenName,
-				value:     *buffer,
-				line:      line,
-				column:    column - bufferLength,
-				length:    bufferLength,
-			})
+			ttype = tokenName
+			value = *buffer
 		}
+
+		*tokens = append(*tokens, token{
+			tokenType: ttype,
+			value:     value,
+			line:      line,
+			column:    column - bufferLength + 1,
+			length:    bufferLength,
+		})
 
 		*buffer = ""
 	}
@@ -234,14 +219,14 @@ characterLoop:
 
 		// Handle whitespace
 		if string(char) == " " {
-			parseBuffer(&buffer, &tokens, lineIndex, columnIndex)
+			parseBuffer(&buffer, &tokens, lineIndex, columnIndex-1)
 			continue characterLoop
 		}
 
 		// Handle symbol character
 		for symbol, symbolToken := range symbolMap {
 			if string(char) == symbol {
-				parseBuffer(&buffer, &tokens, lineIndex, columnIndex)
+				parseBuffer(&buffer, &tokens, lineIndex, columnIndex-1)
 				tokens = append(tokens, token{
 					tokenType: symbolToken,
 					value:     string(char),
@@ -260,6 +245,9 @@ characterLoop:
 		// Any other character (number/letter)
 		buffer += string(char)
 	}
+
+	// Parse anything left in buffer
+	parseBuffer(&buffer, &tokens, lineIndex, columnIndex)
 
 	// Group single character tokens
 	for i := 0; i < len(tokens); i++ {
