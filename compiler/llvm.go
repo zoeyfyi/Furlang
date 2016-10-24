@@ -227,6 +227,16 @@ func (e intDivision) compile(ci *compileInfo) goory.Value {
 	return ci.block.Div(e.lhs.compile(ci), e.rhs.compile(ci)).Value()
 }
 
+// lessThan
+func (e lessThan) compile(ci *compileInfo) goory.Value {
+	return ci.block.ICmp(goory.ModeSlt(), e.lhs.compile(ci), e.rhs.compile(ci)).Value()
+}
+
+// moreThan
+func (e moreThan) compile(ci *compileInfo) goory.Value {
+	return ci.block.ICmp(goory.ModeSgt(), e.lhs.compile(ci), e.rhs.compile(ci)).Value()
+}
+
 // number
 func (e number) compile(ci *compileInfo) goory.Value {
 	return goory.ConstInt32(int32(e.value))

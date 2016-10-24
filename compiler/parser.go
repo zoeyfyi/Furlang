@@ -58,30 +58,18 @@ type boolean struct {
 	value bool
 }
 
-type addition struct {
+type binaryOperator struct {
 	lhs expression
 	rhs expression
 }
 
-type subtraction struct {
-	lhs expression
-	rhs expression
-}
-
-type multiplication struct {
-	lhs expression
-	rhs expression
-}
-
-type floatDivision struct {
-	lhs expression
-	rhs expression
-}
-
-type intDivision struct {
-	lhs expression
-	rhs expression
-}
+type addition binaryOperator
+type subtraction binaryOperator
+type multiplication binaryOperator
+type floatDivision binaryOperator
+type intDivision binaryOperator
+type lessThan binaryOperator
+type moreThan binaryOperator
 
 type number struct {
 	value int
@@ -120,11 +108,13 @@ func (s *syntaxTree) Write(f *os.File) {
 var (
 	// Maps tokens onto operators
 	opMap = map[int]operator{
-		tokenPlus:        operator{2, false},
-		tokenMinus:       operator{2, false},
-		tokenMultiply:    operator{3, false},
-		tokenFloatDivide: operator{3, false},
-		tokenIntDivide:   operator{3, false},
+		tokenMoreThan:    operator{3, false},
+		tokenLessThan:    operator{3, false},
+		tokenPlus:        operator{4, false},
+		tokenMinus:       operator{4, false},
+		tokenMultiply:    operator{5, false},
+		tokenFloatDivide: operator{5, false},
+		tokenIntDivide:   operator{5, false},
 	}
 )
 
@@ -320,14 +310,21 @@ func (p *parser) shuntingYard(tokens []token) expression {
 	arityStack := lane.NewStack()
 
 	checkOperatorStack := func(op operator) bool {
-		return !operatorStack.Empty() &&
-			(operatorStack.Head().(token).tokenType == tokenPlus ||
-				operatorStack.Head().(token).tokenType == tokenMinus ||
-				operatorStack.Head().(token).tokenType == tokenMultiply ||
-				operatorStack.Head().(token).tokenType == tokenFloatDivide ||
-				operatorStack.Head().(token).tokenType == tokenIntDivide) &&
-			((!op.right && op.precendence <= opMap[operatorStack.Head().(token).tokenType].precendence) ||
-				(op.right && op.precendence < opMap[operatorStack.Head().(token).tokenType].precendence))
+		// Check is stack is empty
+		if operatorStack.Empty() {
+			return false
+		}
+
+		// Check if stack is an operator
+		headType := operatorStack.Head().(token).tokenType
+		if _, isOp := opMap[headType]; !isOp {
+			return false
+		}
+
+		// Check operator precendence
+		headPrecendence := opMap[headType].precendence
+		return (!op.right && op.precendence <= headPrecendence) ||
+			(op.right && op.precendence < headPrecendence)
 	}
 
 	popOperatorStack := func() {
@@ -346,35 +343,24 @@ func (p *parser) shuntingYard(tokens []token) expression {
 			return
 		}
 
-		second := outputStack.Pop().(expression)
-		first := outputStack.Pop().(expression)
+		rhs := outputStack.Pop().(expression)
+		lhs := outputStack.Pop().(expression)
 
 		switch token.tokenType {
 		case tokenPlus:
-			outputStack.Push(addition{
-				lhs: first,
-				rhs: second,
-			})
+			outputStack.Push(addition{lhs, rhs})
 		case tokenMinus:
-			outputStack.Push(subtraction{
-				lhs: first,
-				rhs: second,
-			})
+			outputStack.Push(subtraction{lhs, rhs})
 		case tokenMultiply:
-			outputStack.Push(multiplication{
-				lhs: first,
-				rhs: second,
-			})
+			outputStack.Push(multiplication{lhs, rhs})
 		case tokenFloatDivide:
-			outputStack.Push(floatDivision{
-				lhs: first,
-				rhs: second,
-			})
+			outputStack.Push(floatDivision{lhs, rhs})
 		case tokenIntDivide:
-			outputStack.Push(intDivision{
-				lhs: first,
-				rhs: second,
-			})
+			outputStack.Push(intDivision{lhs, rhs})
+		case tokenLessThan:
+			outputStack.Push(lessThan{lhs, rhs})
+		case tokenMoreThan:
+			outputStack.Push(moreThan{lhs, rhs})
 		}
 	}
 
@@ -393,24 +379,22 @@ func (p *parser) shuntingYard(tokens []token) expression {
 		case tokenFloat:
 			outputStack.Push(float{t.value.(float32)})
 
-		case tokenPlus, tokenMinus, tokenMultiply, tokenFloatDivide, tokenIntDivide:
-			op := opMap[t.tokenType]
-
-			for checkOperatorStack(op) {
+		case tokenPlus, tokenMinus, tokenMultiply, tokenFloatDivide, tokenIntDivide,
+			tokenMoreThan, tokenLessThan:
+			for checkOperatorStack(opMap[t.tokenType]) {
 				popOperatorStack()
 			}
-
 			operatorStack.Push(t)
 
 		case tokenName:
 			if i < len(tokens)-1 && tokens[i+1].tokenType == tokenOpenBracket {
 				// Token is a function name, push it onto the operator stack
 				operatorStack.Push(t)
-				// Push 0 if function dosnt have any arguments
-				// Push 1 if their is atleast 1 argument
 				if tokens[i+2].tokenType == tokenCloseBracket {
+					// 0 if function dosnt have any arguments
 					arityStack.Push(0)
 				} else {
+					// 1 if their is atleast 1 argument
 					arityStack.Push(1)
 				}
 			} else {
