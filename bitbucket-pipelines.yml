@@ -3,7 +3,7 @@ pipelines:
     - step:
         script:
           - echo "Starting tests!"
-          - add-apt-repository ppa:ubuntu-lxc/lxd-stable
+          - add-apt-repository ppa:ubuntu-lxc/lxd-stable -y
           - apt-get update
           - apt-get install golang -y
           - apt-get install llvm-runtime -y
