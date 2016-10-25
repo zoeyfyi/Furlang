@@ -13,6 +13,7 @@ pipelines:
           - cd /go/src/bitbucket.com/bongo227/furlang
           - mv /opt/atlassian/bitbucketci/agent/build/* ./
           - go get ./...
+          - go get honnef.co/go/unused/cmd/unused
           - go build
           - go test ./...
           - bash runTests.sh --tap
