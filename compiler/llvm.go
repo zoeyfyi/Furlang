@@ -227,6 +227,30 @@ func (e intDivision) compile(ci *compileInfo) goory.Value {
 	return ci.block.Div(e.lhs.compile(ci), e.rhs.compile(ci)).Value()
 }
 
+// lessThan
+func (e lessThan) compile(ci *compileInfo) goory.Value {
+	lhs := e.lhs.compile(ci)
+	rhs := e.rhs.compile(ci)
+
+	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
+		return ci.block.ICmp(goory.IModeSlt(), lhs, rhs).Value()
+	} else {
+		return ci.block.FCmp(goory.FModeUlt(), lhs, rhs).Value()
+	}
+}
+
+// moreThan
+func (e moreThan) compile(ci *compileInfo) goory.Value {
+	lhs := e.lhs.compile(ci)
+	rhs := e.rhs.compile(ci)
+
+	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
+		return ci.block.ICmp(goory.IModeSgt(), lhs, rhs).Value()
+	} else {
+		return ci.block.FCmp(goory.FModeUgt(), lhs, rhs).Value()
+	}
+}
+
 // number
 func (e number) compile(ci *compileInfo) goory.Value {
 	return goory.ConstInt32(int32(e.value))
