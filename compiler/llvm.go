@@ -229,12 +229,26 @@ func (e intDivision) compile(ci *compileInfo) goory.Value {
 
 // lessThan
 func (e lessThan) compile(ci *compileInfo) goory.Value {
-	return ci.block.ICmp(goory.ModeSlt(), e.lhs.compile(ci), e.rhs.compile(ci)).Value()
+	lhs := e.lhs.compile(ci)
+	rhs := e.rhs.compile(ci)
+
+	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
+		return ci.block.ICmp(goory.IModeSlt(), lhs, rhs).Value()
+	} else {
+		return ci.block.FCmp(goory.FModeUlt(), lhs, rhs).Value()
+	}
 }
 
 // moreThan
 func (e moreThan) compile(ci *compileInfo) goory.Value {
-	return ci.block.ICmp(goory.ModeSgt(), e.lhs.compile(ci), e.rhs.compile(ci)).Value()
+	lhs := e.lhs.compile(ci)
+	rhs := e.rhs.compile(ci)
+
+	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
+		return ci.block.ICmp(goory.IModeSgt(), lhs, rhs).Value()
+	} else {
+		return ci.block.FCmp(goory.FModeUgt(), lhs, rhs).Value()
+	}
 }
 
 // number
