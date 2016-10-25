@@ -50,10 +50,6 @@ type assignment struct {
 	value expression
 }
 
-type maths struct {
-	expression expression
-}
-
 type boolean struct {
 	value bool
 }
@@ -123,8 +119,6 @@ type parser struct {
 	currentTokenIndex int
 	depth             int
 }
-
-const debugLog = false
 
 func (p *parser) log(statement string, start bool) {
 	if enableLogging {
@@ -289,15 +283,6 @@ func (p *parser) ret() ret {
 	}
 
 	return ret{returns}
-}
-
-func (p *parser) interger() number {
-	p.log("Start Number", true)
-	defer p.log("End Number", false)
-
-	value := p.expect(tokenNumber).value.(int)
-	p.clearNewLines()
-	return number{value}
 }
 
 // Uses shunting yard algoritum to convert

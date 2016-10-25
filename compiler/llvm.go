@@ -17,17 +17,6 @@ type scope struct {
 	values     map[string]goory.Value
 }
 
-func (s *scope) push() {
-	s = &scope{
-		outerScope: s,
-		values:     make(map[string]goory.Value, 1000),
-	}
-}
-
-func (s *scope) pop() {
-	s = s.outerScope
-}
-
 func (s *scope) find(search string) goory.Value {
 	currentScope := s
 	for true {
@@ -190,11 +179,6 @@ func (e ifExpression) compile(ci *compileInfo) goory.Value {
 // Name
 func (e name) compile(ci *compileInfo) goory.Value {
 	return ci.scope.find(e.name)
-}
-
-// Maths
-func (e maths) compile(ci *compileInfo) goory.Value {
-	return e.expression.compile(ci)
 }
 
 // Boolean

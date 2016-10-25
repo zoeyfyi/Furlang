@@ -5,19 +5,7 @@ import (
 	"fmt"
 
 	"bitbucket.com/bongo227/furlang/compiler"
-	"github.com/fatih/color"
 )
-
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
-func step(name string) {
-	blue := color.New(color.FgHiBlue).SprintFunc()
-	fmt.Printf("%s -> ", blue(name))
-}
 
 func main() {
 	// Parse command line flags
