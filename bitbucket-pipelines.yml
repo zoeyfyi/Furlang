@@ -3,7 +3,9 @@ pipelines:
     - step:
         script:
           - echo "Starting tests!"
-          - apt-get install golang-go -y
+          - add-apt-repository ppa:ubuntu-lxc/lxd-stable
+          - apt-get update
+          - apt-get install golang -y
           - apt-get install llvm-runtime -y
           - git clone https://github.com/sstephenson/bats.git
           - cd bats
