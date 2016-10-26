@@ -35,14 +35,3 @@ do
   }
   " >> build/tests.bats
 done
-
-# Run the tests
-if [[ $* == *--tap* ]]; then
-  bats --tap build/tests.bats
-else
-  bats build/tests.bats
-fi
-
-
-# Clean up build directory
-rm build/*
