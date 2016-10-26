@@ -1,7 +1,5 @@
 # Fur #
 
----
-
 ## Design Philosophy ##
 
 ### Garbage collection ###
@@ -12,8 +10,6 @@ Programs are data and transformations on data, the object oriented para-dime tak
 
 ### Usage ###
 You should be able to download the compiler binary and compile strait away, no unnecessary install process or limitations. More advanced tools may be built on top of this but their should alway be the option of downloading just the compiler.
-
----
 
 ## Objectives ##
 * Types:
@@ -38,8 +34,6 @@ You should be able to download the compiler binary and compile strait away, no u
     * Multiple cases
     * Optial fallthrow
 
----
-
 ## TODO's ##
 * parser.go - simplify the ast structure
 * parser.go - handle multiple returns
@@ -57,8 +51,6 @@ You should be able to download the compiler binary and compile strait away, no u
 
 * lexer.go - make multitokens work with a varible number of tokens
 * llvm.go - Add else if support to ifExpression compililation
-
----
 
 ## Syntax ideas ##
 
