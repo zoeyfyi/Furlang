@@ -1,13 +1,5 @@
 #!/bin/bash
 
-# Create a build directory if one doesnt exsist
-if [ ! -d "build" ]; then
-    mkdir build
-fi
-
-# Clean build directory
-rm build/* 2> /dev/null
-
 # Build a bats testing file
 
 # Add bats enviroment
@@ -25,11 +17,11 @@ do
 
   # Create a test for the file
   echo "@test \"test: $name\" {
-    run ./furlang $f
+    run build/furlang $f
     echo \"\$output\"
     [ \"\$status\" -eq 0 ]
 
-    run lli build/ben.ll
+    run lli-3.8 build/ben.ll
     echo \"\$output\"
     [ \"\$status\" -eq 123 ]
   }
