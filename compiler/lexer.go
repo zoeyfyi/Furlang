@@ -35,6 +35,8 @@ const (
 	tokenDoubleColon
 	tokenIncrement
 	tokenDecrement
+	tokenDoubleEqual
+	tokenNotEqual
 
 	tokenComma
 	tokenSemiColon
@@ -52,6 +54,7 @@ const (
 	tokenMoreThan
 	tokenColon
 	tokenEqual
+	tokenBang
 )
 
 // Lexer maps
@@ -72,6 +75,7 @@ var (
 		":":  tokenColon,
 		";":  tokenSemiColon,
 		"=":  tokenEqual,
+		"!":  tokenBang,
 	}
 
 	typeMap = map[string]int{
@@ -96,12 +100,14 @@ var (
 		tokenIntDivide:   []int{tokenFloatDivide, tokenFloatDivide},
 		tokenIncrement:   []int{tokenPlus, tokenPlus},
 		tokenDecrement:   []int{tokenMinus, tokenMinus},
+		tokenDoubleEqual: []int{tokenEqual, tokenEqual},
+		tokenNotEqual:    []int{tokenBang, tokenEqual},
 	}
 )
 
 // tokenType returns the string representation of tokenType
-func tokenTypeString(tokenType int) string {
-	switch tokenType {
+func tokenTypeString(tt int) string {
+	switch tt {
 	case tokenArrow:
 		return "tokenArrow"
 	case tokenAssign:
@@ -152,6 +158,12 @@ func tokenTypeString(tokenType int) string {
 		return "tokenFalse"
 	case tokenType:
 		return "tokenType"
+	case tokenBang:
+		return "tokenBang"
+	case tokenDoubleEqual:
+		return "tokenDoubleEqual"
+	case tokenNotEqual:
+		return "tokenNotEqual"
 	default:
 		return "Undefined token"
 	}

@@ -43,6 +43,9 @@ func TestLexerTypeStrings(t *testing.T) {
 		{tokenTrue, "tokenTrue"},
 		{tokenFalse, "tokenFalse"},
 		{tokenType, "tokenType"},
+		{tokenBang, "tokenBang"},
+		{tokenDoubleEqual, "tokenDoubleEqual"},
+		{tokenNotEqual, "tokenNotEqual"},
 	}
 
 	for _, c := range cases {
