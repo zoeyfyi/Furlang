@@ -1,0 +1,46 @@
+box: bongo227/furlang-docker:latest
+
+build:
+    steps:
+        - script:
+            name: Move to gopath
+            code: |
+                mkdir -p $GOPATH/src/github.com/bongo227/furlang
+                mv * $GOPATH/src/github.com/bongo227/furlang/
+        
+        - script:
+            name: Install dependencys
+            cwd: $GOPATH/src/github.com/bongo227/furlang/
+            code: |
+                go get ./...
+
+        - script:
+            name: Build project
+            cwd: $GOPATH/src/github.com/bongo227/furlang/
+            code: |
+                mkdir build
+                go build -o build/furlang
+
+test:
+    steps:
+        - script:
+            name: Go test
+            code: |
+                go test
+        
+        - script:
+            name: Intergration Tests
+            code: |
+                bash makeTests.sh
+                bats build/tests.bats
+
+        - script:
+            name: Go lint
+            code: |
+                go lint ./...
+
+        - script:
+            name: Dead code check
+            code: |
+                go get honnef.co/go/unused/cmd/unused
+                unused ./...

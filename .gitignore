@@ -33,3 +33,5 @@ furlang
 # VScode files
 .vscode/
 !.vscode/launch.json
+
+.wercker
