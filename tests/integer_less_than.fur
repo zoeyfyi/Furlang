@@ -1,0 +1,7 @@
+main :: -> i32 {
+    if 1 < 23 {
+        return 123
+    } else {
+        return 321
+    }
+}

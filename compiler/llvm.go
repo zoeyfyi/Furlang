@@ -1,6 +1,9 @@
 package compiler
 
-import "github.com/bongo227/goory"
+import (
+	"github.com/bongo227/Furlang/lexer"
+	"github.com/bongo227/goory"
+)
 
 type expression interface {
 	compile(*compileInfo) goory.Value
@@ -31,11 +34,11 @@ func (s *scope) find(search string) goory.Value {
 	return nil
 }
 
-func gooryType(t int) goory.Type {
-	switch t {
-	case typeInt32:
+func gooryType(tokenType lexer.TokenType) goory.Type {
+	switch tokenType {
+	case lexer.INT32:
 		return goory.Int32Type
-	case typeFloat32:
+	case lexer.FLOAT32:
 		return goory.Float32Type
 	default:
 		panic("Unkown type")
@@ -233,6 +236,30 @@ func (e moreThan) compile(ci *compileInfo) goory.Value {
 	}
 
 	return ci.block.FCmp(goory.FModeUgt(), lhs, rhs).Value()
+}
+
+// equal
+func (e equal) compile(ci *compileInfo) goory.Value {
+	lhs := e.lhs.compile(ci)
+	rhs := e.rhs.compile(ci)
+
+	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
+		return ci.block.ICmp(goory.IModeEq(), lhs, rhs).Value()
+	}
+
+	return ci.block.FCmp(goory.FModeUeq(), lhs, rhs).Value()
+}
+
+// notEqual
+func (e notEqual) compile(ci *compileInfo) goory.Value {
+	lhs := e.lhs.compile(ci)
+	rhs := e.rhs.compile(ci)
+
+	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
+		return ci.block.ICmp(goory.IModeNe(), lhs, rhs).Value()
+	}
+
+	return ci.block.FCmp(goory.FModeUne(), lhs, rhs).Value()
 }
 
 // number

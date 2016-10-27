@@ -1,0 +1,7 @@
+main :: -> i32 {
+    if 121.75 == 121.75 {
+        return 123
+    } else {
+        return 321
+    }
+}
