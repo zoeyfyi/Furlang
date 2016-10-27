@@ -20,7 +20,7 @@ build:
             code: |
                 if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get github.com/kardianos/govendor ; fi
                 if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get github.com/golang/lint/golint ; fi
-                if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get go get honnef.co/go/unused/cmd/unused ; fi
+                if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get honnef.co/go/unused/cmd/unused ; fi
                 govendor sync
 
         - script:
@@ -76,9 +76,6 @@ dev:
                 if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get github.com/kardianos/govendor ; fi
                 if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get github.com/golang/lint/golint ; fi
                 if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get go get honnef.co/go/unused/cmd/unused ; fi
-                # go get -u github.com/kardianos/govendor
-                # go get -u github.com/golang/lint/golint
-                # go get honnef.co/go/unused/cmd/unused
                 govendor sync
                 mkdir -p build
 
