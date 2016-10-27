@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/bongo227/furlang/compiler"
+	"github.com/bongo227/Furlang/compiler"
 )
 
 func main() {
