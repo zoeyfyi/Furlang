@@ -49,6 +49,9 @@ build:
             code: |
                 golint
                 golint compiler/*
+                golint lexer/lexer.go
+                golint lexer/lexer_test.go
+                golint lexer/tokens.go
 
         - script:
             name: Dead code check
@@ -56,6 +59,7 @@ build:
             code: |
                 unused
                 unused compiler/*
+                unused lexer/*
 
         - script:
             name: Store cache
@@ -88,8 +92,8 @@ dev:
                 alias clean="rm build/*"
                 alias test="govendor test +local"
                 alias itest="bash makeTests.sh && bats build/tests.bats"
-                alias lint="golint && golint compiler/*"
-                alias dead="unused && unused compiler/*"
+                alias lint="golint && golint compiler/* && golint lexer/*"
+                alias dead="unused && unused compiler/* && unused lexer/*"
                 alias ftest="test && itest && lint && dead"
                 clear
                 help

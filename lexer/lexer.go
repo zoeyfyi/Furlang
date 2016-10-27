@@ -50,13 +50,15 @@ var (
 	}
 )
 
+// Lexer struct holds the lexers internal state
 type Lexer struct {
 	input string
 }
 
-func NewLexer(in string) *Lexer {
+// NewLexer creates a new lexer for the input string
+func NewLexer(input string) *Lexer {
 	return &Lexer{
-		input: in,
+		input: input,
 	}
 }
 
