@@ -46,7 +46,7 @@ var (
 		INCREMENT:   []TokenType{PLUS, PLUS},
 		DECREMENT:   []TokenType{MINUS, MINUS},
 		EQUAL:       []TokenType{ASSIGN, ASSIGN},
-		NOTEQUAL:    []TokenType{BANG, EQUAL},
+		NOTEQUAL:    []TokenType{BANG, ASSIGN},
 	}
 )
 

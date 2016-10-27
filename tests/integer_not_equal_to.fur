@@ -1,5 +1,5 @@
 main :: -> i32 {
-    if 10.5 < 11.5 {
+    if 121 != 122 {
         return 123
     } else {
         return 321

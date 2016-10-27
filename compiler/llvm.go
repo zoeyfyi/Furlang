@@ -256,10 +256,10 @@ func (e notEqual) compile(ci *compileInfo) goory.Value {
 	rhs := e.rhs.compile(ci)
 
 	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
-		return ci.block.ICmp(goory.IModeEq(), lhs, rhs).Value()
+		return ci.block.ICmp(goory.IModeNe(), lhs, rhs).Value()
 	}
 
-	return ci.block.FCmp(goory.FModeUeq(), lhs, rhs).Value()
+	return ci.block.FCmp(goory.FModeUne(), lhs, rhs).Value()
 }
 
 // number
