@@ -18,11 +18,9 @@ build:
             name: Build project
             cwd: $GOPATH/src/github.com/bongo227/Furlang/
             code: |
-                mkdir build
+                mkdir -p build
                 go build -o build/furlang
 
-test:
-    steps:
         - script:
             name: Go test
             cwd: $GOPATH/src/github.com/bongo227/Furlang/
@@ -40,7 +38,8 @@ test:
             name: Go lint
             cwd: $GOPATH/src/github.com/bongo227/Furlang/
             code: |
-                go lint ./...
+                go get -u github.com/golang/lint/golint
+                golint ./...
 
         - script:
             name: Dead code check
@@ -48,3 +47,28 @@ test:
             code: |
                 go get honnef.co/go/unused/cmd/unused
                 unused ./...
+
+dev:
+    steps:
+        - script:
+            name: Setup
+            code: |
+                mkdir -p $GOPATH/src/github.com/bongo227/
+                ln -s /pipeline/source $GOPATH/src/github.com/bongo227/Furlang
+                cd $GOPATH/src/github.com/bongo227/Furlang/
+                go get ./...
+                go get honnef.co/go/unused/cmd/unused
+                go get -u github.com/golang/lint/golint
+                mkdir -p build
+
+        - internal/shell:
+            cmd: /bin/bash
+            cwd: $GOPATH/src/github.com/bongo227/Furlang/
+            code: |
+                alias help="printf 'build - Builds the compiler\nclean - Cleans up the build directory\ntest - Runs all the tests\nhelp - Prints the help text\n'"
+                alias build="go build -o build/furlang"
+                alias clean="rm build/*"
+                alias test="go test ./... && bash makeTests.sh && bats build/tests.bats && golint ./... && unused ./..."
+                alias lint="golint ./..."
+                clear
+                help

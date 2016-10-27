@@ -218,9 +218,9 @@ func (e lessThan) compile(ci *compileInfo) goory.Value {
 
 	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
 		return ci.block.ICmp(goory.IModeSlt(), lhs, rhs).Value()
-	} else {
-		return ci.block.FCmp(goory.FModeUlt(), lhs, rhs).Value()
 	}
+
+	return ci.block.FCmp(goory.FModeUlt(), lhs, rhs).Value()
 }
 
 // moreThan
@@ -230,9 +230,9 @@ func (e moreThan) compile(ci *compileInfo) goory.Value {
 
 	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
 		return ci.block.ICmp(goory.IModeSgt(), lhs, rhs).Value()
-	} else {
-		return ci.block.FCmp(goory.FModeUgt(), lhs, rhs).Value()
 	}
+
+	return ci.block.FCmp(goory.FModeUgt(), lhs, rhs).Value()
 }
 
 // number
