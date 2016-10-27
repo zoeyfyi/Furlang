@@ -81,12 +81,15 @@ dev:
 
         - internal/shell:
             cmd: /bin/bash
-            cwd: $GOPATH/src/github.com/bongo227/Furlang/
             code: |
+                cd $GOPATH/src/github.com/bongo227/Furlang/
                 alias help="printf 'build - Builds the compiler\nclean - Cleans up the build directory\ntest - Runs all the tests\nhelp - Prints the help text\n'"
                 alias build="go build -o build/furlang"
                 alias clean="rm build/*"
-                alias test="go test ./... && bash makeTests.sh && bats build/tests.bats && golint ./... && unused ./..."
-                alias lint="golint ./..."
+                alias test="govendor test +local"
+                alias itest="bash makeTests.sh && bats build/tests.bats"
+                alias lint="golint && golint compiler/*"
+                alias dead="unused && unused compiler/*"
+                alias ftest="test && itest && lint && dead"
                 clear
                 help
