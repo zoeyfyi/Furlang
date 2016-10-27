@@ -66,6 +66,8 @@ type floatDivision binaryOperator
 type intDivision binaryOperator
 type lessThan binaryOperator
 type moreThan binaryOperator
+type equal binaryOperator
+type notEqual binaryOperator
 
 type number struct {
 	value int
@@ -104,6 +106,8 @@ func (s *syntaxTree) Write(f *os.File) {
 var (
 	// Maps tokens onto operators
 	opMap = map[int]operator{
+		tokenNotEqual:    operator{3, false},
+		tokenDoubleEqual: operator{3, false},
 		tokenMoreThan:    operator{3, false},
 		tokenLessThan:    operator{3, false},
 		tokenPlus:        operator{4, false},
@@ -346,6 +350,10 @@ func (p *parser) shuntingYard(tokens []token) expression {
 			outputStack.Push(lessThan{lhs, rhs})
 		case tokenMoreThan:
 			outputStack.Push(moreThan{lhs, rhs})
+		case tokenDoubleEqual:
+			operatorStack.Push(equal{lhs, rhs})
+		case tokenNotEqual:
+			operatorStack.Push(notEqual{lhs, rhs})
 		}
 	}
 
@@ -365,7 +373,7 @@ func (p *parser) shuntingYard(tokens []token) expression {
 			outputStack.Push(float{t.value.(float32)})
 
 		case tokenPlus, tokenMinus, tokenMultiply, tokenFloatDivide, tokenIntDivide,
-			tokenMoreThan, tokenLessThan:
+			tokenMoreThan, tokenLessThan, tokenDoubleEqual, tokenNotEqual:
 			for checkOperatorStack(opMap[t.tokenType]) {
 				popOperatorStack()
 			}
@@ -427,7 +435,7 @@ func (p *parser) shuntingYard(tokens []token) expression {
 			}
 
 		default:
-			panic("Unexpected math token: " + t.String())
+			panic("Unexpected math token: " + tokenTypeString(tokenMinus))
 			// return maths{}, Error{
 			// 	err:        fmt.Sprintf("Unexpected math token: %s", t.String()),
 			// 	tokenRange: []token{t},

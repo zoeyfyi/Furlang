@@ -235,6 +235,30 @@ func (e moreThan) compile(ci *compileInfo) goory.Value {
 	return ci.block.FCmp(goory.FModeUgt(), lhs, rhs).Value()
 }
 
+// equal
+func (e equal) compile(ci *compileInfo) goory.Value {
+	lhs := e.lhs.compile(ci)
+	rhs := e.rhs.compile(ci)
+
+	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
+		return ci.block.ICmp(goory.IModeEq(), lhs, rhs).Value()
+	}
+
+	return ci.block.ICmp(goory.FModeUeq(), lhs, rhs).Value()
+}
+
+// notEqual
+func (e notEqual) compile(ci *compileInfo) goory.Value {
+	lhs := e.lhs.compile(ci)
+	rhs := e.rhs.compile(ci)
+
+	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
+		return ci.block.ICmp(goory.IModeEq(), lhs, rhs).Value()
+	}
+
+	return ci.block.ICmp(goory.FModeUeq(), lhs, rhs).Value()
+}
+
 // number
 func (e number) compile(ci *compileInfo) goory.Value {
 	return goory.ConstInt32(int32(e.value))

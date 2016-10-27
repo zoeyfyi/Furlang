@@ -71,6 +71,10 @@ func TestLexerTokenStrings(t *testing.T) {
 			token{tokenNumber, "123", 8, 12, 3},
 			"tokenNumber, line: 8, column: 12",
 		},
+		{
+			token{tokenDoubleEqual, "", 1, 1, 2},
+			"tokenDoubleEqual, line: 1, column: 1",
+		},
 	}
 
 	for _, c := range cases {
@@ -162,6 +166,15 @@ func TestLexer(t *testing.T) {
 			"++",
 			[]token{
 				token{tokenIncrement, nil, 1, 1, 2},
+			},
+		},
+
+		{
+			"14 == 14",
+			[]token{
+				token{tokenNumber, 14, 1, 1, 2},
+				token{tokenDoubleEqual, nil, 1, 4, 2},
+				token{tokenNumber, 14, 1, 7, 2},
 			},
 		},
 	}
