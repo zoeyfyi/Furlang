@@ -1,0 +1,97 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "qL94kBMOdqc+CdHDWQRUTbK1yfk=",
+			"path": "github.com/bongo227/dprint",
+			"revision": "74a20cf24c08567c1a088e5c99bf4ab0e4320497",
+			"revisionTime": "2016-10-25T12:19:14Z"
+		},
+		{
+			"checksumSHA1": "Devr472U28MMdSvkrpg6qr6TGrk=",
+			"path": "github.com/bongo227/goory",
+			"revision": "aa033817260df0193b8a435788cf7b5d70110c50",
+			"revisionTime": "2016-10-25T00:15:06Z"
+		},
+		{
+			"checksumSHA1": "x77xUarDfVxctJMAJPCQzlYk8JM=",
+			"path": "github.com/fatih/color",
+			"revision": "bf82308e8c8546dc2b945157173eb8a959ae9505",
+			"revisionTime": "2016-10-25T12:05:01Z"
+		},
+		{
+			"checksumSHA1": "3+g7v0YRb++i9b77bWwm+q4qQv0=",
+			"path": "github.com/kisielk/gotool",
+			"revision": "5e136deb9b893bbe6c8f23236ff4378b7a8a0dbb",
+			"revisionTime": "2016-09-24T18:45:04Z"
+		},
+		{
+			"checksumSHA1": "ugnSryGF6VPBb5s87QgoRH6730g=",
+			"path": "github.com/mattn/go-colorable",
+			"revision": "6c903ff4aa50920ca86087a280590b36b3152b9c",
+			"revisionTime": "2016-09-30T08:41:57Z"
+		},
+		{
+			"checksumSHA1": "xZuhljnmBysJPta/lMyYmJdujCg=",
+			"path": "github.com/mattn/go-isatty",
+			"revision": "66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8",
+			"revisionTime": "2016-08-06T12:27:52Z"
+		},
+		{
+			"checksumSHA1": "GNxRPEHfnfvmhuLZM5KDOTvlLAc=",
+			"path": "github.com/oleiade/lane",
+			"revision": "3053869314bb02cb983dc2205da8ea2abe46fa96",
+			"revisionTime": "2016-08-17T06:58:15Z"
+		},
+		{
+			"checksumSHA1": "aVgPDgwY3/t4J/JOw9H3FVMHqh0=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "c200b10b5d5e122be351b67af224adc6128af5bf",
+			"revisionTime": "2016-10-22T18:22:21Z"
+		},
+		{
+			"checksumSHA1": "SoOfjYDw7R1N1P2aHxIjXYFmWUo=",
+			"path": "golang.org/x/tools/go/ast/astutil",
+			"revision": "0db92ca630c08f00e3ba4b5abea93836ca04b42e",
+			"revisionTime": "2016-10-25T20:43:39Z"
+		},
+		{
+			"checksumSHA1": "YG9ZetDKnhHMIw5r8CDerjRMhJQ=",
+			"path": "golang.org/x/tools/go/buildutil",
+			"revision": "0db92ca630c08f00e3ba4b5abea93836ca04b42e",
+			"revisionTime": "2016-10-25T20:43:39Z"
+		},
+		{
+			"checksumSHA1": "Wg8SjDGjz9jZWAp0dc+LwkAihNo=",
+			"path": "golang.org/x/tools/go/gcimporter15",
+			"revision": "0db92ca630c08f00e3ba4b5abea93836ca04b42e",
+			"revisionTime": "2016-10-25T20:43:39Z"
+		},
+		{
+			"checksumSHA1": "UmqQx5WaaRYwu1vHfHmlulGLTDc=",
+			"path": "golang.org/x/tools/go/loader",
+			"revision": "0db92ca630c08f00e3ba4b5abea93836ca04b42e",
+			"revisionTime": "2016-10-25T20:43:39Z"
+		},
+		{
+			"checksumSHA1": "DNZhtPQ847a7RiZV60yzPas2+j0=",
+			"path": "golang.org/x/tools/go/types/typeutil",
+			"revision": "0db92ca630c08f00e3ba4b5abea93836ca04b42e",
+			"revisionTime": "2016-10-25T20:43:39Z"
+		},
+		{
+			"checksumSHA1": "sz6pvK1sB6/Y/M/je6AvalTf4WA=",
+			"path": "honnef.co/go/unused",
+			"revision": "b87f9a8e8a85e299bc12d87a5ab27b3434e6ae6e",
+			"revisionTime": "2016-09-17T04:15:38Z"
+		},
+		{
+			"checksumSHA1": "DXPzcyy7gwzPz+AOdA+GFpwkGHc=",
+			"path": "honnef.co/go/unused/cmd/unused",
+			"revision": "b87f9a8e8a85e299bc12d87a5ab27b3434e6ae6e",
+			"revisionTime": "2016-09-17T04:15:38Z"
+		}
+	],
+	"rootPath": "github.com/bongo227/Furlang"
+}

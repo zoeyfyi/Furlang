@@ -35,3 +35,4 @@ furlang
 !.vscode/launch.json
 
 .wercker
+vendor/*/
