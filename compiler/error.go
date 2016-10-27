@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/bongo227/Furlang/lexer"
 	"github.com/fatih/color"
 )
 
 // Error is an error realting to compilation
 type Error struct {
 	err        string
-	tokenRange []token
+	tokenRange []lexer.Token
 }
 
 var cerror = color.New(color.FgHiRed).SprintfFunc()
@@ -38,7 +39,7 @@ func (e Error) FormatedError(lines []string) string {
 // Line returns the line number of the error
 func (e Error) Line() int {
 	if len(e.tokenRange) >= 1 {
-		return e.tokenRange[0].line - 1
+		return e.tokenRange[0].Pos.Line - 1
 	}
 
 	return 0
@@ -49,10 +50,10 @@ func (e Error) ColumnRange() (int, int) {
 	if len(e.tokenRange) >= 2 {
 		first := e.tokenRange[0]
 		last := e.tokenRange[len(e.tokenRange)-1]
-		return first.column - 1, last.column - 1 + last.length
+		return first.Pos.Column - 1, last.Pos.Column - 1 + last.Pos.Width
 	} else if len(e.tokenRange) >= 1 {
 		toke := e.tokenRange[0]
-		return toke.column - 1, toke.column - 1 + toke.length
+		return toke.Pos.Column - 1, toke.Pos.Column - 1 + toke.Pos.Width
 	}
 
 	return 0, 0

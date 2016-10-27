@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"time"
+
+	"github.com/bongo227/Furlang/lexer"
 )
 
 // Compiler hold infomation about the file to be compiled
@@ -41,7 +43,8 @@ func (c *Compiler) Compile(buildDirector string) error {
 	start := time.Now()
 
 	// Run lexer
-	tokens := lexer(c.program)
+	l := lexer.NewLexer(c.program)
+	tokens := l.Lex()
 
 	// Optionaly write tokens to file
 	if c.OutputTokens {
