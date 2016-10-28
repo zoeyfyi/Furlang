@@ -1,0 +1,4 @@
+main :: -> i8 {
+    i8 i = 123
+    return i
+}

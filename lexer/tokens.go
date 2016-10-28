@@ -15,6 +15,7 @@ const (
 	FLOATVALUE
 	TRUE
 	FALSE
+	ILLEGAL
 
 	// Types
 	TYPE

@@ -36,10 +36,22 @@ func (s *scope) find(search string) goory.Value {
 
 func gooryType(tokenType lexer.TokenType) goory.Type {
 	switch tokenType {
+	case lexer.INT:
+		return goory.IntType
+	case lexer.INT8:
+		return goory.Int8Type
+	case lexer.INT16:
+		return goory.Int16Type
 	case lexer.INT32:
 		return goory.Int32Type
+	case lexer.INT64:
+		return goory.Int64Type
+	case lexer.FLOAT:
+		return goory.FloatType
 	case lexer.FLOAT32:
 		return goory.Float32Type
+	case lexer.FLOAT64:
+		return goory.Float64Type
 	default:
 		panic("Unkown type")
 	}
@@ -117,7 +129,20 @@ func (e block) compile(ci *compileInfo) goory.Value {
 
 // Assignment
 func (e assignment) compile(ci *compileInfo) goory.Value {
-	ci.scope.values[e.name] = e.value.compile(ci)
+	value := e.value.compile(ci)
+
+	if e.nameType != lexer.ILLEGAL {
+		assignmentType := gooryType(e.nameType)
+		if value.Type() != assignmentType {
+			ci.scope.values[e.name] = ci.block.Cast(value, assignmentType).Value()
+		} else {
+			ci.scope.values[e.name] = value
+		}
+
+		return nil
+	}
+
+	ci.scope.values[e.name] = value
 	return nil
 }
 
@@ -128,7 +153,9 @@ func (e function) compile(ci *compileInfo) goory.Value {
 
 // Returns
 func (e ret) compile(ci *compileInfo) goory.Value {
-	return ci.block.Ret(e.returns[0].compile(ci)).Value()
+	value := e.returns[0].compile(ci)
+
+	return ci.block.Ret(value).Value()
 }
 
 // ifBlock

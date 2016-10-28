@@ -490,8 +490,9 @@ func (p *parser) inferAssignment() expression {
 	value := p.maths()
 
 	return assignment{
-		name:  name,
-		value: value,
+		name:     name,
+		value:    value,
+		nameType: lexer.ILLEGAL,
 	}
 }
 
