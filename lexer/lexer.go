@@ -24,8 +24,16 @@ var (
 	}
 
 	typeMap = map[string]TokenType{
+		// Integers
+		"int": INT,
+		"i8":  INT8,
+		"i16": INT16,
 		"i32": INT32,
-		"f32": FLOAT32,
+		"i64": INT64,
+		// Floats
+		"float": FLOAT,
+		"f32":   FLOAT32,
+		"f64":   FLOAT64,
 	}
 
 	nameMap = map[string]TokenType{
@@ -72,11 +80,11 @@ func parseBuffer(buffer *string, tokens *[]Token, line int, column int) {
 
 		if i, err := strconv.Atoi(*buffer); err == nil {
 			// Buffer contains a number
-			ttype = NUMBER
+			ttype = INTVALUE
 			value = i
 		} else if i, err := strconv.ParseFloat(*buffer, 32); err == nil {
 			// Buffer contains a float
-			ttype = FLOAT
+			ttype = FLOATVALUE
 			value = float32(i)
 		} else if val, found := typeMap[*buffer]; found {
 			// Buffer contains a type identifier
