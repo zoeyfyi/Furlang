@@ -42,8 +42,9 @@ type ret struct {
 }
 
 type assignment struct {
-	name  string
-	value expression
+	name     string
+	nameType lexer.TokenType
+	value    expression
 }
 
 type boolean struct {
@@ -468,6 +469,22 @@ func (p *parser) assignment() expression {
 	p.log("Start Assignment", true)
 	defer p.log("End Assignment", false)
 
+	assignType := p.expect(lexer.TYPE).Value.(lexer.TokenType)
+	name := p.expect(lexer.IDENT).Value.(string)
+	p.expect(lexer.ASSIGN)
+	value := p.maths()
+
+	return assignment{
+		name:     name,
+		nameType: assignType,
+		value:    value,
+	}
+}
+
+func (p *parser) inferAssignment() expression {
+	p.log("Start Infer Assignment", true)
+	defer p.log("End Infer Assignment", false)
+
 	name := p.expect(lexer.IDENT).Value.(string)
 	p.expect(lexer.INFERASSIGN)
 	value := p.maths()
@@ -533,10 +550,12 @@ func (p *parser) expression() expression {
 		return expression(p.ifBlock())
 	case lexer.OPENBODY:
 		return p.block()
+	case lexer.TYPE:
+		return p.assignment()
 	case lexer.IDENT:
 		switch p.peekNextToken().Type {
 		case lexer.INFERASSIGN:
-			return p.assignment()
+			return p.inferAssignment()
 		default:
 			return p.maths()
 		}
