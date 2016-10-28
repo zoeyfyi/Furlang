@@ -11,15 +11,21 @@ type TokenType int
 const (
 	// Values
 	IDENT TokenType = iota
-	NUMBER
-	FLOAT
+	INTVALUE
+	FLOATVALUE
 	TRUE
 	FALSE
 
 	// Types
 	TYPE
+	INT
+	INT8
+	INT16
 	INT32
+	INT64
+	FLOAT
 	FLOAT32
+	FLOAT64
 
 	// key words
 	RETURN

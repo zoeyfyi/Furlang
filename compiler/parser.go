@@ -362,10 +362,10 @@ func (p *parser) shuntingYard(tokens []lexer.Token) expression {
 		case lexer.FALSE:
 			outputStack.Push(boolean{false})
 
-		case lexer.NUMBER:
+		case lexer.INTVALUE:
 			outputStack.Push(number{t.Value.(int)})
 
-		case lexer.FLOAT:
+		case lexer.FLOATVALUE:
 			outputStack.Push(float{t.Value.(float32)})
 
 		case lexer.PLUS, lexer.MINUS, lexer.MULTIPLY, lexer.FLOATDIVIDE, lexer.INTDIVIDE,

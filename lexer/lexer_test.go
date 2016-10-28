@@ -23,9 +23,9 @@ func TestLex(t *testing.T) {
 		{
 			input: "123 == 321",
 			expected: []Token{
-				Token{NUMBER, Position{1, 1, 3}, 123},
+				Token{INTVALUE, Position{1, 1, 3}, 123},
 				Token{EQUAL, Position{1, 5, 2}, nil},
-				Token{NUMBER, Position{1, 8, 3}, 321},
+				Token{INTVALUE, Position{1, 8, 3}, 321},
 			},
 		},
 
@@ -35,7 +35,7 @@ func TestLex(t *testing.T) {
 				Token{TYPE, Position{1, 1, 3}, INT32},
 				Token{IDENT, Position{1, 5, 3}, "ben"},
 				Token{INFERASSIGN, Position{1, 9, 2}, nil},
-				Token{NUMBER, Position{1, 12, 2}, 23},
+				Token{INTVALUE, Position{1, 12, 2}, 23},
 			},
 		},
 	}
