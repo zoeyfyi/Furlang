@@ -12,16 +12,14 @@ build:
             name: Populate cache
             code: |
                 if test -d "$WERCKER_CACHE_DIR/bin"; then cp -r $WERCKER_CACHE_DIR/bin $GOPATH/bin ; fi
-                if test -d "$WERCKER_CACHE_DIR/vendor"; then cp -r $WERCKER_CACHE_DIR/vendor $GOPATH/src/github.com/bongo227/Furlang/ ; fi
 
         - script:
             name: Install dependencys
             cwd: $GOPATH/src/github.com/bongo227/Furlang/
             code: |
-                if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get github.com/kardianos/govendor ; fi
                 if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get github.com/golang/lint/golint ; fi
                 if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get honnef.co/go/unused/cmd/unused ; fi
-                govendor sync
+                go get ./...
 
         - script:
             name: Build project
@@ -34,7 +32,7 @@ build:
             name: Go test
             cwd: $GOPATH/src/github.com/bongo227/Furlang/
             code: |
-                govendor test +local
+                go test ./...
         
         - script:
             name: Intergration Tests
@@ -47,25 +45,18 @@ build:
             name: Go lint
             cwd: $GOPATH/src/github.com/bongo227/Furlang/
             code: |
-                golint
-                golint compiler/*
-                golint lexer/lexer.go
-                golint lexer/lexer_test.go
-                golint lexer/tokens.go
+                golint ./...
 
         - script:
             name: Dead code check
             cwd: $GOPATH/src/github.com/bongo227/Furlang/
             code: |
-                unused
-                unused compiler/*
-                unused lexer/*
+                unused ./...
 
         - script:
             name: Store cache
             cwd: $GOPATH/src/github.com/bongo227/Furlang/
             code: |-
-                cp -r vendor $WERCKER_CACHE_DIR
                 cp -r $GOPATH/bin $WERCKER_CACHE_DIR/bin
 
 dev:
@@ -77,10 +68,9 @@ dev:
                 ln -s /pipeline/source $GOPATH/src/github.com/bongo227/Furlang
                 cd $GOPATH/src/github.com/bongo227/Furlang/
                 if test -d "$WERCKER_CACHE_DIR/bin"; then cp -r $WERCKER_CACHE_DIR/bin $GOPATH/bin ; fi
-                if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get github.com/kardianos/govendor ; fi
                 if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get github.com/golang/lint/golint ; fi
-                if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get go get honnef.co/go/unused/cmd/unused ; fi
-                govendor sync
+                if test ! -d "$WERCKER_CACHE_DIR/bin"; then go get honnef.co/go/unused/cmd/unused ; fi
+                go get ./...
                 mkdir -p build
 
         - internal/shell:
@@ -90,10 +80,11 @@ dev:
                 alias help="printf 'build - Builds the compiler\nclean - Cleans up the build directory\ntest - Runs all the tests\nhelp - Prints the help text\n'"
                 alias build="go build -o build/furlang"
                 alias clean="rm build/*"
-                alias test="govendor test +local"
+                alias test="go test ./..."
                 alias itest="bash makeTests.sh && bats build/tests.bats"
-                alias lint="golint && golint compiler/* && golint lexer/*"
-                alias dead="unused && unused compiler/* && unused lexer/*"
+                alias lint="golint ./..."
+                alias dead="unused ./..."
                 alias ftest="test && itest && lint && dead"
+                PS1="> "
                 clear
                 help
