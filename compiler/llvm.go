@@ -3,10 +3,12 @@ package compiler
 import (
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/goory"
+	"github.com/bongo227/goory/value"
+	"github.com/bongo227/goory/types"
 )
 
 type expression interface {
-	compile(*compileInfo) goory.Value
+	compile(*compileInfo) value.Value
 }
 
 type compileInfo struct {
@@ -17,10 +19,10 @@ type compileInfo struct {
 
 type scope struct {
 	outerScope *scope
-	values     map[string]goory.Value
+	values     map[string]value.Value
 }
 
-func (s *scope) find(search string) goory.Value {
+func (s *scope) find(search string) value.Value {
 	currentScope := s
 	for true {
 		if value := currentScope.values[search]; value != nil {
@@ -34,24 +36,24 @@ func (s *scope) find(search string) goory.Value {
 	return nil
 }
 
-func gooryType(tokenType lexer.TokenType) goory.Type {
+func gooryType(tokenType lexer.TokenType) types.Type {
 	switch tokenType {
 	case lexer.INT:
-		return goory.IntType
+		return goory.IntType(32)
 	case lexer.INT8:
-		return goory.Int8Type
+		return goory.IntType(8)
 	case lexer.INT16:
-		return goory.Int16Type
+		return goory.IntType(16)
 	case lexer.INT32:
-		return goory.Int32Type
+		return goory.IntType(32)
 	case lexer.INT64:
-		return goory.Int64Type
+		return goory.IntType(64)
 	case lexer.FLOAT:
-		return goory.FloatType
+		return goory.FloatType()
 	case lexer.FLOAT32:
-		return goory.Float32Type
+		return goory.FloatType()
 	case lexer.FLOAT64:
-		return goory.Float64Type
+		return goory.DoubleType()
 	default:
 		panic("Unkown type")
 	}
@@ -65,24 +67,20 @@ func Llvm(ast *syntaxTree) string {
 	for _, f := range ast.functions {
 		// Create a new function in module
 		returnType := gooryType(f.returns[0].nameType)
-		argType := make([]goory.Type, len(f.args))
-		for i, a := range f.args {
-			argType[i] = gooryType(a.nameType)
-		}
-		function := module.NewFunction(f.name, returnType, argType...)
-		functions[function.Name()] = function
-
+		function := module.NewFunction(f.name, returnType)
+		
 		// Create the root scope
 		rootScope := scope{
 			outerScope: nil,
-			values:     make(map[string]goory.Value, 1000),
+			values:     make(map[string]value.Value, 1000),
 		}
-
-		// Added parameters to scope
-		pValues := function.Parameters()
-		for i, a := range f.args {
-			rootScope.values[a.name] = pValues[i]
+		
+		// Add parameters to root scope
+		for _, a := range f.args {
+			rootScope.values[a.name] = function.AddArgument(gooryType(a.nameType), a.name)
 		}
+		
+		functions[function.Name()] = function
 
 		ci := &compileInfo{
 			functions: functions,
@@ -107,7 +105,7 @@ func compileBlock(eBlock block, ci *compileInfo) *goory.Block {
 		block: newBlock,
 		scope: &scope{
 			outerScope: ci.scope,
-			values:     make(map[string]goory.Value),
+			values:     make(map[string]value.Value),
 		},
 	}
 
@@ -119,7 +117,7 @@ func compileBlock(eBlock block, ci *compileInfo) *goory.Block {
 }
 
 // Blocks
-func (e block) compile(ci *compileInfo) goory.Value {
+func (e block) compile(ci *compileInfo) value.Value {
 	newBlock := compileBlock(e, ci)
 	ci.block.Br(newBlock)
 	ci.block = ci.block.Function().AddBlock()
@@ -128,13 +126,13 @@ func (e block) compile(ci *compileInfo) goory.Value {
 }
 
 // Assignment
-func (e assignment) compile(ci *compileInfo) goory.Value {
+func (e assignment) compile(ci *compileInfo) value.Value {
 	value := e.value.compile(ci)
 
 	if e.nameType != lexer.ILLEGAL {
 		assignmentType := gooryType(e.nameType)
 		if value.Type() != assignmentType {
-			ci.scope.values[e.name] = ci.block.Cast(value, assignmentType).Value()
+			ci.scope.values[e.name] = ci.block.Cast(value, assignmentType)
 		} else {
 			ci.scope.values[e.name] = value
 		}
@@ -147,24 +145,24 @@ func (e assignment) compile(ci *compileInfo) goory.Value {
 }
 
 // Functions
-func (e function) compile(ci *compileInfo) goory.Value {
+func (e function) compile(ci *compileInfo) value.Value {
 	panic("Cannot embed instructions (yet)")
 }
 
 // Returns
-func (e ret) compile(ci *compileInfo) goory.Value {
+func (e ret) compile(ci *compileInfo) value.Value {
 	value := e.returns[0].compile(ci)
 
-	return ci.block.Ret(value).Value()
+	return ci.block.Ret(value)
 }
 
 // ifBlock
-func (e ifBlock) compile(ci *compileInfo) goory.Value {
+func (e ifBlock) compile(ci *compileInfo) value.Value {
 	return e.block.compile(ci)
 }
 
 // ifExpression
-func (e ifExpression) compile(ci *compileInfo) goory.Value {
+func (e ifExpression) compile(ci *compileInfo) value.Value {
 	switch len(e.blocks) {
 	case 1:
 		trueBlock := compileBlock(e.blocks[0].block, ci)
@@ -187,7 +185,7 @@ func (e ifExpression) compile(ci *compileInfo) goory.Value {
 		ci.block.CondBr(
 			e.blocks[0].condition.compile(ci),
 			trueBlock,
-			falseBlock).Value()
+			falseBlock)
 
 		if !trueBlock.Terminated() && !falseBlock.Terminated() {
 			ci.block = ci.block.Function().AddBlock()
@@ -207,104 +205,104 @@ func (e ifExpression) compile(ci *compileInfo) goory.Value {
 }
 
 // Name
-func (e name) compile(ci *compileInfo) goory.Value {
+func (e name) compile(ci *compileInfo) value.Value {
 	return ci.scope.find(e.name)
 }
 
 // Boolean
-func (e boolean) compile(ci *compileInfo) goory.Value {
-	return goory.ConstBool(e.value)
+func (e boolean) compile(ci *compileInfo) value.Value {
+	return goory.Constant(goory.BoolType(), e.value)
 }
 
 // Addition
-func (e addition) compile(ci *compileInfo) goory.Value {
-	return ci.block.Add(e.lhs.compile(ci), e.rhs.compile(ci)).Value()
+func (e addition) compile(ci *compileInfo) value.Value {
+	return ci.block.Add(e.lhs.compile(ci), e.rhs.compile(ci))
 }
 
 // Subtraction
-func (e subtraction) compile(ci *compileInfo) goory.Value {
-	return ci.block.Sub(e.lhs.compile(ci), e.rhs.compile(ci)).Value()
+func (e subtraction) compile(ci *compileInfo) value.Value {
+	return ci.block.Sub(e.lhs.compile(ci), e.rhs.compile(ci))
 }
 
 // Multiplication
-func (e multiplication) compile(ci *compileInfo) goory.Value {
-	return ci.block.Mul(e.lhs.compile(ci), e.rhs.compile(ci)).Value()
+func (e multiplication) compile(ci *compileInfo) value.Value {
+	return ci.block.Mul(e.lhs.compile(ci), e.rhs.compile(ci))
 }
 
 // floatDivision
-func (e floatDivision) compile(ci *compileInfo) goory.Value {
-	return ci.block.Fdiv(e.lhs.compile(ci), e.rhs.compile(ci)).Value()
+func (e floatDivision) compile(ci *compileInfo) value.Value {
+	return ci.block.Fdiv(e.lhs.compile(ci), e.rhs.compile(ci))
 }
 
 // intDivision
-func (e intDivision) compile(ci *compileInfo) goory.Value {
-	return ci.block.Div(e.lhs.compile(ci), e.rhs.compile(ci)).Value()
+func (e intDivision) compile(ci *compileInfo) value.Value {
+	return ci.block.Div(e.lhs.compile(ci), e.rhs.compile(ci))
 }
 
 // lessThan
-func (e lessThan) compile(ci *compileInfo) goory.Value {
+func (e lessThan) compile(ci *compileInfo) value.Value {
 	lhs := e.lhs.compile(ci)
 	rhs := e.rhs.compile(ci)
 
-	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
-		return ci.block.ICmp(goory.IModeSlt(), lhs, rhs).Value()
+	if types.IsInteger(lhs.Type()) {
+		return ci.block.Icmp(goory.IntSlt, lhs, rhs)
 	}
 
-	return ci.block.FCmp(goory.FModeUlt(), lhs, rhs).Value()
+	return ci.block.Fcmp(goory.FloatOlt, lhs, rhs)
 }
 
 // moreThan
-func (e moreThan) compile(ci *compileInfo) goory.Value {
+func (e moreThan) compile(ci *compileInfo) value.Value {
 	lhs := e.lhs.compile(ci)
 	rhs := e.rhs.compile(ci)
 
-	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
-		return ci.block.ICmp(goory.IModeSgt(), lhs, rhs).Value()
+	if types.IsInteger(lhs.Type()) {
+		return ci.block.Icmp(goory.IntSgt, lhs, rhs)
 	}
 
-	return ci.block.FCmp(goory.FModeUgt(), lhs, rhs).Value()
+	return ci.block.Fcmp(goory.FloatOgt, lhs, rhs)
 }
 
 // equal
-func (e equal) compile(ci *compileInfo) goory.Value {
+func (e equal) compile(ci *compileInfo) value.Value {
 	lhs := e.lhs.compile(ci)
 	rhs := e.rhs.compile(ci)
 
-	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
-		return ci.block.ICmp(goory.IModeEq(), lhs, rhs).Value()
+	if types.IsInteger(lhs.Type()) {
+		return ci.block.Icmp(goory.IntEq, lhs, rhs)
 	}
 
-	return ci.block.FCmp(goory.FModeUeq(), lhs, rhs).Value()
+	return ci.block.Fcmp(goory.FloatOeq, lhs, rhs)
 }
 
 // notEqual
-func (e notEqual) compile(ci *compileInfo) goory.Value {
+func (e notEqual) compile(ci *compileInfo) value.Value {
 	lhs := e.lhs.compile(ci)
 	rhs := e.rhs.compile(ci)
 
-	if lhs.Type() == goory.Int32Type || lhs.Type() == goory.Int64Type {
-		return ci.block.ICmp(goory.IModeNe(), lhs, rhs).Value()
+	if types.IsInteger(lhs.Type()) {
+		return ci.block.Icmp(goory.IntNe, lhs, rhs)
 	}
 
-	return ci.block.FCmp(goory.FModeUne(), lhs, rhs).Value()
+	return ci.block.Fcmp(goory.FloatOne, lhs, rhs)
 }
 
 // number
-func (e number) compile(ci *compileInfo) goory.Value {
-	return goory.ConstInt32(int32(e.value))
+func (e number) compile(ci *compileInfo) value.Value {
+	return goory.Constant(goory.IntType(32), int32(e.value))
 }
 
 // float
-func (e float) compile(ci *compileInfo) goory.Value {
-	return goory.ConstFloat32(float32(e.value))
+func (e float) compile(ci *compileInfo) value.Value {
+	return goory.Constant(goory.FloatType(), float32(e.value))
 }
 
 // call
-func (e call) compile(ci *compileInfo) goory.Value {
-	args := make([]goory.Value, len(e.args))
+func (e call) compile(ci *compileInfo) value.Value {
+	args := make([]value.Value, len(e.args))
 	for i, a := range e.args {
 		args[i] = a.compile(ci)
 	}
 
-	return ci.block.Call(ci.functions[e.function], args...).Value()
+	return ci.block.Call(ci.functions[e.function], args...)
 }
