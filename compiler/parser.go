@@ -10,7 +10,7 @@ import (
 	"github.com/oleiade/lane"
 )
 
-const enableLogging = false
+const enableLogging = true
 
 type typedName struct {
 	nameType lexer.TokenType
@@ -50,6 +50,24 @@ type assignment struct {
 	name     string
 	nameType lexer.TokenType
 	value    expression
+}
+
+type increment struct {
+	name string
+}
+
+type decrement struct {
+	name string
+}
+
+type incrementExpression struct {
+	name   string
+	amount expression
+}
+
+type decrementExpression struct {
+	name   string
+	amount expression
 }
 
 type boolean struct {
@@ -557,6 +575,32 @@ func (p *parser) cast() cast {
 	}
 }
 
+func (p *parser) increment() expression {
+	p.log("Start Increment", true)
+	defer p.log("End Increment", false)
+
+	name := p.expect(lexer.IDENT).Value.(string)
+	var expr expression
+	switch p.currentToken().Type {
+	case lexer.INCREMENT:
+		p.nextToken()
+		expr = increment{name}
+	case lexer.DECREMENT:
+		p.nextToken()
+		expr = decrement{name}
+	case lexer.INCREMENTEQUAL:
+		p.nextToken()
+		expr = incrementExpression{name, p.maths()}
+	case lexer.DECREMENTEQUAL:
+		p.nextToken()
+		expr = decrementExpression{name, p.maths()}
+	}
+
+	p.clearNewLines()
+
+	return expr
+}
+
 func (p *parser) expression() expression {
 	p.log("Start Expression", true)
 	defer p.log("End Expression", false)
@@ -576,6 +620,8 @@ func (p *parser) expression() expression {
 		return p.cast()
 	case lexer.IDENT:
 		switch p.peekNextToken().Type {
+		case lexer.INCREMENT, lexer.DECREMENT, lexer.INCREMENTEQUAL, lexer.DECREMENTEQUAL:
+			return p.increment()
 		case lexer.INFERASSIGN:
 			return p.inferAssignment()
 		default:

@@ -47,14 +47,16 @@ var (
 	}
 
 	multiSymbolMap = map[TokenType][]TokenType{
-		ARROW:       []TokenType{MINUS, MORETHAN},
-		INFERASSIGN: []TokenType{COLON, ASSIGN},
-		DOUBLECOLON: []TokenType{COLON, COLON},
-		INTDIVIDE:   []TokenType{FLOATDIVIDE, FLOATDIVIDE},
-		INCREMENT:   []TokenType{PLUS, PLUS},
-		DECREMENT:   []TokenType{MINUS, MINUS},
-		EQUAL:       []TokenType{ASSIGN, ASSIGN},
-		NOTEQUAL:    []TokenType{BANG, ASSIGN},
+		ARROW:          []TokenType{MINUS, MORETHAN},
+		INFERASSIGN:    []TokenType{COLON, ASSIGN},
+		DOUBLECOLON:    []TokenType{COLON, COLON},
+		INTDIVIDE:      []TokenType{FLOATDIVIDE, FLOATDIVIDE},
+		INCREMENT:      []TokenType{PLUS, PLUS},
+		DECREMENT:      []TokenType{MINUS, MINUS},
+		EQUAL:          []TokenType{ASSIGN, ASSIGN},
+		NOTEQUAL:       []TokenType{BANG, ASSIGN},
+		INCREMENTEQUAL: []TokenType{PLUS, ASSIGN},
+		DECREMENTEQUAL: []TokenType{MINUS, ASSIGN},
 	}
 )
 

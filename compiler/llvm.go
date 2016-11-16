@@ -41,6 +41,21 @@ func (s *scope) find(search string, block *goory.Block) value.Value {
 	return nil
 }
 
+func (s *scope) set(search string, block *goory.Block, value value.Value) {
+	currentScope := s
+	for true {
+		if searchValue := currentScope.values[search]; searchValue != nil {
+			block.Store(searchValue.(*instructions.Alloca), value)
+			return
+		}
+		if currentScope.outerScope == nil {
+			panic(search + " is not in scope")
+		}
+		currentScope = currentScope.outerScope
+	}
+	panic(search + " is not in scope")
+}
+
 func gooryType(tokenType lexer.TokenType) types.Type {
 	switch tokenType {
 	case lexer.INT:
@@ -127,6 +142,42 @@ func (e block) compile(ci *compileInfo) value.Value {
 	ci.block.Br(newBlock)
 	ci.block = ci.block.Function().AddBlock()
 	newBlock.Br(ci.block)
+	return nil
+}
+
+// Increment
+func (e increment) compile(ci *compileInfo) value.Value {
+	value := ci.scope.find(e.name, ci.block)
+	temp := ci.block.Add(value, goory.Constant(value.Type(), 1))
+	ci.scope.set(e.name, ci.block, temp)
+
+	return nil
+}
+
+// Decrement
+func (e decrement) compile(ci *compileInfo) value.Value {
+	value := ci.scope.find(e.name, ci.block)
+	temp := ci.block.Sub(value, goory.Constant(value.Type(), 1))
+	ci.scope.set(e.name, ci.block, temp)
+
+	return nil
+}
+
+// Increment expression
+func (e incrementExpression) compile(ci *compileInfo) value.Value {
+	value := ci.scope.find(e.name, ci.block)
+	temp := ci.block.Add(value, e.amount.compile(ci))
+	ci.scope.set(e.name, ci.block, temp)
+
+	return nil
+}
+
+// Decrement expression
+func (e decrementExpression) compile(ci *compileInfo) value.Value {
+	value := ci.scope.find(e.name, ci.block)
+	temp := ci.block.Sub(value, e.amount.compile(ci))
+	ci.scope.set(e.name, ci.block, temp)
+
 	return nil
 }
 
