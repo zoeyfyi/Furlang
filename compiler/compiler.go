@@ -50,7 +50,7 @@ func (c *Compiler) Compile(buildDirector string) error {
 	if c.OutputTokens {
 		f, err := os.Create(buildDirector + "/tokens.txt")
 		if err != nil {
-			return fmt.Errorf("Problem creating tokens file: %s\n", err.Error())
+			return fmt.Errorf("problem creating tokens file: %s", err.Error())
 		}
 		defer f.Close()
 
@@ -67,7 +67,7 @@ func (c *Compiler) Compile(buildDirector string) error {
 	if c.OutputAst {
 		f, err := os.Create(buildDirector + "/ast.txt")
 		if err != nil {
-			return fmt.Errorf("Problem creating ast file: %s\n", err.Error())
+			return fmt.Errorf("problem creating ast file: %s", err.Error())
 		}
 		defer f.Close()
 
@@ -80,7 +80,7 @@ func (c *Compiler) Compile(buildDirector string) error {
 		llvm := Llvm(&ast)
 		f, err := os.Create(buildDirector + "/ben.ll")
 		if err != nil {
-			return fmt.Errorf("Problem creating llvm ir file: %s\n", err.Error())
+			return fmt.Errorf("problem creating llvm ir file: %s", err.Error())
 		}
 		defer f.Close()
 

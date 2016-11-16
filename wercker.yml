@@ -77,7 +77,7 @@ dev:
             cmd: /bin/bash
             code: |
                 cd $GOPATH/src/github.com/bongo227/Furlang/
-                alias help="printf 'build - Builds the compiler\nclean - Cleans up the build directory\ntest - Runs all the tests\nhelp - Prints the help text\n'"
+                alias help="printf 'build - Builds the compiler\nclean - Cleans up the build directory\ntest - Runs go tests\nhelp - Prints the help text\nitest - Runs intergration tests\nlint - Runs go linter\ndead - runs dead code test\nftest - Runs full test suite\n'"
                 alias build="go build -o build/furlang"
                 alias clean="rm build/*"
                 alias test="go test ./..."
