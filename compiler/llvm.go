@@ -3,8 +3,8 @@ package compiler
 import (
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/goory"
-	"github.com/bongo227/goory/value"
 	"github.com/bongo227/goory/types"
+	"github.com/bongo227/goory/value"
 )
 
 type expression interface {
@@ -68,18 +68,18 @@ func Llvm(ast *syntaxTree) string {
 		// Create a new function in module
 		returnType := gooryType(f.returns[0].nameType)
 		function := module.NewFunction(f.name, returnType)
-		
+
 		// Create the root scope
 		rootScope := scope{
 			outerScope: nil,
 			values:     make(map[string]value.Value, 1000),
 		}
-		
+
 		// Add parameters to root scope
 		for _, a := range f.args {
 			rootScope.values[a.name] = function.AddArgument(gooryType(a.nameType), a.name)
 		}
-		
+
 		functions[function.Name()] = function
 
 		ci := &compileInfo{
@@ -207,6 +207,11 @@ func (e ifExpression) compile(ci *compileInfo) value.Value {
 // Name
 func (e name) compile(ci *compileInfo) value.Value {
 	return ci.scope.find(e.name)
+}
+
+// Cast
+func (e cast) compile(ci *compileInfo) value.Value {
+	return ci.block.Cast(e.value.compile(ci), gooryType(e.cast))
 }
 
 // Boolean

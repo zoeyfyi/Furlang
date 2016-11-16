@@ -1,0 +1,4 @@
+main :: -> i8 {
+    i32 i = 123
+    return (i8)i
+}

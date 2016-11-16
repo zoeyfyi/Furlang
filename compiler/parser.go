@@ -37,6 +37,11 @@ type name struct {
 	name string
 }
 
+type cast struct {
+	cast  lexer.TokenType
+	value expression
+}
+
 type ret struct {
 	returns []expression
 }
@@ -538,6 +543,20 @@ func (p *parser) ifBlock() ifExpression {
 	}
 }
 
+func (p *parser) cast() cast {
+	p.log("Start Cast", true)
+	defer p.log("End Cast", false)
+
+	p.expect(lexer.OPENBRACKET)
+	castType := p.expect(lexer.TYPE).Value.(lexer.TokenType)
+	p.expect(lexer.CLOSEBRACKET)
+
+	return cast{
+		cast:  castType,
+		value: p.maths(),
+	}
+}
+
 func (p *parser) expression() expression {
 	p.log("Start Expression", true)
 	defer p.log("End Expression", false)
@@ -553,6 +572,8 @@ func (p *parser) expression() expression {
 		return p.block()
 	case lexer.TYPE:
 		return p.assignment()
+	case lexer.OPENBRACKET:
+		return p.cast()
 	case lexer.IDENT:
 		switch p.peekNextToken().Type {
 		case lexer.INFERASSIGN:

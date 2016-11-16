@@ -1,0 +1,4 @@
+main :: -> i16 {
+    i16 i = 123
+    return i
+}

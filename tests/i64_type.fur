@@ -1,0 +1,4 @@
+main :: -> i64 {
+    i64 i = 123
+    return i
+}
