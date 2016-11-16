@@ -3,6 +3,7 @@ package compiler
 import (
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/goory"
+	"github.com/bongo227/goory/instructions"
 	"github.com/bongo227/goory/types"
 	"github.com/bongo227/goory/value"
 )
@@ -22,10 +23,14 @@ type scope struct {
 	values     map[string]value.Value
 }
 
-func (s *scope) find(search string) value.Value {
+func (s *scope) find(search string, block *goory.Block) value.Value {
 	currentScope := s
 	for true {
 		if value := currentScope.values[search]; value != nil {
+			if allocation, ok := value.(*instructions.Alloca); ok {
+				return block.Load(allocation)
+			}
+
 			return value
 		}
 		if currentScope.outerScope == nil {
@@ -129,18 +134,19 @@ func (e block) compile(ci *compileInfo) value.Value {
 func (e assignment) compile(ci *compileInfo) value.Value {
 	value := e.value.compile(ci)
 
+	// Cast to correct type
 	if e.nameType != lexer.ILLEGAL {
 		assignmentType := gooryType(e.nameType)
 		if value.Type() != assignmentType {
-			ci.scope.values[e.name] = ci.block.Cast(value, assignmentType)
-		} else {
-			ci.scope.values[e.name] = value
+			value = ci.block.Cast(value, assignmentType)
 		}
-
-		return nil
 	}
 
-	ci.scope.values[e.name] = value
+	// Allocate space for varible
+	allocation := ci.block.Alloca(value.Type())
+	ci.block.Store(allocation, value)
+
+	ci.scope.values[e.name] = allocation
 	return nil
 }
 
@@ -206,7 +212,7 @@ func (e ifExpression) compile(ci *compileInfo) value.Value {
 
 // Name
 func (e name) compile(ci *compileInfo) value.Value {
-	return ci.scope.find(e.name)
+	return ci.scope.find(e.name, ci.block)
 }
 
 // Cast
