@@ -111,6 +111,13 @@ type ifBlock struct {
 	block     block
 }
 
+type forExpression struct {
+	index     expression
+	condition expression
+	increment expression
+	block     block
+}
+
 type syntaxTree struct {
 	functions []function
 }
@@ -601,17 +608,38 @@ func (p *parser) increment() expression {
 	return expr
 }
 
+func (p *parser) forExpression() forExpression {
+	p.log("Start for", true)
+	defer p.log("End for", false)
+
+	p.expect(lexer.FOR)
+
+	index := p.inferAssignment()
+	p.expect(lexer.SEMICOLON)
+
+	condition := p.maths()
+	p.expect(lexer.SEMICOLON)
+
+	increment := p.increment()
+
+	block := p.block()
+
+	return forExpression{index, condition, increment, block}
+}
+
 func (p *parser) expression() expression {
 	p.log("Start Expression", true)
 	defer p.log("End Expression", false)
 
 	switch p.currentToken().Type {
 	case lexer.DOUBLECOLON:
-		return expression(p.function())
+		return p.function()
 	case lexer.RETURN:
-		return expression(p.ret())
+		return p.ret()
 	case lexer.IF:
-		return expression(p.ifBlock())
+		return p.ifBlock()
+	case lexer.FOR:
+		return p.forExpression()
 	case lexer.OPENBODY:
 		return p.block()
 	case lexer.TYPE:

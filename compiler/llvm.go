@@ -145,6 +145,28 @@ func (e block) compile(ci *compileInfo) value.Value {
 	return nil
 }
 
+func (e forExpression) compile(ci *compileInfo) value.Value {
+	// Compile for loop index varible
+	e.index.compile(ci)
+
+	// Branch into for loop
+	condition := e.condition.compile(ci)
+	newBlock := compileBlock(e.block, ci)
+	falseBlock := ci.block.Function().AddBlock()
+	ci.block.CondBr(condition, newBlock, falseBlock)
+
+	// Branch to continue or exit
+	ci.block = newBlock
+	e.increment.compile(ci)
+	condition = e.condition.compile(ci)
+	ci.block.CondBr(condition, newBlock, falseBlock)
+
+	// Continue from falseBlock
+	ci.block = falseBlock
+
+	return nil
+}
+
 // Increment
 func (e increment) compile(ci *compileInfo) value.Value {
 	value := ci.scope.find(e.name, ci.block)
