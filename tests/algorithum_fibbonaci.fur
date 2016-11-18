@@ -1,0 +1,11 @@
+fib :: i32 n -> i32 {
+    if n < 2 {
+        return n
+    }
+
+    return fib(n - 1) + fib(n - 2)
+}
+
+main :: -> i32 {
+    return fib(12) - 21
+}
