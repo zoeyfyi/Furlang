@@ -101,7 +101,6 @@ func Llvm(ast *syntaxTree) string {
 		}
 
 		functions[function.Name()] = function
-
 		ci := &compileInfo{
 			functions: functions,
 			block:     function.Entry(),
@@ -122,7 +121,8 @@ func compileBlock(eBlock block, ci *compileInfo) *goory.Block {
 
 	// Create new compiler infomation
 	newCi := &compileInfo{
-		block: newBlock,
+		functions: ci.functions,
+		block:     newBlock,
 		scope: &scope{
 			outerScope: ci.scope,
 			values:     make(map[string]value.Value),
@@ -223,17 +223,18 @@ func (e ifExpression) compile(ci *compileInfo) value.Value {
 	switch len(e.blocks) {
 	case 1:
 		trueBlock := compileBlock(e.blocks[0].block, ci)
+		falseBlock := ci.block.Function().AddBlock()
+
 		ci.block.CondBr(
 			e.blocks[0].condition.compile(ci),
 			trueBlock,
-			nil)
+			falseBlock)
 
 		if !trueBlock.Terminated() {
-			oldBlock := ci.block
-			ci.block = ci.block.Function().AddBlock()
-			oldBlock.Br(ci.block)
-			trueBlock.Br(ci.block)
+			trueBlock.Br(falseBlock)
 		}
+
+		ci.block = falseBlock
 
 	case 2:
 		trueBlock := compileBlock(e.blocks[0].block, ci)

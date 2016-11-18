@@ -1,0 +1,15 @@
+gcd :: i32 x, i32 y -> i32 {
+    if x == y {
+        return x
+    }
+
+    if x < y {
+        return gcd(x, y - x)
+    }
+
+    return gcd(x - y, y)
+} 
+
+main :: -> i32 {
+    return gcd(1529, 14039) - 16
+}

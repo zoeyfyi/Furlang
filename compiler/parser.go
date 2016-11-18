@@ -10,7 +10,7 @@ import (
 	"github.com/oleiade/lane"
 )
 
-const enableLogging = true
+const enableLogging = false
 
 type typedName struct {
 	nameType lexer.TokenType

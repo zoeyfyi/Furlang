@@ -1,0 +1,10 @@
+main :: -> i32 {
+    i := 0
+    if true {
+        i += 123 
+    } else {
+        i += 321
+    }
+
+    return i
+}
