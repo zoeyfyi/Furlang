@@ -88,6 +88,7 @@ type lessThan binaryOperator
 type moreThan binaryOperator
 type equal binaryOperator
 type notEqual binaryOperator
+type mod binaryOperator
 
 type number struct {
 	value int
@@ -142,6 +143,7 @@ var (
 		lexer.MULTIPLY:    operator{5, false},
 		lexer.FLOATDIVIDE: operator{5, false},
 		lexer.INTDIVIDE:   operator{5, false},
+		lexer.MOD:         operator{5, false},
 	}
 )
 
@@ -381,6 +383,8 @@ func (p *parser) shuntingYard(tokens []lexer.Token) expression {
 			outputStack.Push(equal{lhs, rhs})
 		case lexer.NOTEQUAL:
 			outputStack.Push(notEqual{lhs, rhs})
+		case lexer.MOD:
+			outputStack.Push(mod{lhs, rhs})
 		}
 	}
 
@@ -400,7 +404,7 @@ func (p *parser) shuntingYard(tokens []lexer.Token) expression {
 			outputStack.Push(float{t.Value.(float32)})
 
 		case lexer.PLUS, lexer.MINUS, lexer.MULTIPLY, lexer.FLOATDIVIDE, lexer.INTDIVIDE,
-			lexer.MORETHAN, lexer.LESSTHAN, lexer.EQUAL, lexer.NOTEQUAL:
+			lexer.MORETHAN, lexer.LESSTHAN, lexer.EQUAL, lexer.NOTEQUAL, lexer.MOD:
 			for checkOperatorStack(opMap[t.Type]) {
 				popOperatorStack()
 			}

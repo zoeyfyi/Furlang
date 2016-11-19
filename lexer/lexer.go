@@ -21,6 +21,7 @@ var (
 		";":  SEMICOLON,
 		"=":  ASSIGN,
 		"!":  BANG,
+		"%":  MOD,
 	}
 
 	typeMap = map[string]TokenType{

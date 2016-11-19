@@ -62,6 +62,7 @@ const (
 	COLON
 	ASSIGN
 	BANG
+	MOD
 )
 
 // Position is the line and column and width of a token

@@ -1,6 +1,8 @@
 package compiler
 
 import (
+	"fmt"
+
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/goory"
 	"github.com/bongo227/goory/instructions"
@@ -116,7 +118,8 @@ func Llvm(ast *syntaxTree) string {
 	return module.LLVM()
 }
 
-func compileBlock(eBlock block, ci *compileInfo) *goory.Block {
+// compileBlock returns the start block to branch to and the final block (if you need to branch again)
+func (e block) compileBlock(ci *compileInfo) (start *goory.Block, end *goory.Block) {
 	newBlock := ci.block.Function().AddBlock()
 
 	// Create new compiler infomation
@@ -129,19 +132,19 @@ func compileBlock(eBlock block, ci *compileInfo) *goory.Block {
 		},
 	}
 
-	for _, e := range eBlock.expressions {
+	for _, e := range e.expressions {
 		e.compile(newCi)
 	}
 
-	return newBlock
+	return newBlock, newCi.block
 }
 
 // Blocks
 func (e block) compile(ci *compileInfo) value.Value {
-	newBlock := compileBlock(e, ci)
-	ci.block.Br(newBlock)
+	newStartBlock, newEndBlock := e.compileBlock(ci)
+	ci.block.Br(newStartBlock)
 	ci.block = ci.block.Function().AddBlock()
-	newBlock.Br(ci.block)
+	newEndBlock.Br(ci.block)
 	return nil
 }
 
@@ -149,17 +152,19 @@ func (e forExpression) compile(ci *compileInfo) value.Value {
 	// Compile for loop index varible
 	e.index.compile(ci)
 
+	fmt.Println("start of for loop", ci.block.Name())
+
 	// Branch into for loop
 	condition := e.condition.compile(ci)
-	newBlock := compileBlock(e.block, ci)
+	newStartBlock, newEndBlock := e.block.compileBlock(ci)
 	falseBlock := ci.block.Function().AddBlock()
-	ci.block.CondBr(condition, newBlock, falseBlock)
+	ci.block.CondBr(condition, newStartBlock, falseBlock)
 
 	// Branch to continue or exit
-	ci.block = newBlock
+	ci.block = newEndBlock
 	e.increment.compile(ci)
 	condition = e.condition.compile(ci)
-	ci.block.CondBr(condition, newBlock, falseBlock)
+	ci.block.CondBr(condition, newStartBlock, falseBlock)
 
 	// Continue from falseBlock
 	ci.block = falseBlock
@@ -244,37 +249,37 @@ func (e ifBlock) compile(ci *compileInfo) value.Value {
 func (e ifExpression) compile(ci *compileInfo) value.Value {
 	switch len(e.blocks) {
 	case 1:
-		trueBlock := compileBlock(e.blocks[0].block, ci)
+		trueBlockStart, trueBlockEnd := e.blocks[0].block.compileBlock(ci)
 		falseBlock := ci.block.Function().AddBlock()
 
 		ci.block.CondBr(
 			e.blocks[0].condition.compile(ci),
-			trueBlock,
+			trueBlockStart,
 			falseBlock)
 
-		if !trueBlock.Terminated() {
-			trueBlock.Br(falseBlock)
+		if !trueBlockEnd.Terminated() {
+			trueBlockEnd.Br(falseBlock)
 		}
 
 		ci.block = falseBlock
 
 	case 2:
-		trueBlock := compileBlock(e.blocks[0].block, ci)
-		falseBlock := compileBlock(e.blocks[1].block, ci)
+		trueBlockStart, trueBlockEnd := e.blocks[0].block.compileBlock(ci)
+		falseBlockStart, falseBlockEnd := e.blocks[1].block.compileBlock(ci)
 
 		ci.block.CondBr(
 			e.blocks[0].condition.compile(ci),
-			trueBlock,
-			falseBlock)
+			trueBlockStart,
+			falseBlockStart)
 
-		if !trueBlock.Terminated() && !falseBlock.Terminated() {
+		if !trueBlockEnd.Terminated() && !falseBlockEnd.Terminated() {
 			ci.block = ci.block.Function().AddBlock()
 		}
-		if !trueBlock.Terminated() {
-			trueBlock.Br(ci.block)
+		if !trueBlockEnd.Terminated() {
+			trueBlockEnd.Br(ci.block)
 		}
-		if !falseBlock.Terminated() {
-			falseBlock.Br(ci.block)
+		if !falseBlockEnd.Terminated() {
+			falseBlockEnd.Br(ci.block)
 		}
 
 	default:
@@ -370,6 +375,14 @@ func (e notEqual) compile(ci *compileInfo) value.Value {
 	}
 
 	return ci.block.Fcmp(goory.FloatOne, lhs, rhs)
+}
+
+// mod
+func (e mod) compile(ci *compileInfo) value.Value {
+	lhs := e.lhs.compile(ci)
+	rhs := e.rhs.compile(ci)
+
+	return ci.block.Srem(lhs, rhs)
 }
 
 // number
