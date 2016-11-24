@@ -6,11 +6,13 @@ import "strconv"
 var (
 	symbolMap = map[string]TokenType{
 		"\n": NEWLINE,
-		",":  COMMAN,
+		",":  COMMA,
 		"{":  OPENBODY,
 		"}":  CLOSEBODY,
 		"(":  OPENBRACKET,
 		")":  CLOSEBRACKET,
+		"[":  OPENSQUAREBRACKET,
+		"]":  CLOSESQUAREBRACKET,
 		"+":  PLUS,
 		"-":  MINUS,
 		"*":  MULTIPLY,

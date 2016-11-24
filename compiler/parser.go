@@ -7,10 +7,10 @@ import (
 
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/dprint"
-	"github.com/oleiade/lane"
+	"github.com/davecgh/go-spew/spew"
 )
 
-const enableLogging = false
+const enableLogging = true
 
 type typedName struct {
 	nameType lexer.TokenType
@@ -117,6 +117,18 @@ type forExpression struct {
 	condition expression
 	increment expression
 	block     block
+}
+
+type array struct {
+	name     string
+	baseType lexer.TokenType
+	length   int
+	values   []expression
+}
+
+type arrayValue struct {
+	name  string
+	index expression
 }
 
 type syntaxTree struct {
@@ -263,7 +275,7 @@ func (p *parser) typeList() []typedName {
 	ok := true
 	for ok {
 		names = append(names, p.typedName())
-		ok = p.accept(lexer.COMMAN)
+		ok = p.accept(lexer.COMMA)
 	}
 
 	return names
@@ -312,173 +324,10 @@ func (p *parser) ret() ret {
 	ok := true
 	for ok {
 		returns = append(returns, p.expression())
-		ok = p.currentToken().Type == lexer.COMMAN
+		ok = p.currentToken().Type == lexer.COMMA
 	}
 
 	return ret{returns}
-}
-
-// Uses shunting yard algoritum to convert
-func (p *parser) shuntingYard(tokens []lexer.Token) expression {
-	p.log("Start ShuntingYard", true)
-	defer p.log("End ShuntingYard", false)
-
-	outputStack := lane.NewStack()
-	operatorStack := lane.NewStack()
-	arityStack := lane.NewStack()
-
-	checkOperatorStack := func(op operator) bool {
-		// Check is stack is empty
-		if operatorStack.Empty() {
-			return false
-		}
-
-		// Check if stack is an operator
-		headType := operatorStack.Head().(lexer.Token).Type
-		if _, isOp := opMap[headType]; !isOp {
-			return false
-		}
-
-		// Check operator precendence
-		headPrecendence := opMap[headType].precendence
-		return (!op.right && op.precendence <= headPrecendence) ||
-			(op.right && op.precendence < headPrecendence)
-	}
-
-	popOperatorStack := func() {
-		operator := operatorStack.Pop()
-		token := operator.(lexer.Token)
-
-		if token.Type == lexer.IDENT {
-			argCount := arityStack.Pop().(int)
-
-			exp := call{function: token.Value.(string)}
-			for i := 0; i < argCount; i++ {
-				exp.args = append(exp.args, outputStack.Pop().(expression))
-			}
-
-			outputStack.Push(exp)
-			return
-		}
-
-		rhs := outputStack.Pop().(expression)
-		lhs := outputStack.Pop().(expression)
-
-		switch token.Type {
-		case lexer.PLUS:
-			outputStack.Push(addition{lhs, rhs})
-		case lexer.MINUS:
-			outputStack.Push(subtraction{lhs, rhs})
-		case lexer.MULTIPLY:
-			outputStack.Push(multiplication{lhs, rhs})
-		case lexer.FLOATDIVIDE:
-			outputStack.Push(floatDivision{lhs, rhs})
-		case lexer.INTDIVIDE:
-			outputStack.Push(intDivision{lhs, rhs})
-		case lexer.LESSTHAN:
-			outputStack.Push(lessThan{lhs, rhs})
-		case lexer.MORETHAN:
-			outputStack.Push(moreThan{lhs, rhs})
-		case lexer.EQUAL:
-			outputStack.Push(equal{lhs, rhs})
-		case lexer.NOTEQUAL:
-			outputStack.Push(notEqual{lhs, rhs})
-		case lexer.MOD:
-			outputStack.Push(mod{lhs, rhs})
-		}
-	}
-
-	for i, t := range tokens {
-		switch t.Type {
-
-		case lexer.TRUE:
-			outputStack.Push(boolean{true})
-
-		case lexer.FALSE:
-			outputStack.Push(boolean{false})
-
-		case lexer.INTVALUE:
-			outputStack.Push(number{t.Value.(int)})
-
-		case lexer.FLOATVALUE:
-			outputStack.Push(float{t.Value.(float32)})
-
-		case lexer.PLUS, lexer.MINUS, lexer.MULTIPLY, lexer.FLOATDIVIDE, lexer.INTDIVIDE,
-			lexer.MORETHAN, lexer.LESSTHAN, lexer.EQUAL, lexer.NOTEQUAL, lexer.MOD:
-			for checkOperatorStack(opMap[t.Type]) {
-				popOperatorStack()
-			}
-			operatorStack.Push(t)
-
-		case lexer.IDENT:
-			if i < len(tokens)-1 && tokens[i+1].Type == lexer.OPENBRACKET {
-				// Token is a function name, push it onto the operator stack
-				operatorStack.Push(t)
-				if tokens[i+2].Type == lexer.CLOSEBRACKET {
-					// 0 if function dosnt have any arguments
-					arityStack.Push(0)
-				} else {
-					// 1 if their is atleast 1 argument
-					arityStack.Push(1)
-				}
-			} else {
-				// Token is a varible name, push it onto the out queue
-				outputStack.Push(name{t.Value.(string)})
-			}
-
-		case lexer.OPENBRACKET:
-			operatorStack.Push(t)
-
-		case lexer.CLOSEBRACKET:
-			for operatorStack.Head().(lexer.Token).Type != lexer.OPENBRACKET {
-				popOperatorStack()
-			}
-
-			operatorStack.Pop() // pop open bracket
-
-			if operatorStack.Head().(lexer.Token).Type == lexer.IDENT {
-				popOperatorStack()
-			}
-
-			// if operatorStack.Empty() {
-			// 	panic("Mismatched parentheses")
-			// 	// return maths{}, Error{
-			// 	// 	err:        "Mismatched parentheses",
-			// 	// 	tokenRange: []token{t},
-			// 	// }
-			// }
-
-		case lexer.COMMAN:
-			// Increment argument count
-			as := arityStack.Pop().(int)
-			arityStack.Push(as + 1)
-
-			for operatorStack.Head().(lexer.Token).Type != lexer.OPENBRACKET {
-				popOperatorStack()
-			}
-
-			if operatorStack.Empty() {
-				panic("Misplaced comma or mismatched parentheses")
-				// return maths{}, Error{
-				// 	err:        "Misplaced comma or mismatched parentheses",
-				// 	tokenRange: []token{t},
-				// }
-			}
-
-		default:
-			panic("Unexpected math token: " + t.String())
-			// return maths{}, Error{
-			// 	err:        fmt.Sprintf("Unexpected math token: %s", t.String()),
-			// 	tokenRange: []token{t},
-			// }
-		}
-	}
-
-	for !operatorStack.Empty() {
-		popOperatorStack()
-	}
-
-	return outputStack.Pop().(expression)
 }
 
 func (p *parser) maths() expression {
@@ -487,14 +336,30 @@ func (p *parser) maths() expression {
 
 	var buffer []lexer.Token
 
+	depth := 0
+
 	for p.currentToken().Type != lexer.NEWLINE &&
 		p.currentToken().Type != lexer.SEMICOLON &&
-		p.currentToken().Type != lexer.OPENBODY {
+		p.currentToken().Type != lexer.OPENBODY &&
+		p.currentToken().Type != lexer.CLOSEBODY &&
+		!(p.currentToken().Type == lexer.COMMA && depth == 0) {
+
+		token := p.currentToken()
+
+		if token.Type == lexer.OPENBRACKET {
+			depth++
+		}
+
+		if token.Type == lexer.CLOSEBRACKET {
+			depth--
+		}
 
 		buffer = append(buffer, p.currentToken())
 		p.nextToken()
 	}
 	p.clearNewLines()
+
+	spew.Dump(buffer)
 
 	return p.shuntingYard(buffer)
 }
@@ -521,7 +386,7 @@ func (p *parser) inferAssignment() expression {
 
 	name := p.expect(lexer.IDENT).Value.(string)
 	p.expect(lexer.INFERASSIGN)
-	value := p.maths()
+	value := p.expression()
 
 	return assignment{
 		name:     name,
@@ -631,6 +496,32 @@ func (p *parser) forExpression() forExpression {
 	return forExpression{index, condition, increment, block}
 }
 
+func (p *parser) array() array {
+	p.log("Start array", true)
+	defer p.log("End array", false)
+
+	p.expect(lexer.OPENSQUAREBRACKET)
+	length := p.expect(lexer.INTVALUE).Value.(int)
+	p.expect(lexer.CLOSESQUAREBRACKET)
+	arrayType := p.expect(lexer.TYPE)
+	p.expect(lexer.OPENBODY)
+
+	array := array{
+		length:   length,
+		baseType: arrayType.Value.(lexer.TokenType),
+	}
+
+	for p.currentToken().Type != lexer.CLOSEBODY {
+		array.values = append(array.values, p.maths())
+		p.accept(lexer.COMMA)
+	}
+
+	p.expect(lexer.CLOSEBODY)
+	p.clearNewLines()
+
+	return array
+}
+
 func (p *parser) expression() expression {
 	p.log("Start Expression", true)
 	defer p.log("End Expression", false)
@@ -646,6 +537,8 @@ func (p *parser) expression() expression {
 		return p.forExpression()
 	case lexer.OPENBODY:
 		return p.block()
+	case lexer.OPENSQUAREBRACKET:
+		return p.array()
 	case lexer.TYPE:
 		return p.assignment()
 	case lexer.OPENBRACKET:

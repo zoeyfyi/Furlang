@@ -172,6 +172,21 @@ func (e forExpression) compile(ci *compileInfo) value.Value {
 	return nil
 }
 
+func (e array) compile(ci *compileInfo) value.Value {
+	arrType := goory.ArrayType(gooryType(e.baseType), e.length)
+
+	values := make([]value.Value, e.length)
+	for i, val := range e.values {
+		values[i] = val.compile(ci)
+	}
+
+	return goory.Constant(arrType, values)
+}
+
+func (e arrayValue) compile(ci *compileInfo) value.Value {
+	return ci.block.Extractvalue(ci.scope.find(e.name, ci.block), e.index.compile(ci))
+}
+
 // Increment
 func (e increment) compile(ci *compileInfo) value.Value {
 	value := ci.scope.find(e.name, ci.block)

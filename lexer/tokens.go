@@ -45,13 +45,15 @@ const (
 	DECREMENTEQUAL
 	EQUAL
 	NOTEQUAL
-	COMMAN
+	COMMA
 	SEMICOLON
 	NEWLINE
 	OPENBODY
 	CLOSEBODY
 	OPENBRACKET
 	CLOSEBRACKET
+	OPENSQUAREBRACKET
+	CLOSESQUAREBRACKET
 	PLUS
 	MINUS
 	MULTIPLY
@@ -64,6 +66,10 @@ const (
 	BANG
 	MOD
 )
+
+func (t TokenType) String() string {
+	return fmt.Sprintf("TokenType(%d)", t)
+}
 
 // Position is the line and column and width of a token
 type Position struct {
