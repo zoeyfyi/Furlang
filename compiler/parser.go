@@ -120,7 +120,6 @@ type forExpression struct {
 }
 
 type array struct {
-	name     string
 	baseType lexer.TokenType
 	length   int
 	values   []expression
