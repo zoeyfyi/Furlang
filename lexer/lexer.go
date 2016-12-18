@@ -1,193 +1,370 @@
 package lexer
 
-import "strconv"
-
-// Lexer maps
-var (
-	symbolMap = map[string]TokenType{
-		"\n": NEWLINE,
-		",":  COMMA,
-		"{":  OPENBODY,
-		"}":  CLOSEBODY,
-		"(":  OPENBRACKET,
-		")":  CLOSEBRACKET,
-		"[":  OPENSQUAREBRACKET,
-		"]":  CLOSESQUAREBRACKET,
-		"+":  PLUS,
-		"-":  MINUS,
-		"*":  MULTIPLY,
-		"/":  FLOATDIVIDE,
-		"<":  LESSTHAN,
-		">":  MORETHAN,
-		":":  COLON,
-		";":  SEMICOLON,
-		"=":  ASSIGN,
-		"!":  BANG,
-		"%":  MOD,
-	}
-
-	typeMap = map[string]TokenType{
-		// Integers
-		"int": INT,
-		"i8":  INT8,
-		"i16": INT16,
-		"i32": INT32,
-		"i64": INT64,
-		// Floats
-		"float": FLOAT,
-		"f32":   FLOAT32,
-		"f64":   FLOAT64,
-	}
-
-	nameMap = map[string]TokenType{
-		"return": RETURN,
-		"if":     IF,
-		"else":   ELSE,
-		"true":   TRUE,
-		"false":  FALSE,
-		"for":    FOR,
-		"range":  RANGE,
-	}
-
-	multiSymbolMap = map[TokenType][]TokenType{
-		ARROW:          []TokenType{MINUS, MORETHAN},
-		INFERASSIGN:    []TokenType{COLON, ASSIGN},
-		DOUBLECOLON:    []TokenType{COLON, COLON},
-		INTDIVIDE:      []TokenType{FLOATDIVIDE, FLOATDIVIDE},
-		INCREMENT:      []TokenType{PLUS, PLUS},
-		DECREMENT:      []TokenType{MINUS, MINUS},
-		EQUAL:          []TokenType{ASSIGN, ASSIGN},
-		NOTEQUAL:       []TokenType{BANG, ASSIGN},
-		INCREMENTEQUAL: []TokenType{PLUS, ASSIGN},
-		DECREMENTEQUAL: []TokenType{MINUS, ASSIGN},
-	}
+import (
+	"fmt"
+	"unicode"
+	"unicode/utf8"
 )
 
-// Lexer struct holds the lexers internal state
 type Lexer struct {
-	input string
+	source        []byte
+	currentRune   rune
+	offset        int
+	readingOffset int
+	lineOffset    int
+	insertSemi    bool
 }
 
-// NewLexer creates a new lexer for the input string
-func NewLexer(input string) *Lexer {
-	return &Lexer{
-		input: input,
+func (l *Lexer) nextRune() {
+	if l.readingOffset < len(l.source) {
+		l.offset = l.readingOffset
+		if l.currentRune == '\n' {
+			l.lineOffset = l.offset
+		}
+		r, w := rune(l.source[l.readingOffset]), 1
+		switch {
+		case r == 0:
+			panic("illegal NULL character")
+		case r >= utf8.RuneSelf:
+			r, w := utf8.DecodeRune(l.source[l.readingOffset:])
+			if r == utf8.RuneError && w == 1 {
+				panic("illegal UTF-8 encoding")
+			} else if r == 0xFEFF && l.offset > 0 {
+				panic("illegal byte order mark")
+			}
+		}
+		l.readingOffset += w
+		l.currentRune = r
+	} else {
+		l.offset = len(l.source)
+		if l.currentRune == '\n' {
+			l.lineOffset = l.offset
+		}
+		// Reached end of file
+		l.currentRune = -1
 	}
 }
 
-// Parsers what ever is in the the buffer
-func parseBuffer(buffer *string, tokens *[]Token, line int, column int) {
-	bufferLength := len([]rune(*buffer))
+func (l *Lexer) clearWhitespace() {
+	for l.currentRune == ' ' ||
+		l.currentRune == '\t' ||
+		l.currentRune == '\n' && !l.insertSemi ||
+		l.currentRune == '\r' {
+		l.nextRune()
+	}
+}
 
-	if *buffer != "" {
-		var ttype TokenType
-		var value interface{}
+func isLetter(ch rune) bool {
+	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || ch >= utf8.RuneSelf && unicode.IsLetter(ch)
+}
 
-		if i, err := strconv.Atoi(*buffer); err == nil {
-			// Buffer contains a number
-			ttype = INTVALUE
-			value = i
-		} else if i, err := strconv.ParseFloat(*buffer, 32); err == nil {
-			// Buffer contains a float
-			ttype = FLOATVALUE
-			value = float32(i)
-		} else if val, found := typeMap[*buffer]; found {
-			// Buffer contains a type identifier
-			ttype = TYPE
-			value = val
-		} else if val, found := nameMap[*buffer]; found {
-			// Buffer contains a control name
-			ttype = val
-			value = *buffer
+func isDigit(ch rune) bool {
+	return '0' <= ch && ch <= '9' || ch >= utf8.RuneSelf && unicode.IsDigit(ch)
+}
+
+func asDigit(c rune) int {
+	switch {
+	case '0' <= c && c <= '9':
+		return int(c - '0')
+	case 'a' <= c && c <= 'f':
+		return int(c - 'a' + 10)
+	case 'A' <= c && c <= 'F':
+		return int(c - 'A' + 10)
+	}
+	return 16
+}
+
+// mantissa consumes a mantissa
+func (l *Lexer) mantissa(base int) {
+	for asDigit(l.currentRune) < base {
+		l.nextRune()
+	}
+}
+
+// ident consumes an identifyer and returns its string
+func (l *Lexer) ident() string {
+	offset := l.offset
+	for isLetter(l.currentRune) || isDigit(l.currentRune) {
+		l.nextRune()
+	}
+	return string(l.source[offset:l.offset])
+}
+
+// escape consumes an escaped character
+func (l *Lexer) escape(quote rune) {
+	offset := l.offset
+
+	var n int
+	var base, max uint32
+	switch l.currentRune {
+	case 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\', quote:
+		l.nextRune()
+	case '0', '1', '2', '3', '4', '5', '6', '7':
+		n, base, max = 3, 8, 255
+	case 'x':
+		l.nextRune()
+		n, base, max = 2, 16, 255
+	case 'u':
+		l.nextRune()
+		n, base, max = 4, 16, unicode.MaxRune
+	case 'U':
+		l.nextRune()
+		n, base, max = 8, 16, unicode.MaxRune
+	default:
+		if l.currentRune < 0 {
+			panic("Escape sequence not terminated")
+		}
+		panic("Unkown exacape sequence")
+	}
+
+	var x uint32
+	for n > 0 {
+		d := uint32(asDigit(l.currentRune))
+		if d >= base {
+			if l.currentRune < 0 {
+				panic(fmt.Sprintf("illegal character %#U in escape sequence", l.currentRune))
+			}
+			panic("Escape sequence not terminated")
+		}
+		x = x*base + d
+		l.nextRune()
+		n--
+	}
+
+	if x > max || 0xD800 <= x && x < 0xE000 {
+		panic("escape sequence is invalid Unicode code point")
+	}
+}
+
+// string consumes a string and returns its value
+func (l *Lexer) string() string {
+	offset := l.offset - 1
+
+	for {
+		if l.currentRune == '\n' || l.currentRune < 0 {
+			panic("string literal not terminated")
+		}
+		l.nextRune()
+		if l.currentRune == '"' {
+			break
+		}
+		if l.currentRune == '\\' {
+			l.escape('"')
+		}
+	}
+
+	return string(l.source[offset:l.offset])
+}
+
+func (l *Lexer) number() (TokenType, string) {
+	offset := l.offset
+	tok := INT
+
+	if l.currentRune == '0' {
+		// int or float
+		offset := l.offset
+		l.nextRune()
+		if l.currentRune == 'x' || l.currentRune == 'X' {
+			// hex
+			l.nextRune()
+			l.mantissa(16)
+			if l.offset-offset <= 2 {
+				panic("Illegal hex number")
+			}
 		} else {
-			// Buffer contains a name
-			ttype = IDENT
-			value = *buffer
+			// octal
+			octal := true
+			l.mantissa(8)
+			if l.currentRune == '8' || l.currentRune == '9' {
+				// not an octal
+				octal = false
+				l.mantissa(10)
+			}
+			if l.currentRune == '.' {
+
+			}
+			if !octal {
+				panic("Illegal octal number")
+			}
 		}
-
-		*tokens = append(*tokens, Token{
-			Type: ttype,
-			Pos: Position{
-				Line:   line,
-				Column: column - bufferLength + 1,
-				Width:  bufferLength,
-			},
-			Value: value,
-		})
-
-		*buffer = ""
+		goto exit
 	}
+
+	l.mantissa(10)
+
+fraction:
+	if l.currentRune == '.' {
+		tok = FLOAT
+		l.nextRune()
+		l.mantissa(10)
+	}
+
+exit:
+	return tok, string(l.source[offset:l.offset])
 }
 
-// Lex returns a sequential list of tokens
-func (l *Lexer) Lex() (tokens []Token) {
-	buffer := ""
+// switch helper functions deside between 2-4 runes in the case of multi symbol runes
 
-	// Parse all single character tokens, names and numbers
-	lineIndex := 1
-	columnIndex := 0
-characterLoop:
-	for _, char := range l.input {
-		columnIndex++
+func (l *Lexer) switch2(tok0, tok1 TokenType) TokenType {
+	if l.currentRune == '=' {
+		l.nextRune()
+		return tok1
+	}
+	return tok0
+}
 
-		// Handle whitespace
-		if string(char) == " " {
-			parseBuffer(&buffer, &tokens, lineIndex, columnIndex-1)
-			continue characterLoop
+func (l *Lexer) switch3(tok0, tok1 TokenType, ch2 rune, tok2 TokenType) TokenType {
+	if l.currentRune == '=' {
+		l.nextRune()
+		return tok1
+	}
+	if l.currentRune == ch2 {
+		l.nextRune()
+		return tok2
+	}
+	return tok0
+}
+
+func (l *Lexer) switch4(tok0, tok1 TokenType, ch2 rune, tok2, tok3 TokenType) TokenType {
+	if l.currentRune == '=' {
+		l.nextRune()
+		return tok1
+	}
+	if l.currentRune == ch2 {
+		l.nextRune()
+		if l.currentRune == '=' {
+			l.nextRune()
+			return tok3
 		}
+		return tok2
+	}
+	return tok0
+}
 
-		// Handle symbol character
-		for symbol, symbolToken := range symbolMap {
-			if string(char) == symbol {
-				parseBuffer(&buffer, &tokens, lineIndex, columnIndex-1)
-				tokens = append(tokens, Token{
-					Type:  symbolToken,
-					Value: string(char),
-					Pos: Position{
-						Line:   lineIndex,
-						Column: columnIndex,
-						Width:  1,
-					},
-				})
-				if symbolToken == NEWLINE {
-					lineIndex++
-					columnIndex = 0
-				}
-				continue characterLoop
-			}
-		}
+func (l *Lexer) Lex(source []byte) (tokens []Token) {
+	l.source = source
 
-		// Any other character (number/letter)
-		buffer += string(char)
+	l.nextRune()
+	if l.currentRune == 0xFEFF {
+		l.nextRune()
 	}
 
-	// Parse anything left in buffer
-	parseBuffer(&buffer, &tokens, lineIndex, columnIndex)
+	l.clearWhitespace()
+	line := 0
+	column := 0
 
-	// Group single character tokens
-	for i := 0; i < len(tokens); i++ {
-		for symbolsToken, symbols := range multiSymbolMap {
-			// Check if tokens can be grouped
-			equal := true
-			for offset, val := range symbols {
-				if len(tokens) > i+offset && tokens[i+offset].Type != val {
-					equal = false
+	insertSemi := false
+	switch {
+	case isLetter(l.currentRune):
+		ident := l.ident()
+		tok := Lookup(ident)
+		switch tok {
+		case IDENT, BREAK, CONTINUE, FALLTHROUGH, RETURN:
+			insertSemi = true
+		}
+	case isDigit(l.currentRune):
+		insertSemi = true
+		tok, lit := l.number()
+	default:
+		l.nextRune()
+		switch l.currentRune {
+		case -1:
+			if l.insertSemi {
+				l.insertSemi = false
+				tokens = append(tokens, Token{
+					typ:    SEMICOLON,
+					line:   line,
+					column: column,
+					value:  "\n",
+				})
+			}
+		case '\n':
+			tokens = append(tokens, Token{
+				typ:    SEMICOLON,
+				line:   line,
+				column: column,
+				value:  "\n",
+			})
+		case '"':
+			insertSemi = true
+			tokens = append(tokens, Token{
+				typ:    STRING,
+				line:   line,
+				column: column,
+				value:  l.string(),
+			})
+		case ':':
+			tokens = append(tokens, Token{
+				typ:    l.switch3(COLON, DEFINE, ':', DOUBLE_COLON),
+				line:   line,
+				column: column,
+			})
+		case '.':
+			if l.currentRune == '.' {
+				l.nextRune()
+				if l.currentRune == '.' {
+					l.nextRune()
+					tokens = append(tokens, Token{
+						typ:    ELLIPSIS,
+						line:   line,
+						column: column,
+					})
+				} else {
+					tokens = append(tokens, Token{
+						typ:    PERIOD,
+						line:   line,
+						column: column,
+					})
 				}
 			}
-
-			// Collapse tokens in group into a single token
-			if equal {
-				lower := append(tokens[:i], Token{
-					Type:  symbolsToken,
-					Value: nil,
-					Pos: Position{
-						Line:   tokens[i].Pos.Line,
-						Column: tokens[i].Pos.Column,
-						Width:  2,
-					},
-				})
-				tokens = append(lower, tokens[i+len(symbols):]...)
-			}
+		case ',':
+			tokens = append(tokens, Token{
+				typ:    COMMA,
+				line:   line,
+				column: column,
+			})
+		case ';':
+			tokens = append(tokens, Token{
+				typ:    SEMICOLON,
+				line:   line,
+				column: column,
+			})
+		case '(':
+			tokens = append(tokens, Token{
+				typ:    LPAREN,
+				line:   line,
+				column: column,
+			})
+		case ')':
+			tokens = append(tokens, Token{
+				typ:    RPAREN,
+				line:   line,
+				column: column,
+			})
+		case '[':
+			tokens = append(tokens, Token{
+				typ:    LBRACK,
+				line:   line,
+				column: column,
+			})
+		case ']':
+			tokens = append(tokens, Token{
+				typ:    RBRACK,
+				line:   line,
+				column: column,
+			})
+		case '{':
+			tokens = append(tokens, Token{
+				typ:    LBRACE,
+				line:   line,
+				column: column,
+			})
+		case '}':
+			tokens = append(tokens, Token{
+				typ:    RBRACE,
+				line:   line,
+				column: column,
+			})
 		}
 	}
 
