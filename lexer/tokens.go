@@ -247,6 +247,10 @@ func (t Token) Type() TokenType {
 	return t.typ
 }
 
+func (t Token) Value() string {
+	return t.value
+}
+
 var keywords map[string]TokenType
 
 func init() {
