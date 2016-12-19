@@ -8,9 +8,9 @@ import (
 )
 
 func TestParser(t *testing.T) {
-	lexer := lexer.NewLexer([]byte("(1 + 3) * 6"))
+	lexer := lexer.NewLexer([]byte("call(ben(1 + 5), 3)"))
 	parser := NewParser(lexer.Lex())
 
-	spew.Dump(parser.Expression())
+	spew.Dump(parser.Maths())
 	t.Fail()
 }
