@@ -7,7 +7,7 @@ import "fmt"
 // Token is a token
 type Token struct {
 	typ    TokenType
-	value  interface{}
+	value  string
 	line   int
 	column int
 }
@@ -201,11 +201,15 @@ var tokens = [...]string{
 	VAR:    "var",
 }
 
-func (t Token) String() string {
-	if int(t.typ) >= 0 && int(t.typ) < len(tokens) {
-		return tokens[t.typ]
+func (t TokenType) String() string {
+	if int(t) >= 0 && int(t) < len(tokens) {
+		return tokens[t]
 	}
 	return fmt.Sprintf("token(%d)", t)
+}
+
+func (t Token) String() string {
+	return fmt.Sprintf("Type: %s, Line: %d, Column: %d, Value: %q", t.typ, t.line, t.column, t.value)
 }
 
 const (
@@ -221,7 +225,7 @@ func (t Token) Precedence() int {
 		return 1
 	case LAND:
 		return 2
-	case EQL, EQL, LSS, LEQ, GTR, GEQ:
+	case EQL, LSS, LEQ, GTR, GEQ:
 		return 3
 	case ADD, SUB, OR, XOR:
 		return 4
@@ -229,6 +233,18 @@ func (t Token) Precedence() int {
 		return 5
 	}
 	return LowestPrecedence
+}
+
+func (t Token) Line() int {
+	return t.line
+}
+
+func (t Token) Column() int {
+	return t.column
+}
+
+func (t Token) Type() TokenType {
+	return t.typ
 }
 
 var keywords map[string]TokenType

@@ -39,7 +39,7 @@ func (e Error) FormatedError(lines []string) string {
 // Line returns the line number of the error
 func (e Error) Line() int {
 	if len(e.tokenRange) >= 1 {
-		return e.tokenRange[0].Pos.Line - 1
+		return e.tokenRange[0].Line() - 1
 	}
 
 	return 0
@@ -50,10 +50,10 @@ func (e Error) ColumnRange() (int, int) {
 	if len(e.tokenRange) >= 2 {
 		first := e.tokenRange[0]
 		last := e.tokenRange[len(e.tokenRange)-1]
-		return first.Pos.Column - 1, last.Pos.Column - 1 + last.Pos.Width
+		return first.Column() - 1, last.Column() - 1
 	} else if len(e.tokenRange) >= 1 {
 		toke := e.tokenRange[0]
-		return toke.Pos.Column - 1, toke.Pos.Column - 1 + toke.Pos.Width
+		return toke.Column() - 1, toke.Column() - 1
 	}
 
 	return 0, 0

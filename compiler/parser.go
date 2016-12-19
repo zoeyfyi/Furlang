@@ -13,7 +13,7 @@ import (
 const enableLogging = true
 
 type typedName struct {
-	nameType lexer.TokenType
+	nameType lexer.Type
 	name     string
 }
 
@@ -38,7 +38,7 @@ type name struct {
 }
 
 type cast struct {
-	cast  lexer.TokenType
+	cast  lexer.Type
 	value expression
 }
 
@@ -48,7 +48,7 @@ type ret struct {
 
 type assignment struct {
 	name     string
-	nameType lexer.TokenType
+	nameType lexer.Type
 	value    expression
 }
 
@@ -120,7 +120,7 @@ type forExpression struct {
 }
 
 type array struct {
-	baseType lexer.TokenType
+	baseType lexer.Type
 	length   int
 	values   []expression
 }
@@ -141,22 +141,6 @@ func (s *syntaxTree) print() {
 func (s *syntaxTree) Write(f *os.File) {
 	f.WriteString(dprint.STree(*s))
 }
-
-var (
-	// Maps tokens onto operators
-	opMap = map[lexer.TokenType]operator{
-		lexer.NOTEQUAL:    operator{3, false},
-		lexer.EQUAL:       operator{3, false},
-		lexer.MORETHAN:    operator{3, false},
-		lexer.LESSTHAN:    operator{3, false},
-		lexer.PLUS:        operator{4, false},
-		lexer.MINUS:       operator{4, false},
-		lexer.MULTIPLY:    operator{5, false},
-		lexer.FLOATDIVIDE: operator{5, false},
-		lexer.INTDIVIDE:   operator{5, false},
-		lexer.MOD:         operator{5, false},
-	}
-)
 
 type parser struct {
 	tokens            []lexer.Token
@@ -191,9 +175,9 @@ func (p *parser) previousToken() lexer.Token {
 }
 
 func (p *parser) clearNewLines() {
-	ok := p.accept(lexer.NEWLINE)
+	ok := p.accept(lexer.SEMICOLON)
 	for ok && p.currentTokenIndex != len(p.tokens)-1 {
-		ok = p.accept(lexer.NEWLINE)
+		ok = p.accept(lexer.SEMICOLON)
 	}
 }
 
@@ -210,8 +194,8 @@ func (p *parser) peekNextToken() lexer.Token {
 	return p.tokens[p.currentTokenIndex+1]
 }
 
-func (p *parser) expect(tokenType lexer.TokenType) lexer.Token {
-	if p.currentToken().Type == tokenType {
+func (p *parser) expect(Type lexer.TokenType) lexer.Token {
+	if p.currentToken().Type() == Type {
 		prev := p.currentToken()
 
 		if p.currentTokenIndex < len(p.tokens)-1 {
@@ -221,15 +205,15 @@ func (p *parser) expect(tokenType lexer.TokenType) lexer.Token {
 		return prev
 	}
 
-	panic("Unexpected: " + p.currentToken().String() + "; Expected: " + tokenType.String())
+	panic("Unexpected: " + p.currentToken().String() + "; Expected: " + Type.String())
 }
 
-func (p *parser) accept(tokenType lexer.TokenType) bool {
-	if p.currentToken().Type == tokenType && p.currentTokenIndex == len(p.tokens)-1 {
+func (p *parser) accept(Type lexer.TokenType) bool {
+	if p.currentToken().Type() == Type && p.currentTokenIndex == len(p.tokens)-1 {
 		return true
 	}
 
-	if p.currentToken().Type == tokenType {
+	if p.currentToken().Type() == Type {
 		p.nextToken()
 		return true
 	}
@@ -237,12 +221,23 @@ func (p *parser) accept(tokenType lexer.TokenType) bool {
 	return false
 }
 
+func (p *parser) typed() lexer.Type {
+	p.log("Start Type", true)
+	defer p.log("End Type", false)
+
+	typ := p.expect(lexer.Type).Value
+	switch typ {
+		case: ""
+	}
+
+}
+
 // typed name in the format: type name, where name is optional
 func (p *parser) typedName() typedName {
 	p.log("Start TypedName", true)
 	defer p.log("End TypedName", false)
 
-	ftype := p.expect(lexer.TYPE).Value.(lexer.TokenType)
+	ftype := p.expect(lexer.TYPE).Value.(lexer.Type)
 
 	// type has a name
 	if p.currentToken().Type == lexer.IDENT {
@@ -367,7 +362,7 @@ func (p *parser) assignment() expression {
 	p.log("Start Assignment", true)
 	defer p.log("End Assignment", false)
 
-	assignType := p.expect(lexer.TYPE).Value.(lexer.TokenType)
+	assignType := p.expect(lexer.TYPE).Value.(lexer.Type)
 	name := p.expect(lexer.IDENT).Value.(string)
 	p.expect(lexer.ASSIGN)
 	value := p.maths()
@@ -441,7 +436,7 @@ func (p *parser) cast() cast {
 	defer p.log("End Cast", false)
 
 	p.expect(lexer.OPENBRACKET)
-	castType := p.expect(lexer.TYPE).Value.(lexer.TokenType)
+	castType := p.expect(lexer.TYPE).Value.(lexer.Type)
 	p.expect(lexer.CLOSEBRACKET)
 
 	return cast{
@@ -507,7 +502,7 @@ func (p *parser) array() array {
 
 	array := array{
 		length:   length,
-		baseType: arrayType.Value.(lexer.TokenType),
+		baseType: arrayType.Value.(lexer.Type),
 	}
 
 	for p.currentToken().Type != lexer.CLOSEBODY {

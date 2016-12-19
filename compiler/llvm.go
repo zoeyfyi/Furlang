@@ -58,27 +58,39 @@ func (s *scope) set(search string, block *goory.Block, value value.Value) {
 	panic(search + " is not in scope")
 }
 
-func gooryType(tokenType lexer.TokenType) types.Type {
-	switch tokenType {
-	case lexer.INT:
-		return goory.IntType(32)
-	case lexer.INT8:
-		return goory.IntType(8)
-	case lexer.INT16:
-		return goory.IntType(16)
-	case lexer.INT32:
-		return goory.IntType(32)
-	case lexer.INT64:
-		return goory.IntType(64)
-	case lexer.FLOAT:
-		return goory.FloatType()
-	case lexer.FLOAT32:
-		return goory.FloatType()
-	case lexer.FLOAT64:
-		return goory.DoubleType()
-	default:
-		panic("Unkown type")
+func gooryType(typ lexer.Type) types.Type {
+	switch typ := typ.(type) {
+	case *lexer.Basic:
+		switch typ.Type() {
+		case lexer.Bool, lexer.UntypedBool:
+			return goory.BoolType()
+		case lexer.Int, lexer.I64, lexer.Uint, lexer.UntypedInt:
+			return goory.IntType(64)
+		case lexer.I8, lexer.U8, lexer.UntypedRune:
+			return goory.IntType(8)
+		case lexer.I16, lexer.U16:
+			return goory.IntType(16)
+		case lexer.I32, lexer.U32:
+			return goory.IntType(32)
+		case lexer.Float, lexer.F32, lexer.UntypedFloat:
+			return goory.FloatType()
+		case lexer.F64:
+			return goory.DoubleType()
+		case lexer.String, lexer.UntypedString:
+			// TODO: What length of string
+			return goory.ArrayType(goory.IntType(8), 100)
+		case lexer.UntypedNil:
+			panic("Nil")
+		}
+	case *lexer.Array:
+		return goory.ArrayType(gooryType(typ.Type()), typ.Length())
+	case *lexer.Slice:
+		return goory.ArrayType(gooryType(typ.Type()), 0)
+	case *lexer.Pointer:
+		return types.NewPointerType(gooryType(typ.Type()))
 	}
+
+	panic("Unkown type")
 }
 
 // Llvm compiles the syntax tree to llvm ir

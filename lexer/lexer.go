@@ -15,6 +15,12 @@ type Lexer struct {
 	insertSemi    bool
 }
 
+func NewLexer(source []byte) *Lexer {
+	return &Lexer{
+		source: append(source, byte('\n')),
+	}
+}
+
 func (l *Lexer) nextRune() {
 	if l.readingOffset < len(l.source) {
 		l.offset = l.readingOffset
@@ -92,7 +98,7 @@ func (l *Lexer) ident() string {
 
 // escape consumes an escaped character
 func (l *Lexer) escape(quote rune) {
-	offset := l.offset
+	// offset := l.offset
 
 	var n int
 	var base, max uint32
@@ -181,7 +187,7 @@ func (l *Lexer) number() (TokenType, string) {
 				l.mantissa(10)
 			}
 			if l.currentRune == '.' {
-
+				goto fraction
 			}
 			if !octal {
 				panic("Illegal octal number")
@@ -241,132 +247,143 @@ func (l *Lexer) switch4(tok0, tok1 TokenType, ch2 rune, tok2, tok3 TokenType) To
 	return tok0
 }
 
-func (l *Lexer) Lex(source []byte) (tokens []Token) {
-	l.source = source
-
+func (l *Lexer) Lex() (tokens []Token) {
 	l.nextRune()
 	if l.currentRune == 0xFEFF {
 		l.nextRune()
 	}
 
-	l.clearWhitespace()
-	line := 0
-	column := 0
-
+	line := 1
+	column := 1
 	insertSemi := false
-	switch {
-	case isLetter(l.currentRune):
-		ident := l.ident()
-		tok := Lookup(ident)
-		switch tok {
-		case IDENT, BREAK, CONTINUE, FALLTHROUGH, RETURN:
-			insertSemi = true
-		}
-	case isDigit(l.currentRune):
-		insertSemi = true
-		tok, lit := l.number()
-	default:
-		l.nextRune()
-		switch l.currentRune {
-		case -1:
-			if l.insertSemi {
-				l.insertSemi = false
-				tokens = append(tokens, Token{
-					typ:    SEMICOLON,
-					line:   line,
-					column: column,
-					value:  "\n",
-				})
+
+	for l.offset < len(l.source) {
+		l.clearWhitespace()
+
+		tok := Token{}
+		tok.column = l.offset + 1*line - column + 1
+
+		currentRune := l.currentRune
+		switch {
+		case isLetter(currentRune):
+			tok.value = l.ident()
+			tok.typ = Lookup(tok.value)
+			switch tok.typ {
+			case IDENT, BREAK, CONTINUE, FALLTHROUGH, RETURN:
+				insertSemi = true
 			}
-		case '\n':
-			tokens = append(tokens, Token{
-				typ:    SEMICOLON,
-				line:   line,
-				column: column,
-				value:  "\n",
-			})
-		case '"':
+		case isDigit(currentRune):
 			insertSemi = true
-			tokens = append(tokens, Token{
-				typ:    STRING,
-				line:   line,
-				column: column,
-				value:  l.string(),
-			})
-		case ':':
-			tokens = append(tokens, Token{
-				typ:    l.switch3(COLON, DEFINE, ':', DOUBLE_COLON),
-				line:   line,
-				column: column,
-			})
-		case '.':
-			if l.currentRune == '.' {
-				l.nextRune()
+			tok.typ, tok.value = l.number()
+		default:
+			l.nextRune()
+			switch currentRune {
+			case -1:
+				tok.typ = SEMICOLON
+				tok.value = "\n"
+				tok.column--
+				column = l.offset
+			case '\n':
+				// Skip over if line continues
+				if !insertSemi {
+					continue
+				}
+				tok.typ = SEMICOLON
+				tok.value = "\n"
+				tok.column--
+				column = l.offset
+			case '"':
+				tok.typ = STRING
+				tok.value = l.string()
+				insertSemi = true
+			case ':':
+				tok.typ = l.switch3(COLON, DEFINE, ':', DOUBLE_COLON)
+			case '.':
 				if l.currentRune == '.' {
 					l.nextRune()
-					tokens = append(tokens, Token{
-						typ:    ELLIPSIS,
-						line:   line,
-						column: column,
-					})
-				} else {
-					tokens = append(tokens, Token{
-						typ:    PERIOD,
-						line:   line,
-						column: column,
-					})
+					if l.currentRune == '.' {
+						l.nextRune()
+						tok.typ = ELLIPSIS
+					} else {
+						tok.typ = PERIOD
+					}
 				}
+			case ',':
+				tok.typ = COMMA
+			case ';':
+				tok.typ = SEMICOLON
+			case '(':
+				tok.typ = LPAREN
+			case ')':
+				tok.typ = RPAREN
+				insertSemi = true
+			case '[':
+				tok.typ = LBRACK
+			case ']':
+				tok.typ = RBRACK
+				insertSemi = true
+			case '{':
+				tok.typ = LBRACE
+			case '}':
+				tok.typ = RBRACE
+				insertSemi = true
+			case '+':
+				tok.typ = l.switch3(ADD, ADD_ASSIGN, '+', INC)
+				if tok.typ == INC {
+					insertSemi = true
+				}
+			case '-':
+				if l.currentRune == '>' {
+					tok.typ = ARROW
+				} else {
+					tok.typ = l.switch3(SUB, SUB_ASSIGN, '-', DEC)
+					if tok.typ == DEC {
+						insertSemi = true
+					}
+				}
+			case '*':
+				tok.typ = l.switch2(MUL, MUL_ASSIGN)
+			case '/':
+				tok.typ = l.switch2(QUO, QUO_ASSIGN)
+			case '%':
+				tok.typ = l.switch2(REM, REM_ASSIGN)
+			case '^':
+				tok.typ = l.switch2(XOR, XOR_ASSIGN)
+			case '<':
+				tok.typ = l.switch4(LSS, LEQ, '<', SHL, SHL_ASSIGN)
+			case '>':
+				tok.typ = l.switch4(GTR, GEQ, '>', SHR, SHR_ASSIGN)
+			case '=':
+				tok.typ = l.switch2(ASSIGN, EQL)
+			case '!':
+				tok.typ = l.switch2(NOT, NEQ)
+			case '&':
+				if l.currentRune == '^' {
+					l.nextRune()
+					tok.typ = l.switch2(AND_NOT, AND_NOT_ASSIGN)
+				} else {
+					tok.typ = l.switch3(AND, AND_ASSIGN, '&', LAND)
+				}
+			case '|':
+				tok.typ = l.switch3(OR, OR_ASSIGN, '|', LOR)
+			default:
+				if l.currentRune == 0xFEFF {
+					panic(fmt.Sprintf("illegal character %#U", l.currentRune))
+				}
+				tok.typ = ILLEGAL
+				insertSemi = l.insertSemi
 			}
-		case ',':
-			tokens = append(tokens, Token{
-				typ:    COMMA,
-				line:   line,
-				column: column,
-			})
-		case ';':
-			tokens = append(tokens, Token{
-				typ:    SEMICOLON,
-				line:   line,
-				column: column,
-			})
-		case '(':
-			tokens = append(tokens, Token{
-				typ:    LPAREN,
-				line:   line,
-				column: column,
-			})
-		case ')':
-			tokens = append(tokens, Token{
-				typ:    RPAREN,
-				line:   line,
-				column: column,
-			})
-		case '[':
-			tokens = append(tokens, Token{
-				typ:    LBRACK,
-				line:   line,
-				column: column,
-			})
-		case ']':
-			tokens = append(tokens, Token{
-				typ:    RBRACK,
-				line:   line,
-				column: column,
-			})
-		case '{':
-			tokens = append(tokens, Token{
-				typ:    LBRACE,
-				line:   line,
-				column: column,
-			})
-		case '}':
-			tokens = append(tokens, Token{
-				typ:    RBRACE,
-				line:   line,
-				column: column,
-			})
+
+		}
+
+		// Append token
+		tok.line = line
+		tokens = append(tokens, tok)
+		if currentRune == -1 || currentRune == '\n' {
+			line++
 		}
 	}
 
+	//tokens = append(tokens, Token{typ: EOF})
 	return tokens
 }

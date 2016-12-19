@@ -4,7 +4,7 @@ package lexer
 type Type interface {
 	// Gets the base type of the type
 	Base() Type
-	String() string
+	// String() string
 }
 
 type BasicType int
@@ -84,7 +84,7 @@ func NewArray(typ Type, length int) *Array {
 }
 
 func (a *Array) Length() int {
-	return a.Length
+	return a.Length()
 }
 
 func (a *Array) Type() Type {
@@ -99,7 +99,7 @@ func NewSlice(typ Type) *Slice {
 	return &Slice{typ}
 }
 
-func (s *Slice) Type() {
+func (s *Slice) Type() Type {
 	return s.typ
 }
 
@@ -115,7 +115,7 @@ func (p *Pointer) Type() Type {
 	return p.typ
 }
 
-func (b *Basic) Underlying() Type   { return b }
-func (b *Array) Underlying() Type   { return b }
-func (b *Slice) Underlying() Type   { return b }
-func (b *Pointer) Underlying() Type { return b }
+func (b *Basic) Base() Type   { return b }
+func (b *Array) Base() Type   { return b }
+func (b *Slice) Base() Type   { return b }
+func (b *Pointer) Base() Type { return b }
