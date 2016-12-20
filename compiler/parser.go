@@ -7,7 +7,6 @@ import (
 
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/dprint"
-	"github.com/davecgh/go-spew/spew"
 )
 
 const enableLogging = true
@@ -275,22 +274,22 @@ func (p *parser) typeList() []typedName {
 	return names
 }
 
-func (p *parser) block() block {
-	p.log("Start Block", true)
-	defer p.log("End Block", false)
+// func (p *parser) block() block {
+// 	p.log("Start Block", true)
+// 	defer p.log("End Block", false)
 
-	block := block{}
-	p.expect(lexer.OPENBODY)
-	p.clearNewLines()
+// 	block := block{}
+// 	p.expect(lexer.OPENBODY)
+// 	p.clearNewLines()
 
-	for p.currentToken().Type != lexer.CLOSEBODY {
-		block.expressions = append(block.expressions, p.expression())
-	}
+// 	for p.currentToken().Type != lexer.CLOSEBODY {
+// 		block.expressions = append(block.expressions, p.expression())
+// 	}
 
-	p.expect(lexer.CLOSEBODY)
-	p.clearNewLines()
-	return block
-}
+// 	p.expect(lexer.CLOSEBODY)
+// 	p.clearNewLines()
+// 	return block
+// }
 
 func (p *parser) function() function {
 	p.log("Start Function", true)

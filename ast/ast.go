@@ -5,25 +5,32 @@ import (
 	types "github.com/bongo227/Furlang/types"
 )
 
+// TODO: split into expressions and Values
+// expressions are things like typedefs, blocks ets
+// values are integers, lists etc
+
 type Expression interface {
 	expressionNode()
 }
 
 // Types
 type (
-	// Type : type
-	Type struct {
-		// Token on the initial pass this is the type identifier during
-		// semantic analysis we use this value to derive the actual
-		// type
-		Token lexer.Token
+	Type interface {
+		typeNode()
+	}
+
+	// Basic : type
+	Basic struct {
+		// Ident on the initial pass this is the type identifier during
+		// semantic analysis we use this value to derive the actual type
+		Ident Ident
 		Type  types.Type
 	}
 
 	// ArrayType : type[length]
 	ArrayType struct {
-		Length int
 		Type   Type
+		Length Integer
 	}
 
 	// TypedIdent : type identifier
@@ -46,6 +53,11 @@ type (
 		Returns    []Type
 	}
 )
+
+func (t Basic) typeNode()        {}
+func (t ArrayType) typeNode()    {}
+func (t StructType) typeNode()   {}
+func (t FunctionType) typeNode() {}
 
 // Operations
 type (
@@ -105,6 +117,7 @@ type (
 )
 
 func (b Ident) expressionNode() {}
+func (b List) expressionNode()  {}
 func (b Block) expressionNode() {}
 
 // Values
@@ -116,7 +129,7 @@ type (
 	}
 
 	Assignment struct {
-		Type       *Type
+		Type       Type
 		Name       Ident
 		Expression Expression
 	}

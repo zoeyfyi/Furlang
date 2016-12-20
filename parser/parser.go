@@ -43,17 +43,28 @@ func (p *Parser) peekpeek() lexer.Token {
 	return p.tokens[p.index+2]
 }
 
+func (p *Parser) eof() bool {
+	return p.index >= len(p.tokens)-1
+}
+
 func (p *Parser) expect(typ lexer.TokenType) lexer.Token {
 	token := p.token()
 	if token.Type() != typ {
 		panic(fmt.Sprintf("Expected: %s, Got: %s", typ.String(), token.Type().String()))
 	}
 
-	p.next()
+	if !p.eof() {
+		p.next()
+	}
+
 	return token
 }
 
 func (p *Parser) accept(typ lexer.TokenType) (lexer.Token, bool) {
+	if p.eof() {
+		return lexer.Token{}, false
+	}
+
 	token := p.token()
 	if token.Type() != typ {
 		return token, false
@@ -61,13 +72,6 @@ func (p *Parser) accept(typ lexer.TokenType) (lexer.Token, bool) {
 
 	p.next()
 	return token, true
-}
-
-func (p *Parser) clearNewLines() {
-	_, ok := p.accept(lexer.SEMICOLON)
-	for ok && p.index != len(p.tokens)-1 {
-		_, ok = p.accept(lexer.SEMICOLON)
-	}
 }
 
 func (p *Parser) ident() ast.Ident {
@@ -138,6 +142,7 @@ func (p *Parser) maths() ast.Expression {
 	}
 
 	fmt.Println("=== Begin maths ===")
+	fmt.Println("Start token:", p.token().String())
 
 	depth := 0
 	for notEnded(p.token(), depth) {
@@ -214,8 +219,6 @@ func (p *Parser) maths() ast.Expression {
 		popOperatorStack()
 	}
 
-	p.accept(lexer.SEMICOLON)
-
 	return outputStack.Pop().(ast.Expression)
 }
 
@@ -224,24 +227,34 @@ func (p *Parser) ret() ast.Return {
 	return ast.Return{p.maths()}
 }
 
-func (p *Parser) typ() *ast.Type {
-	return &ast.Type{Token: p.expect(lexer.IDENT)}
+func (p *Parser) typ() ast.Type {
+	switch {
+	case p.peek().Type() == lexer.LBRACK:
+		base := p.expect(lexer.IDENT)
+		p.expect(lexer.LBRACK)
+		length := p.integer()
+		p.expect(lexer.RBRACK)
+		return &ast.ArrayType{
+			Type:   &ast.Basic{Ident: ast.Ident{base.Value()}},
+			Length: length,
+		}
+	default:
+		return &ast.Basic{Ident: ast.Ident{p.expect(lexer.IDENT).Value()}}
+	}
 }
 
 func (p *Parser) assignment() ast.Assignment {
 	typ := p.typ()
 	ident := p.ident()
 	p.expect(lexer.ASSIGN)
-	expression := p.maths()
-
+	expression := p.Value()
 	return ast.Assignment{typ, ident, expression}
 }
 
 func (p *Parser) inferAssigment() ast.Assignment {
 	ident := p.ident()
 	p.expect(lexer.DEFINE)
-	expression := p.maths()
-
+	expression := p.Value()
 	return ast.Assignment{nil, ident, expression}
 }
 
@@ -251,7 +264,6 @@ func (p *Parser) block() ast.Block {
 	var expressions []ast.Expression
 	for p.token().Type() != lexer.RBRACE {
 		expressions = append(expressions, p.Expression())
-		// p.clearNewLines()
 	}
 
 	p.expect(lexer.RBRACE)
@@ -259,25 +271,60 @@ func (p *Parser) block() ast.Block {
 	return ast.Block{expressions}
 }
 
-func (p *Parser) Expression() ast.Expression {
+func (p *Parser) list() ast.List {
+	p.expect(lexer.LBRACE)
+
+	var expressions []ast.Expression
+	ok := p.token().Type() != lexer.RBRACE
+	for ok {
+		expressions = append(expressions, p.Value())
+		_, ok = p.accept(lexer.COMMA)
+	}
+
+	p.expect(lexer.RBRACE)
+
+	return ast.List{
+		Expressions: expressions,
+	}
+}
+
+func (p *Parser) Value() ast.Expression {
 	switch p.token().Type() {
-	case lexer.RETURN:
-		return p.ret()
 	case lexer.LBRACE:
-		return p.block()
-	case lexer.IDENT:
-		switch p.peek().Type() {
-		case lexer.IDENT:
-			return p.assignment()
-		case lexer.DEFINE:
-			return p.inferAssigment()
-		default:
-			return p.maths()
-		}
+		return p.list()
 	default:
 		return p.maths()
 	}
 
+}
+
+func (p *Parser) Expression() ast.Expression {
+	var exp ast.Expression
+
+	switch p.token().Type() {
+	case lexer.RETURN:
+		exp = p.ret()
+	case lexer.LBRACE:
+		exp = p.block()
+	case lexer.IDENT:
+		switch p.peek().Type() {
+		case lexer.DEFINE:
+			exp = p.inferAssigment()
+		case lexer.LPAREN:
+			exp = p.call()
+		default:
+			exp = p.assignment()
+		}
+	default:
+		exp = p.maths()
+	}
+
+	fmt.Println(p.index, len(p.tokens))
+
+	// if !p.eof() {
+	p.expect(lexer.SEMICOLON)
+	// }
+	return exp
 }
 
 func (p *Parser) Parse() ast.Expression {
