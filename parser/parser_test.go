@@ -206,6 +206,67 @@ func TestParser(t *testing.T) {
 				},
 			},
 		},
+		// for i := 0; i < 100; i = i+1 {
+		// 	int ben = i
+		// }
+		{
+			source: `for i := 0; i < 100; i = i+1 {
+				int ben = i
+			}`,
+			ast: &ast.For{
+				Index: ast.Assignment{
+					Type: nil,
+					Name: ast.Ident{
+						Value: "i",
+					},
+					Expression: ast.Integer{
+						Value: 0,
+					},
+				},
+				Condition: ast.Binary{
+					Lhs: ast.Ident{
+						Value: "i",
+					},
+					Op: 39,
+					Rhs: ast.Integer{
+						Value: 100,
+					},
+				},
+				Increment: ast.Assignment{
+					Type: nil,
+					Name: ast.Ident{
+						Value: "i",
+					},
+					Expression: ast.Binary{
+						Lhs: ast.Ident{
+							Value: "i",
+						},
+						Op: 11,
+						Rhs: ast.Integer{
+							Value: 1,
+						},
+					},
+				},
+				Block: ast.Block{
+					Expressions: []ast.Expression{
+						ast.Assignment{
+							Type: &ast.Basic{
+								Ident: ast.Ident{
+									Value: "int",
+								},
+								Type: nil,
+							},
+							Name: ast.Ident{
+								Value: "ben",
+							},
+							Expression: ast.Ident{
+								Value: "i",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, c := range cases {

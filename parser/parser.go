@@ -258,6 +258,14 @@ func (p *Parser) inferAssigment() ast.Assignment {
 	return ast.Assignment{nil, ident, expression}
 }
 
+func (p *Parser) reAssigment() ast.Assignment {
+	fmt.Println("Reassignment")
+	ident := p.ident()
+	p.expect(lexer.ASSIGN)
+	expression := p.Value()
+	return ast.Assignment{nil, ident, expression}
+}
+
 func (p *Parser) block() ast.Block {
 	p.expect(lexer.LBRACE)
 
@@ -296,6 +304,22 @@ func (p *Parser) ifBlock() *ast.If {
 	}
 }
 
+func (p *Parser) forBlock() *ast.For {
+	p.expect(lexer.FOR)
+	index := p.Expression()
+	condition := p.maths()
+	p.expect(lexer.SEMICOLON)
+	increment := p.Expression()
+	block := p.block()
+
+	return &ast.For{
+		Index:     index,
+		Condition: condition,
+		Increment: increment,
+		Block:     block,
+	}
+}
+
 func (p *Parser) list() ast.List {
 	p.expect(lexer.LBRACE)
 
@@ -331,10 +355,14 @@ func (p *Parser) Expression() ast.Expression {
 		exp = p.ret()
 	case lexer.IF:
 		exp = p.ifBlock()
+	case lexer.FOR:
+		exp = p.forBlock()
 	case lexer.LBRACE:
 		exp = p.block()
 	case lexer.IDENT:
 		switch p.peek().Type() {
+		case lexer.ASSIGN:
+			exp = p.reAssigment()
 		case lexer.DEFINE:
 			exp = p.inferAssigment()
 		case lexer.LPAREN:
@@ -346,7 +374,7 @@ func (p *Parser) Expression() ast.Expression {
 		exp = p.maths()
 	}
 
-	p.expect(lexer.SEMICOLON)
+	p.accept(lexer.SEMICOLON)
 	return exp
 }
 

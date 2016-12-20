@@ -470,24 +470,24 @@ func (p *parser) increment() expression {
 	return expr
 }
 
-func (p *parser) forExpression() forExpression {
-	p.log("Start for", true)
-	defer p.log("End for", false)
+// func (p *parser) forExpression() forExpression {
+// 	p.log("Start for", true)
+// 	defer p.log("End for", false)
 
-	p.expect(lexer.FOR)
+// 	p.expect(lexer.FOR)
 
-	index := p.inferAssignment()
-	p.expect(lexer.SEMICOLON)
+// 	index := p.inferAssignment()
+// 	p.expect(lexer.SEMICOLON)
 
-	condition := p.maths()
-	p.expect(lexer.SEMICOLON)
+// 	condition := p.maths()
+// 	p.expect(lexer.SEMICOLON)
 
-	increment := p.increment()
+// 	increment := p.increment()
 
-	block := p.block()
+// 	block := p.block()
 
-	return forExpression{index, condition, increment, block}
-}
+// 	return forExpression{index, condition, increment, block}
+// }
 
 // func (p *parser) array() array {
 // 	p.log("Start array", true)
