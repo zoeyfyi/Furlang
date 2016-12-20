@@ -162,64 +162,64 @@ func (p *parser) log(statement string, start bool) {
 	}
 }
 
-func (p *parser) currentToken() lexer.Token {
-	return p.tokens[p.currentTokenIndex]
-}
+// func (p *parser) currentToken() lexer.Token {
+// 	return p.tokens[p.currentTokenIndex]
+// }
 
-func (p *parser) previousToken() lexer.Token {
-	if p.currentTokenIndex == 0 {
-		panic("At first token (no previous token)")
-	}
+// func (p *parser) previousToken() lexer.Token {
+// 	if p.currentTokenIndex == 0 {
+// 		panic("At first token (no previous token)")
+// 	}
 
-	return p.tokens[p.currentTokenIndex-1]
-}
+// 	return p.tokens[p.currentTokenIndex-1]
+// }
 
-func (p *parser) clearNewLines() {
-	ok := p.accept(lexer.SEMICOLON)
-	for ok && p.currentTokenIndex != len(p.tokens)-1 {
-		ok = p.accept(lexer.SEMICOLON)
-	}
-}
+// func (p *parser) clearNewLines() {
+// 	ok := p.accept(lexer.SEMICOLON)
+// 	for ok && p.currentTokenIndex != len(p.tokens)-1 {
+// 		ok = p.accept(lexer.SEMICOLON)
+// 	}
+// }
 
-func (p *parser) nextToken() lexer.Token {
-	if p.currentTokenIndex < len(p.tokens) {
-		p.currentTokenIndex++
-		return p.currentToken()
-	}
+// func (p *parser) nextToken() lexer.Token {
+// 	if p.currentTokenIndex < len(p.tokens) {
+// 		p.currentTokenIndex++
+// 		return p.currentToken()
+// 	}
 
-	panic("Ran out of tokens")
-}
+// 	panic("Ran out of tokens")
+// }
 
-func (p *parser) peekNextToken() lexer.Token {
-	return p.tokens[p.currentTokenIndex+1]
-}
+// func (p *parser) peekNextToken() lexer.Token {
+// 	return p.tokens[p.currentTokenIndex+1]
+// }
 
-func (p *parser) expect(Type lexer.TokenType) lexer.Token {
-	if p.currentToken().Type() == Type {
-		prev := p.currentToken()
+// func (p *parser) expect(Type lexer.TokenType) lexer.Token {
+// 	if p.currentToken().Type() == Type {
+// 		prev := p.currentToken()
 
-		if p.currentTokenIndex < len(p.tokens)-1 {
-			p.nextToken()
-		}
+// 		if p.currentTokenIndex < len(p.tokens)-1 {
+// 			p.nextToken()
+// 		}
 
-		return prev
-	}
+// 		return prev
+// 	}
 
-	panic("Unexpected: " + p.currentToken().String() + "; Expected: " + Type.String())
-}
+// 	panic("Unexpected: " + p.currentToken().String() + "; Expected: " + Type.String())
+// }
 
-func (p *parser) accept(Type lexer.TokenType) bool {
-	if p.currentToken().Type() == Type && p.currentTokenIndex == len(p.tokens)-1 {
-		return true
-	}
+// func (p *parser) accept(Type lexer.TokenType) bool {
+// 	if p.currentToken().Type() == Type && p.currentTokenIndex == len(p.tokens)-1 {
+// 		return true
+// 	}
 
-	if p.currentToken().Type() == Type {
-		p.nextToken()
-		return true
-	}
+// 	if p.currentToken().Type() == Type {
+// 		p.nextToken()
+// 		return true
+// 	}
 
-	return false
-}
+// 	return false
+// }
 
 func (p *parser) typed() lexer.Type {
 	p.log("Start Type", true)
@@ -306,57 +306,57 @@ func (p *parser) function() function {
 	return function{name, args, returns, block}
 }
 
-func (p *parser) ret() ret {
-	p.log("Start Return", true)
-	defer p.log("End Return", false)
+// func (p *parser) ret() ret {
+// 	p.log("Start Return", true)
+// 	defer p.log("End Return", false)
 
-	p.expect(lexer.RETURN)
+// 	p.expect(lexer.RETURN)
 
-	var returns []expression
+// 	var returns []expression
 
-	// While their is a comma continue
-	ok := true
-	for ok {
-		returns = append(returns, p.expression())
-		ok = p.currentToken().Type == lexer.COMMA
-	}
+// 	// While their is a comma continue
+// 	ok := true
+// 	for ok {
+// 		returns = append(returns, p.expression())
+// 		ok = p.currentToken().Type == lexer.COMMA
+// 	}
 
-	return ret{returns}
-}
+// 	return ret{returns}
+// }
 
-func (p *parser) maths() expression {
-	p.log("Start Maths", true)
-	defer p.log("End Maths", false)
+// func (p *parser) maths() expression {
+// 	p.log("Start Maths", true)
+// 	defer p.log("End Maths", false)
 
-	var buffer []lexer.Token
+// 	var buffer []lexer.Token
 
-	depth := 0
+// 	depth := 0
 
-	for p.currentToken().Type != lexer.NEWLINE &&
-		p.currentToken().Type != lexer.SEMICOLON &&
-		p.currentToken().Type != lexer.OPENBODY &&
-		p.currentToken().Type != lexer.CLOSEBODY &&
-		!(p.currentToken().Type == lexer.COMMA && depth == 0) {
+// 	for p.currentToken().Type != lexer.NEWLINE &&
+// 		p.currentToken().Type != lexer.SEMICOLON &&
+// 		p.currentToken().Type != lexer.OPENBODY &&
+// 		p.currentToken().Type != lexer.CLOSEBODY &&
+// 		!(p.currentToken().Type == lexer.COMMA && depth == 0) {
 
-		token := p.currentToken()
+// 		token := p.currentToken()
 
-		if token.Type == lexer.OPENBRACKET {
-			depth++
-		}
+// 		if token.Type == lexer.OPENBRACKET {
+// 			depth++
+// 		}
 
-		if token.Type == lexer.CLOSEBRACKET {
-			depth--
-		}
+// 		if token.Type == lexer.CLOSEBRACKET {
+// 			depth--
+// 		}
 
-		buffer = append(buffer, p.currentToken())
-		p.nextToken()
-	}
-	p.clearNewLines()
+// 		buffer = append(buffer, p.currentToken())
+// 		p.nextToken()
+// 	}
+// 	p.clearNewLines()
 
-	spew.Dump(buffer)
+// 	spew.Dump(buffer)
 
-	return p.shuntingYard(buffer)
-}
+// 	return p.shuntingYard(buffer)
+// }
 
 func (p *parser) assignment() expression {
 	p.log("Start Assignment", true)

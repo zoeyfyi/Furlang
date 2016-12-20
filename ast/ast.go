@@ -13,7 +13,11 @@ type Expression interface {
 type (
 	// Type : type
 	Type struct {
-		Type types.Type
+		// Token on the initial pass this is the type identifier during
+		// semantic analysis we use this value to derive the actual
+		// type
+		Token lexer.Token
+		Type  types.Type
 	}
 
 	// ArrayType : type[length]
@@ -101,6 +105,7 @@ type (
 )
 
 func (b Ident) expressionNode() {}
+func (b Block) expressionNode() {}
 
 // Values
 type (
@@ -111,7 +116,7 @@ type (
 	}
 
 	Assignment struct {
-		Type       Type
+		Type       *Type
 		Name       Ident
 		Expression Expression
 	}
@@ -133,6 +138,10 @@ type (
 		Array Ident
 		Index Index
 	}
+
+	Return struct {
+		Value Expression
+	}
 )
 
 func (b Function) expressionNode()   {}
@@ -140,6 +149,8 @@ func (b Assignment) expressionNode() {}
 func (b Integer) expressionNode()    {}
 func (b Float) expressionNode()      {}
 func (b Call) expressionNode()       {}
+func (b ArrayValue) expressionNode() {}
+func (b Return) expressionNode()     {}
 
 // Flow control
 type (

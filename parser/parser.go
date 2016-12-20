@@ -98,7 +98,7 @@ func (p *Parser) call() ast.Call {
 
 	var args []ast.Expression
 	for p.token().Type() != lexer.RPAREN {
-		args = append(args, p.Maths())
+		args = append(args, p.maths())
 		p.accept(lexer.COMMA)
 	}
 
@@ -111,14 +111,14 @@ func (p *Parser) call() ast.Call {
 func (p *Parser) arrayValue() ast.ArrayValue {
 	array := p.ident()
 	p.expect(lexer.LBRACK)
-	index := p.Maths()
+	index := p.maths()
 	p.expect(lexer.RBRACK)
 
 	return ast.ArrayValue{array, ast.Index{index}}
 }
 
 // Maths parses binary expressions
-func (p *Parser) Maths() ast.Expression {
+func (p *Parser) maths() ast.Expression {
 	outputStack := lane.NewStack()
 	operatorStack := lane.NewStack()
 	arityStack := lane.NewStack()
@@ -217,18 +217,65 @@ func (p *Parser) Maths() ast.Expression {
 	return outputStack.Pop().(ast.Expression)
 }
 
-func (p *Parser) Expression() ast.Expression {
-	return p.call()
-	// switch p.token().Type() {
-	// default:
-	// 	return p.maths()
-	// 	// case lexer.INT:
-	// 	// 	return p.integer()
-	// 	// case lexer.FLOAT:
-	// 	// 	return p.float()
-	// }
+func (p *Parser) ret() ast.Return {
+	p.expect(lexer.RETURN)
+	return ast.Return{p.maths()}
+}
 
-	// panic("Unknown expression")
+func (p *Parser) typ() *ast.Type {
+	return &ast.Type{Token: p.expect(lexer.IDENT)}
+}
+
+func (p *Parser) assignment() ast.Assignment {
+	typ := p.typ()
+	ident := p.ident()
+	p.expect(lexer.ASSIGN)
+	expression := p.maths()
+
+	return ast.Assignment{typ, ident, expression}
+}
+
+func (p *Parser) inferAssigment() ast.Assignment {
+	ident := p.ident()
+	p.expect(lexer.DEFINE)
+	expression := p.maths()
+
+	return ast.Assignment{nil, ident, expression}
+}
+
+func (p *Parser) block() ast.Block {
+	p.expect(lexer.LBRACE)
+
+	var expressions []ast.Expression
+	for p.token().Type() != lexer.RBRACE {
+		expressions = append(expressions, p.Expression())
+		// p.clearNewLines()
+	}
+
+	p.expect(lexer.RBRACE)
+
+	return ast.Block{expressions}
+}
+
+func (p *Parser) Expression() ast.Expression {
+	switch p.token().Type() {
+	case lexer.RETURN:
+		return p.ret()
+	case lexer.LBRACE:
+		return p.block()
+	case lexer.IDENT:
+		switch p.peek().Type() {
+		case lexer.IDENT:
+			return p.assignment()
+		case lexer.DEFINE:
+			return p.inferAssigment()
+		default:
+			return p.maths()
+		}
+	default:
+		return p.maths()
+	}
+
 }
 
 func (p *Parser) Parse() ast.Expression {
