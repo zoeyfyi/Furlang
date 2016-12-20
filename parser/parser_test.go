@@ -120,6 +120,92 @@ func TestParser(t *testing.T) {
 				},
 			},
 		},
+		// if ben > bob {
+		// 	return ben
+		// }
+		{
+			source: `if ben > ben {
+				return ben
+			}`,
+			ast: &ast.If{
+				Condition: ast.Binary{
+					Lhs: ast.Ident{
+						Value: "ben",
+					},
+					Op: lexer.GTR,
+					Rhs: ast.Ident{
+						Value: "ben",
+					},
+				},
+				Block: ast.Block{
+					Expressions: []ast.Expression{
+						ast.Return{
+							Value: ast.Ident{
+								Value: "ben",
+							},
+						},
+					},
+				},
+				Else: (*ast.If)(nil),
+			},
+		},
+		// if bill {
+		// 	bob
+		// } else if bob {
+		// 	bill
+		// } else {
+		// 	ben
+		// }
+		{
+			source: `if bill {
+				return bob
+			} else if bob {
+				return bill
+			} else {
+				return ben
+			}`,
+			ast: &ast.If{
+				Condition: ast.Ident{
+					Value: "bill",
+				},
+				Block: ast.Block{
+					Expressions: []ast.Expression{
+						ast.Return{
+							Value: ast.Ident{
+								Value: "bob",
+							},
+						},
+					},
+				},
+				Else: &ast.If{
+					Condition: ast.Ident{
+						Value: "bob",
+					},
+					Block: ast.Block{
+						Expressions: []ast.Expression{
+							ast.Return{
+								Value: ast.Ident{
+									Value: "bill",
+								},
+							},
+						},
+					},
+					Else: &ast.If{
+						Condition: nil,
+						Block: ast.Block{
+							Expressions: []ast.Expression{
+								ast.Return{
+									Value: ast.Ident{
+										Value: "ben",
+									},
+								},
+							},
+						},
+						Else: (*ast.If)(nil),
+					},
+				},
+			},
+		},
 	}
 
 	for _, c := range cases {

@@ -324,6 +324,7 @@ func (l *Lexer) Lex() (tokens []Token) {
 				l.insertSemi = true
 			case '{':
 				tok.typ = LBRACE
+				l.insertSemi = false
 			case '}':
 				tok.typ = RBRACE
 				l.insertSemi = true

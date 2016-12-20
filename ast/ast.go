@@ -64,7 +64,7 @@ type (
 	// Binary operation i.e. +, - etc
 	Binary struct {
 		Lhs Expression
-		Op  lexer.Token
+		Op  lexer.TokenType
 		Rhs Expression
 	}
 
@@ -180,6 +180,9 @@ type (
 		Block     Block
 	}
 )
+
+func (b If) expressionNode()  {}
+func (b For) expressionNode() {}
 
 type Ast struct {
 	Functions []Function

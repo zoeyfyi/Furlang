@@ -130,7 +130,7 @@ func (p *Parser) maths() ast.Expression {
 		token := operatorStack.Pop().(lexer.Token)
 		rhs := outputStack.Pop().(ast.Expression)
 		lhs := outputStack.Pop().(ast.Expression)
-		outputStack.Push(ast.Binary{lhs, token, rhs})
+		outputStack.Push(ast.Binary{lhs, token.Type(), rhs})
 	}
 
 	// TODO: simplify this condition
@@ -141,14 +141,14 @@ func (p *Parser) maths() ast.Expression {
 			!((token.Type() == lexer.COMMA || token.Type() == lexer.RPAREN) && depth == 0)
 	}
 
-	fmt.Println("=== Begin maths ===")
-	fmt.Println("Start token:", p.token().String())
+	// fmt.Println("=== Begin maths ===")
+	// fmt.Println("Start token:", p.token().String())
 
 	depth := 0
 	for notEnded(p.token(), depth) {
 		token := p.token()
 
-		fmt.Println("current: ", token.String())
+		// fmt.Println("current: ", token.String())
 
 		switch token.Type() {
 		case lexer.INT:
@@ -212,7 +212,7 @@ func (p *Parser) maths() ast.Expression {
 			panic("Unexpected math token: " + token.String())
 		}
 
-		fmt.Println("next: ", p.token().String())
+		// fmt.Println("next: ", p.token().String())
 	}
 
 	for !operatorStack.Empty() {
@@ -271,6 +271,31 @@ func (p *Parser) block() ast.Block {
 	return ast.Block{expressions}
 }
 
+func (p *Parser) ifBlock() *ast.If {
+	p.expect(lexer.IF)
+	condition := p.maths()
+	body := p.block()
+	var elseIf *ast.If
+
+	// Check for else/else if
+	_, isElse := p.accept(lexer.ELSE)
+	if isElse {
+		if p.token().Type() == lexer.IF {
+			elseIf = p.ifBlock()
+		} else {
+			elseIf = &ast.If{
+				Block: p.block(),
+			}
+		}
+	}
+
+	return &ast.If{
+		Condition: condition,
+		Block:     body,
+		Else:      elseIf,
+	}
+}
+
 func (p *Parser) list() ast.List {
 	p.expect(lexer.LBRACE)
 
@@ -304,6 +329,8 @@ func (p *Parser) Expression() ast.Expression {
 	switch p.token().Type() {
 	case lexer.RETURN:
 		exp = p.ret()
+	case lexer.IF:
+		exp = p.ifBlock()
 	case lexer.LBRACE:
 		exp = p.block()
 	case lexer.IDENT:
@@ -319,11 +346,7 @@ func (p *Parser) Expression() ast.Expression {
 		exp = p.maths()
 	}
 
-	fmt.Println(p.index, len(p.tokens))
-
-	// if !p.eof() {
 	p.expect(lexer.SEMICOLON)
-	// }
 	return exp
 }
 
