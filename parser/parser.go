@@ -259,7 +259,6 @@ func (p *Parser) inferAssigment() ast.Assignment {
 }
 
 func (p *Parser) reAssigment() ast.Assignment {
-	fmt.Println("Reassignment")
 	ident := p.ident()
 	p.expect(lexer.ASSIGN)
 	expression := p.Value()
@@ -320,6 +319,18 @@ func (p *Parser) forBlock() *ast.For {
 	}
 }
 
+func (p *Parser) cast() ast.Cast {
+	p.expect(lexer.LPAREN)
+	typ := p.typ()
+	p.expect(lexer.RPAREN)
+	exp := p.Value()
+
+	return ast.Cast{
+		Type:       typ,
+		Expression: exp,
+	}
+}
+
 func (p *Parser) list() ast.List {
 	p.expect(lexer.LBRACE)
 
@@ -339,6 +350,8 @@ func (p *Parser) list() ast.List {
 
 func (p *Parser) Value() ast.Expression {
 	switch p.token().Type() {
+	case lexer.LPAREN:
+		return p.cast()
 	case lexer.LBRACE:
 		return p.list()
 	default:
@@ -357,6 +370,8 @@ func (p *Parser) Expression() ast.Expression {
 		exp = p.ifBlock()
 	case lexer.FOR:
 		exp = p.forBlock()
+	case lexer.LPAREN:
+		exp = p.cast()
 	case lexer.LBRACE:
 		exp = p.block()
 	case lexer.IDENT:

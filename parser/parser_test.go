@@ -267,6 +267,32 @@ func TestParser(t *testing.T) {
 				},
 			},
 		},
+		// int i = (int)0.5
+		{
+			source: `int i = (int)0.5`,
+			ast: ast.Assignment{
+				Type: &ast.Basic{
+					Ident: ast.Ident{
+						Value: "int",
+					},
+					Type: nil,
+				},
+				Name: ast.Ident{
+					Value: "i",
+				},
+				Expression: ast.Cast{
+					Expression: ast.Float{
+						Value: 0.500000,
+					},
+					Type: &ast.Basic{
+						Ident: ast.Ident{
+							Value: "int",
+						},
+						Type: nil,
+					},
+				},
+			},
+		},
 	}
 
 	for _, c := range cases {
