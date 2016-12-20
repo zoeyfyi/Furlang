@@ -9,18 +9,17 @@ import (
 )
 
 func TestParser(t *testing.T) {
-	// lexer := lexer.NewLexer([]byte(`call(2, 3)`))
 	lexer := lexer.NewLexer([]byte(`{
-        10
-        20
-    }`))
+		print(1, 3)
+		1 + 3
+	}`))
 	parser := NewParser(lexer.Lex())
 
-	fmt.Println("====")
+	fmt.Println("==== Source ====")
 	for _, t := range parser.tokens {
 		fmt.Println(t.String())
 	}
-	fmt.Println("====")
+	fmt.Println("================")
 
 	pp.Print(parser.Expression())
 	t.Fail()

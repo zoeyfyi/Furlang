@@ -102,7 +102,6 @@ func (p *Parser) call() ast.Call {
 		p.accept(lexer.COMMA)
 	}
 
-	fmt.Println(args)
 	p.expect(lexer.RPAREN)
 
 	return ast.Call{function, args}
@@ -138,18 +137,20 @@ func (p *Parser) maths() ast.Expression {
 			!((token.Type() == lexer.COMMA || token.Type() == lexer.RPAREN) && depth == 0)
 	}
 
+	fmt.Println("=== Begin maths ===")
+
 	depth := 0
 	for notEnded(p.token(), depth) {
 		token := p.token()
 
+		fmt.Println("current: ", token.String())
+
 		switch token.Type() {
 		case lexer.INT:
 			outputStack.Push(p.integer())
-			p.back()
 
 		case lexer.FLOAT:
 			outputStack.Push(p.float())
-			p.back()
 
 		case lexer.ADD, lexer.SUB, lexer.MUL, lexer.QUO, lexer.REM,
 			lexer.GTR, lexer.LSS, lexer.GEQ, lexer.LEQ, lexer.EQL, lexer.NEQ:
@@ -161,13 +162,13 @@ func (p *Parser) maths() ast.Expression {
 				popOperatorStack()
 			}
 			operatorStack.Push(token)
+			p.next()
 
 		case lexer.IDENT:
 			switch {
 			// Token is a function name, push it onto the operator stack
 			case notEnded(p.peek(), depth) && p.peek().Type() == lexer.LPAREN:
 				outputStack.Push(p.call())
-				p.back()
 
 			// Token is a array index
 			case notEnded(p.peek(), depth) && p.peek().Type() == lexer.LBRACK:
@@ -176,7 +177,6 @@ func (p *Parser) maths() ast.Expression {
 			// Token is a varible name, push it onto the out queue
 			default:
 				outputStack.Push(p.ident())
-				p.back()
 			}
 
 		case lexer.LPAREN:
@@ -207,12 +207,14 @@ func (p *Parser) maths() ast.Expression {
 			panic("Unexpected math token: " + token.String())
 		}
 
-		p.next()
+		fmt.Println("next: ", p.token().String())
 	}
 
 	for !operatorStack.Empty() {
 		popOperatorStack()
 	}
+
+	p.accept(lexer.SEMICOLON)
 
 	return outputStack.Pop().(ast.Expression)
 }

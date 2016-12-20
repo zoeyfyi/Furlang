@@ -255,7 +255,6 @@ func (l *Lexer) Lex() (tokens []Token) {
 
 	line := 1
 	column := 1
-	insertSemi := false
 
 	for l.offset < len(l.source) {
 		l.clearWhitespace()
@@ -270,24 +269,25 @@ func (l *Lexer) Lex() (tokens []Token) {
 			tok.typ = Lookup(tok.value)
 			switch tok.typ {
 			case IDENT, BREAK, CONTINUE, FALLTHROUGH, RETURN:
-				insertSemi = true
+				l.insertSemi = true
 			}
 		case isDigit(currentRune):
-			insertSemi = true
+			l.insertSemi = true
 			tok.typ, tok.value = l.number()
 		default:
 			l.nextRune()
 			switch currentRune {
 			case -1:
-				tok.typ = SEMICOLON
-				tok.value = "\n"
+				if l.insertSemi {
+					tok.typ = SEMICOLON
+					tok.value = "\n"
+				} else {
+					tok.typ = EOF
+				}
 				tok.column--
 				column = l.offset
 			case '\n':
-				// Skip over if line continues
-				if !insertSemi {
-					continue
-				}
+				l.insertSemi = false
 				tok.typ = SEMICOLON
 				tok.value = "\n"
 				tok.column--
@@ -295,7 +295,7 @@ func (l *Lexer) Lex() (tokens []Token) {
 			case '"':
 				tok.typ = STRING
 				tok.value = l.string()
-				insertSemi = true
+				l.insertSemi = true
 			case ':':
 				tok.typ = l.switch3(COLON, DEFINE, ':', DOUBLE_COLON)
 			case '.':
@@ -316,21 +316,21 @@ func (l *Lexer) Lex() (tokens []Token) {
 				tok.typ = LPAREN
 			case ')':
 				tok.typ = RPAREN
-				insertSemi = true
+				l.insertSemi = true
 			case '[':
 				tok.typ = LBRACK
 			case ']':
 				tok.typ = RBRACK
-				insertSemi = true
+				l.insertSemi = true
 			case '{':
 				tok.typ = LBRACE
 			case '}':
 				tok.typ = RBRACE
-				insertSemi = true
+				l.insertSemi = true
 			case '+':
 				tok.typ = l.switch3(ADD, ADD_ASSIGN, '+', INC)
 				if tok.typ == INC {
-					insertSemi = true
+					l.insertSemi = true
 				}
 			case '-':
 				if l.currentRune == '>' {
@@ -338,7 +338,7 @@ func (l *Lexer) Lex() (tokens []Token) {
 				} else {
 					tok.typ = l.switch3(SUB, SUB_ASSIGN, '-', DEC)
 					if tok.typ == DEC {
-						insertSemi = true
+						l.insertSemi = true
 					}
 				}
 			case '*':
@@ -371,7 +371,6 @@ func (l *Lexer) Lex() (tokens []Token) {
 					panic(fmt.Sprintf("illegal character %#U", l.currentRune))
 				}
 				tok.typ = ILLEGAL
-				insertSemi = l.insertSemi
 			}
 
 		}

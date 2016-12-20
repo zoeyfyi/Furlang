@@ -221,37 +221,37 @@ func (p *parser) log(statement string, start bool) {
 // 	return false
 // }
 
-func (p *parser) typed() lexer.Type {
-	p.log("Start Type", true)
-	defer p.log("End Type", false)
+// func (p *parser) typed() lexer.Type {
+// 	p.log("Start Type", true)
+// 	defer p.log("End Type", false)
 
-	typ := p.expect(lexer.Type).Value
-	switch typ {
-		case: ""
-	}
+// 	typ := p.expect(lexer.Type).Value
+// 	switch typ {
+// 		case: ""
+// 	}
 
-}
+// }
 
 // typed name in the format: type name, where name is optional
-func (p *parser) typedName() typedName {
-	p.log("Start TypedName", true)
-	defer p.log("End TypedName", false)
+// func (p *parser) typedName() typedName {
+// 	p.log("Start TypedName", true)
+// 	defer p.log("End TypedName", false)
 
-	ftype := p.expect(lexer.TYPE).Value.(lexer.Type)
+// 	ftype := p.expect(lexer.TYPE).Value.(lexer.Type)
 
-	// type has a name
-	if p.currentToken().Type == lexer.IDENT {
-		return typedName{
-			name:     p.expect(lexer.IDENT).Value.(string),
-			nameType: ftype,
-		}
-	}
+// 	// type has a name
+// 	if p.currentToken().Type == lexer.IDENT {
+// 		return typedName{
+// 			name:     p.expect(lexer.IDENT).Value.(string),
+// 			nameType: ftype,
+// 		}
+// 	}
 
-	// type with no name
-	return typedName{
-		nameType: ftype,
-	}
-}
+// 	// type with no name
+// 	return typedName{
+// 		nameType: ftype,
+// 	}
+// }
 
 // List in to format of type name, type name ...
 func (p *parser) typeList() []typedName {
@@ -358,36 +358,36 @@ func (p *parser) function() function {
 // 	return p.shuntingYard(buffer)
 // }
 
-func (p *parser) assignment() expression {
-	p.log("Start Assignment", true)
-	defer p.log("End Assignment", false)
+// func (p *parser) assignment() expression {
+// 	p.log("Start Assignment", true)
+// 	defer p.log("End Assignment", false)
 
-	assignType := p.expect(lexer.TYPE).Value.(lexer.Type)
-	name := p.expect(lexer.IDENT).Value.(string)
-	p.expect(lexer.ASSIGN)
-	value := p.maths()
+// 	assignType := p.expect(lexer.TYPE).Value.(lexer.Type)
+// 	name := p.expect(lexer.IDENT).Value.(string)
+// 	p.expect(lexer.ASSIGN)
+// 	value := p.maths()
 
-	return assignment{
-		name:     name,
-		nameType: assignType,
-		value:    value,
-	}
-}
+// 	return assignment{
+// 		name:     name,
+// 		nameType: assignType,
+// 		value:    value,
+// 	}
+// }
 
-func (p *parser) inferAssignment() expression {
-	p.log("Start Infer Assignment", true)
-	defer p.log("End Infer Assignment", false)
+// func (p *parser) inferAssignment() expression {
+// 	p.log("Start Infer Assignment", true)
+// 	defer p.log("End Infer Assignment", false)
 
-	name := p.expect(lexer.IDENT).Value.(string)
-	p.expect(lexer.INFERASSIGN)
-	value := p.expression()
+// 	name := p.expect(lexer.IDENT).Value.(string)
+// 	p.expect(lexer.INFERASSIGN)
+// 	value := p.expression()
 
-	return assignment{
-		name:     name,
-		value:    value,
-		nameType: lexer.ILLEGAL,
-	}
-}
+// 	return assignment{
+// 		name:     name,
+// 		value:    value,
+// 		nameType: lexer.ILLEGAL,
+// 	}
+// }
 
 func (p *parser) ifBranch() ifBlock {
 	p.log("ifBranch", true)
