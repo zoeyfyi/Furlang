@@ -235,11 +235,11 @@ func (p *Parser) typ() ast.Type {
 		length := p.integer()
 		p.expect(lexer.RBRACK)
 		return &ast.ArrayType{
-			Type:   &ast.Basic{Ident: ast.Ident{base.Value()}},
+			Type:   ast.NewBasic(base.Value()),
 			Length: length,
 		}
 	default:
-		return &ast.Basic{Ident: ast.Ident{p.expect(lexer.IDENT).Value()}}
+		return ast.NewBasic(p.expect(lexer.IDENT).Value())
 	}
 }
 

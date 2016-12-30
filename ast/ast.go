@@ -21,10 +21,7 @@ type (
 
 	// Basic : type
 	Basic struct {
-		// Ident on the initial pass this is the type identifier during
-		// semantic analysis we use this value to derive the actual type
-		Ident Ident
-		Type  types.Type
+		Type types.Type
 	}
 
 	// ArrayType : type[length]
@@ -53,6 +50,21 @@ type (
 		Returns    []Type
 	}
 )
+
+func NewBasic(ident string) *Basic {
+	switch ident {
+	case "int":
+		return &Basic{
+			Type: types.BasicInt,
+		}
+	case "bool":
+		return &Basic{
+			Type: types.BasicBool,
+		}
+	}
+
+	panic("Unrecognized basic type")
+}
 
 func (t Basic) typeNode()        {}
 func (t ArrayType) typeNode()    {}

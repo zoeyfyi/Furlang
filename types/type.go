@@ -1,4 +1,4 @@
-package lexer
+package types
 
 // Type represents a type
 type Type interface {
@@ -61,6 +61,20 @@ type Basic struct {
 	info BasicInfo
 	name string
 }
+
+var (
+	BasicBool = &Basic{
+		typ:  Bool,
+		info: IsBool,
+		name: "bool",
+	}
+
+	BasicInt = &Basic{
+		typ:  Int,
+		info: IsInt,
+		name: "int",
+	}
+)
 
 func (b *Basic) Type() BasicType {
 	return b.typ
