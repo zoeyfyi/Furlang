@@ -57,10 +57,13 @@ func TestIrgen(t *testing.T) {
 
 	files := []FI{
 		FI{"main.fur"},
+		FI{"i8_type.fur"},
+		FI{"i16_type.fur"},
+		FI{"i32_type.fur"},
+		FI{"i64_type.fur"},
 	}
 
 	for _, file := range files {
-		fmt.Println(file.Name())
 		c, err := ioutil.ReadFile(fmt.Sprintf("../tests/%s", file.Name()))
 		if err != nil {
 			t.Errorf("Error reading file: %s", err.Error())
