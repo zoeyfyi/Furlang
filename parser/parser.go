@@ -508,6 +508,15 @@ func (p *Parser) Expression() ast.Expression {
 	return exp
 }
 
-func (p *Parser) Parse() ast.Expression {
-	return p.Expression()
+func (p *Parser) Parse() ast.Ast {
+	var functions []ast.Function
+
+	for !p.eof() {
+		functions = append(functions, p.function())
+		p.accept(lexer.SEMICOLON)
+	}
+
+	return ast.Ast{
+		Functions: functions,
+	}
 }

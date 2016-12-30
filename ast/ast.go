@@ -3,6 +3,7 @@ package ast
 import (
 	"github.com/bongo227/Furlang/lexer"
 	types "github.com/bongo227/Furlang/types"
+	goorytypes "github.com/bongo227/goory/types"
 )
 
 // TODO: split into expressions and Values
@@ -17,6 +18,7 @@ type Expression interface {
 type (
 	Type interface {
 		typeNode()
+		Llvm() goorytypes.Type
 	}
 
 	// Basic : type
@@ -66,10 +68,17 @@ func NewBasic(ident string) *Basic {
 	panic("Unrecognized basic type")
 }
 
-func (t Basic) typeNode()        {}
-func (t ArrayType) typeNode()    {}
-func (t StructType) typeNode()   {}
-func (t FunctionType) typeNode() {}
+func (t Basic) typeNode()             {}
+func (t Basic) Llvm() goorytypes.Type { return t.Type.Llvm() }
+
+func (t ArrayType) typeNode()             {}
+func (t ArrayType) Llvm() goorytypes.Type { return t.Type.Llvm() }
+
+// func (t StructType) typeNode()             {}
+// func (t StructType) Llvm() goorytypes.Type { return t.Type.Llvm() }
+
+// func (t FunctionType) typeNode()             {}
+// func (t FunctionType) Llvm() goorytypes.Type { return t.Type.Llvm() }
 
 // Operations
 type (

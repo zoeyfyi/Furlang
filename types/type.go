@@ -1,9 +1,14 @@
 package types
 
+import (
+	goorytypes "github.com/bongo227/goory/types"
+)
+
 // Type represents a type
 type Type interface {
 	// Gets the base type of the type
 	Base() Type
+	Llvm() goorytypes.Type
 	// String() string
 }
 
@@ -105,17 +110,17 @@ func (a *Array) Type() Type {
 	return a.typ
 }
 
-type Slice struct {
-	typ Type
-}
+// type Slice struct {
+// 	typ Type
+// }
 
-func NewSlice(typ Type) *Slice {
-	return &Slice{typ}
-}
+// func NewSlice(typ Type) *Slice {
+// 	return &Slice{typ}
+// }
 
-func (s *Slice) Type() Type {
-	return s.typ
-}
+// func (s *Slice) Type() Type {
+// 	return s.typ
+// }
 
 type Pointer struct {
 	typ Type
@@ -129,7 +134,32 @@ func (p *Pointer) Type() Type {
 	return p.typ
 }
 
-func (b *Basic) Base() Type   { return b }
-func (b *Array) Base() Type   { return b }
-func (b *Slice) Base() Type   { return b }
-func (b *Pointer) Base() Type { return b }
+func (b *Basic) Base() Type { return b }
+
+func (b *Basic) Llvm() goorytypes.Type {
+	switch b.typ {
+	case Bool:
+		return goorytypes.NewBoolType()
+	case Int:
+		return goorytypes.NewIntType(64)
+	default:
+		panic("TODO: finish this")
+	}
+}
+
+func (b *Array) Base() Type { return b.typ }
+
+func (b *Array) Llvm() goorytypes.Type {
+	return goorytypes.NewArrayType(b.typ.Llvm(), b.length)
+}
+
+// func (b *Slice) Base() Type   { return b.typ }
+
+// func (b *Slice) Llvm() goorytypes.Type {
+// }
+
+func (b *Pointer) Base() Type { return b.typ }
+
+func (b *Pointer) Llvm() goorytypes.Type {
+	return goorytypes.NewPointerType(b.Base().Llvm())
+}
