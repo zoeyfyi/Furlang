@@ -36,7 +36,7 @@ type (
 	// TypedIdent : type identifier
 	TypedIdent struct {
 		Type  Type
-		Ident lexer.Token
+		Ident Ident
 	}
 
 	// StructType : {

@@ -243,6 +243,52 @@ func (p *Parser) typ() ast.Type {
 	}
 }
 
+func (p *Parser) namedTyp() ast.TypedIdent {
+	typ := p.typ()
+	name := p.ident()
+
+	return ast.TypedIdent{
+		Ident: name,
+		Type:  typ,
+	}
+}
+
+func (p *Parser) argList() (args []ast.TypedIdent) {
+	for p.token().Type() != lexer.ARROW {
+		args = append(args, p.namedTyp())
+		p.accept(lexer.COMMA)
+	}
+
+	return args
+}
+
+func (p *Parser) returnList() (returns []ast.Type) {
+	p.expect(lexer.ARROW)
+	for p.token().Type() != lexer.LBRACE {
+		returns = append(returns, p.typ())
+		p.accept(lexer.COMMA)
+	}
+
+	return returns
+}
+
+func (p *Parser) function() ast.Function {
+	name := p.ident()
+	p.expect(lexer.DOUBLE_COLON)
+	args := p.argList()
+	returns := p.returnList()
+	body := p.block()
+
+	return ast.Function{
+		Name: name,
+		Type: ast.FunctionType{
+			Parameters: args,
+			Returns:    returns,
+		},
+		Body: body,
+	}
+}
+
 func (p *Parser) assignment() ast.Assignment {
 	typ := p.typ()
 	ident := p.ident()
@@ -263,6 +309,64 @@ func (p *Parser) reAssigment() ast.Assignment {
 	p.expect(lexer.ASSIGN)
 	expression := p.Value()
 	return ast.Assignment{nil, ident, expression}
+}
+
+func (p *Parser) increment() ast.Assignment {
+	ident := p.ident()
+	p.next()
+	return ast.Assignment{
+		Name: ident,
+		Expression: ast.Binary{
+			Lhs: ident,
+			Op:  lexer.ADD,
+			Rhs: ast.Integer{
+				Value: 1,
+			},
+		},
+	}
+}
+
+func (p *Parser) decrement() ast.Assignment {
+	ident := p.ident()
+	p.next()
+	return ast.Assignment{
+		Name: ident,
+		Expression: ast.Binary{
+			Lhs: ident,
+			Op:  lexer.SUB,
+			Rhs: ast.Integer{
+				Value: 1,
+			},
+		},
+	}
+}
+
+func (p *Parser) addAssign() ast.Assignment {
+	ident := p.ident()
+	p.next()
+	value := p.Value()
+	return ast.Assignment{
+		Name: ident,
+		Expression: ast.Binary{
+			Lhs: ident,
+			Op:  lexer.ADD,
+			Rhs: value,
+		},
+	}
+}
+
+func (p *Parser) subAssign() ast.Assignment {
+	ident := p.ident()
+	p.next()
+	value := p.Value()
+	return ast.Assignment{
+		Name: ident,
+		Expression: ast.Binary{
+			Lhs: ident,
+			Op:  lexer.SUB,
+			Rhs: value,
+		},
+	}
 }
 
 func (p *Parser) block() ast.Block {
@@ -374,8 +478,19 @@ func (p *Parser) Expression() ast.Expression {
 		exp = p.cast()
 	case lexer.LBRACE:
 		exp = p.block()
+
 	case lexer.IDENT:
 		switch p.peek().Type() {
+		case lexer.DOUBLE_COLON:
+			exp = p.function()
+		case lexer.INC:
+			exp = p.increment()
+		case lexer.DEC:
+			exp = p.decrement()
+		case lexer.ADD_ASSIGN:
+			exp = p.addAssign()
+		case lexer.SUB_ASSIGN:
+			exp = p.subAssign()
 		case lexer.ASSIGN:
 			exp = p.reAssigment()
 		case lexer.DEFINE:

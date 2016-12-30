@@ -293,6 +293,146 @@ func TestParser(t *testing.T) {
 				},
 			},
 		},
+		// {
+		// 	i++
+		// 	i--
+		// 	i+=10
+		// 	i-=10
+		// }
+		{
+			source: `{
+				i++
+				i--
+				i+=10
+				i-=10
+			}`,
+			ast: ast.Block{
+				Expressions: []ast.Expression{
+					ast.Assignment{
+						Type: nil,
+						Name: ast.Ident{
+							Value: "i",
+						},
+						Expression: ast.Binary{
+							Lhs: ast.Ident{
+								Value: "i",
+							},
+							Op: 11,
+							Rhs: ast.Integer{
+								Value: 1,
+							},
+						},
+					},
+					ast.Assignment{
+						Type: nil,
+						Name: ast.Ident{
+							Value: "i",
+						},
+						Expression: ast.Binary{
+							Lhs: ast.Ident{
+								Value: "i",
+							},
+							Op: 12,
+							Rhs: ast.Integer{
+								Value: 1,
+							},
+						},
+					},
+					ast.Assignment{
+						Type: nil,
+						Name: ast.Ident{
+							Value: "i",
+						},
+						Expression: ast.Binary{
+							Lhs: ast.Ident{
+								Value: "i",
+							},
+							Op: 11,
+							Rhs: ast.Integer{
+								Value: 10,
+							},
+						},
+					},
+					ast.Assignment{
+						Type: nil,
+						Name: ast.Ident{
+							Value: "i",
+						},
+						Expression: ast.Binary{
+							Lhs: ast.Ident{
+								Value: "i",
+							},
+							Op: 12,
+							Rhs: ast.Integer{
+								Value: 10,
+							},
+						},
+					},
+				},
+			},
+		},
+		// add :: int a, int b -> int {
+		// 	return a + b
+		// }
+		{
+			source: `add :: int a, int b -> int {
+				return a + b
+			}`,
+			ast: ast.Function{
+				Type: ast.FunctionType{
+					Parameters: []ast.TypedIdent{
+						ast.TypedIdent{
+							Type: &ast.Basic{
+								Ident: ast.Ident{
+									Value: "int",
+								},
+								Type: nil,
+							},
+							Ident: ast.Ident{
+								Value: "a",
+							},
+						},
+						ast.TypedIdent{
+							Type: &ast.Basic{
+								Ident: ast.Ident{
+									Value: "int",
+								},
+								Type: nil,
+							},
+							Ident: ast.Ident{
+								Value: "b",
+							},
+						},
+					},
+					Returns: []ast.Type{
+						&ast.Basic{
+							Ident: ast.Ident{
+								Value: "int",
+							},
+							Type: nil,
+						},
+					},
+				},
+				Name: ast.Ident{
+					Value: "add",
+				},
+				Body: ast.Block{
+					Expressions: []ast.Expression{
+						ast.Return{
+							Value: ast.Binary{
+								Lhs: ast.Ident{
+									Value: "a",
+								},
+								Op: 11,
+								Rhs: ast.Ident{
+									Value: "b",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, c := range cases {

@@ -161,97 +161,6 @@ func (p *parser) log(statement string, start bool) {
 	}
 }
 
-// func (p *parser) currentToken() lexer.Token {
-// 	return p.tokens[p.currentTokenIndex]
-// }
-
-// func (p *parser) previousToken() lexer.Token {
-// 	if p.currentTokenIndex == 0 {
-// 		panic("At first token (no previous token)")
-// 	}
-
-// 	return p.tokens[p.currentTokenIndex-1]
-// }
-
-// func (p *parser) clearNewLines() {
-// 	ok := p.accept(lexer.SEMICOLON)
-// 	for ok && p.currentTokenIndex != len(p.tokens)-1 {
-// 		ok = p.accept(lexer.SEMICOLON)
-// 	}
-// }
-
-// func (p *parser) nextToken() lexer.Token {
-// 	if p.currentTokenIndex < len(p.tokens) {
-// 		p.currentTokenIndex++
-// 		return p.currentToken()
-// 	}
-
-// 	panic("Ran out of tokens")
-// }
-
-// func (p *parser) peekNextToken() lexer.Token {
-// 	return p.tokens[p.currentTokenIndex+1]
-// }
-
-// func (p *parser) expect(Type lexer.TokenType) lexer.Token {
-// 	if p.currentToken().Type() == Type {
-// 		prev := p.currentToken()
-
-// 		if p.currentTokenIndex < len(p.tokens)-1 {
-// 			p.nextToken()
-// 		}
-
-// 		return prev
-// 	}
-
-// 	panic("Unexpected: " + p.currentToken().String() + "; Expected: " + Type.String())
-// }
-
-// func (p *parser) accept(Type lexer.TokenType) bool {
-// 	if p.currentToken().Type() == Type && p.currentTokenIndex == len(p.tokens)-1 {
-// 		return true
-// 	}
-
-// 	if p.currentToken().Type() == Type {
-// 		p.nextToken()
-// 		return true
-// 	}
-
-// 	return false
-// }
-
-// func (p *parser) typed() lexer.Type {
-// 	p.log("Start Type", true)
-// 	defer p.log("End Type", false)
-
-// 	typ := p.expect(lexer.Type).Value
-// 	switch typ {
-// 		case: ""
-// 	}
-
-// }
-
-// typed name in the format: type name, where name is optional
-// func (p *parser) typedName() typedName {
-// 	p.log("Start TypedName", true)
-// 	defer p.log("End TypedName", false)
-
-// 	ftype := p.expect(lexer.TYPE).Value.(lexer.Type)
-
-// 	// type has a name
-// 	if p.currentToken().Type == lexer.IDENT {
-// 		return typedName{
-// 			name:     p.expect(lexer.IDENT).Value.(string),
-// 			nameType: ftype,
-// 		}
-// 	}
-
-// 	// type with no name
-// 	return typedName{
-// 		nameType: ftype,
-// 	}
-// }
-
 // List in to format of type name, type name ...
 func (p *parser) typeList() []typedName {
 	p.log("Start TypeList", true)
@@ -274,23 +183,6 @@ func (p *parser) typeList() []typedName {
 	return names
 }
 
-// func (p *parser) block() block {
-// 	p.log("Start Block", true)
-// 	defer p.log("End Block", false)
-
-// 	block := block{}
-// 	p.expect(lexer.OPENBODY)
-// 	p.clearNewLines()
-
-// 	for p.currentToken().Type != lexer.CLOSEBODY {
-// 		block.expressions = append(block.expressions, p.expression())
-// 	}
-
-// 	p.expect(lexer.CLOSEBODY)
-// 	p.clearNewLines()
-// 	return block
-// }
-
 func (p *parser) function() function {
 	p.log("Start Function", true)
 	defer p.log("End Function", false)
@@ -305,214 +197,30 @@ func (p *parser) function() function {
 	return function{name, args, returns, block}
 }
 
-// func (p *parser) ret() ret {
-// 	p.log("Start Return", true)
-// 	defer p.log("End Return", false)
-
-// 	p.expect(lexer.RETURN)
-
-// 	var returns []expression
-
-// 	// While their is a comma continue
-// 	ok := true
-// 	for ok {
-// 		returns = append(returns, p.expression())
-// 		ok = p.currentToken().Type == lexer.COMMA
-// 	}
-
-// 	return ret{returns}
-// }
-
-// func (p *parser) maths() expression {
-// 	p.log("Start Maths", true)
-// 	defer p.log("End Maths", false)
-
-// 	var buffer []lexer.Token
-
-// 	depth := 0
-
-// 	for p.currentToken().Type != lexer.NEWLINE &&
-// 		p.currentToken().Type != lexer.SEMICOLON &&
-// 		p.currentToken().Type != lexer.OPENBODY &&
-// 		p.currentToken().Type != lexer.CLOSEBODY &&
-// 		!(p.currentToken().Type == lexer.COMMA && depth == 0) {
-
-// 		token := p.currentToken()
-
-// 		if token.Type == lexer.OPENBRACKET {
-// 			depth++
-// 		}
-
-// 		if token.Type == lexer.CLOSEBRACKET {
-// 			depth--
-// 		}
-
-// 		buffer = append(buffer, p.currentToken())
-// 		p.nextToken()
-// 	}
-// 	p.clearNewLines()
-
-// 	spew.Dump(buffer)
-
-// 	return p.shuntingYard(buffer)
-// }
-
-// func (p *parser) assignment() expression {
-// 	p.log("Start Assignment", true)
-// 	defer p.log("End Assignment", false)
-
-// 	assignType := p.expect(lexer.TYPE).Value.(lexer.Type)
-// 	name := p.expect(lexer.IDENT).Value.(string)
-// 	p.expect(lexer.ASSIGN)
-// 	value := p.maths()
-
-// 	return assignment{
-// 		name:     name,
-// 		nameType: assignType,
-// 		value:    value,
-// 	}
-// }
-
-// func (p *parser) inferAssignment() expression {
-// 	p.log("Start Infer Assignment", true)
-// 	defer p.log("End Infer Assignment", false)
+// func (p *parser) increment() expression {
+// 	p.log("Start Increment", true)
+// 	defer p.log("End Increment", false)
 
 // 	name := p.expect(lexer.IDENT).Value.(string)
-// 	p.expect(lexer.INFERASSIGN)
-// 	value := p.expression()
-
-// 	return assignment{
-// 		name:     name,
-// 		value:    value,
-// 		nameType: lexer.ILLEGAL,
-// 	}
-// }
-
-// func (p *parser) ifBranch() ifBlock {
-// 	p.log("ifBranch", true)
-// 	defer p.log("ifBranch", false)
-
-// 	var condition expression
-// 	var block block
-
+// 	var expr expression
 // 	switch p.currentToken().Type {
-// 	case lexer.IF:
-// 		p.expect(lexer.IF)
-// 		condition = p.maths()
-// 		block = p.block()
-
-// 	case lexer.ELSE:
-// 		p.expect(lexer.ELSE)
-// 		block = p.block()
+// 	case lexer.INCREMENT:
+// 		p.nextToken()
+// 		expr = increment{name}
+// 	case lexer.DECREMENT:
+// 		p.nextToken()
+// 		expr = decrement{name}
+// 	case lexer.INCREMENTEQUAL:
+// 		p.nextToken()
+// 		expr = incrementExpression{name, p.maths()}
+// 	case lexer.DECREMENTEQUAL:
+// 		p.nextToken()
+// 		expr = decrementExpression{name, p.maths()}
 // 	}
 
-// 	return ifBlock{
-// 		block:     block,
-// 		condition: condition,
-// 	}
-// }
-
-// func (p *parser) ifBlock() ifExpression {
-// 	p.log("ifBlock", true)
-// 	defer p.log("ifBlock", false)
-
-// 	ifBranch := p.ifBranch()
-// 	if p.currentToken().Type == lexer.ELSE {
-// 		elseBranch := p.ifBranch()
-
-// 		return ifExpression{
-// 			blocks: []ifBlock{ifBranch, elseBranch},
-// 		}
-// 	}
-
-// 	return ifExpression{
-// 		blocks: []ifBlock{ifBranch},
-// 	}
-// }
-
-func (p *parser) cast() cast {
-	p.log("Start Cast", true)
-	defer p.log("End Cast", false)
-
-	p.expect(lexer.OPENBRACKET)
-	castType := p.expect(lexer.TYPE).Value.(lexer.Type)
-	p.expect(lexer.CLOSEBRACKET)
-
-	return cast{
-		cast:  castType,
-		value: p.maths(),
-	}
-}
-
-func (p *parser) increment() expression {
-	p.log("Start Increment", true)
-	defer p.log("End Increment", false)
-
-	name := p.expect(lexer.IDENT).Value.(string)
-	var expr expression
-	switch p.currentToken().Type {
-	case lexer.INCREMENT:
-		p.nextToken()
-		expr = increment{name}
-	case lexer.DECREMENT:
-		p.nextToken()
-		expr = decrement{name}
-	case lexer.INCREMENTEQUAL:
-		p.nextToken()
-		expr = incrementExpression{name, p.maths()}
-	case lexer.DECREMENTEQUAL:
-		p.nextToken()
-		expr = decrementExpression{name, p.maths()}
-	}
-
-	p.clearNewLines()
-
-	return expr
-}
-
-// func (p *parser) forExpression() forExpression {
-// 	p.log("Start for", true)
-// 	defer p.log("End for", false)
-
-// 	p.expect(lexer.FOR)
-
-// 	index := p.inferAssignment()
-// 	p.expect(lexer.SEMICOLON)
-
-// 	condition := p.maths()
-// 	p.expect(lexer.SEMICOLON)
-
-// 	increment := p.increment()
-
-// 	block := p.block()
-
-// 	return forExpression{index, condition, increment, block}
-// }
-
-// func (p *parser) array() array {
-// 	p.log("Start array", true)
-// 	defer p.log("End array", false)
-
-// 	p.expect(lexer.OPENSQUAREBRACKET)
-// 	length := p.expect(lexer.INTVALUE).Value.(int)
-// 	p.expect(lexer.CLOSESQUAREBRACKET)
-// 	arrayType := p.expect(lexer.TYPE)
-// 	p.expect(lexer.OPENBODY)
-
-// 	array := array{
-// 		length:   length,
-// 		baseType: arrayType.Value.(lexer.Type),
-// 	}
-
-// 	for p.currentToken().Type != lexer.CLOSEBODY {
-// 		array.values = append(array.values, p.maths())
-// 		p.accept(lexer.COMMA)
-// 	}
-
-// 	p.expect(lexer.CLOSEBODY)
 // 	p.clearNewLines()
 
-// 	return array
+// 	return expr
 // }
 
 func (p *parser) expression() expression {

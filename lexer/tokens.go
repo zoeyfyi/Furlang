@@ -147,7 +147,7 @@ var tokens = [...]string{
 
 	LAND:  "&&",
 	LOR:   "||",
-	ARROW: "<-",
+	ARROW: "->",
 	INC:   "++",
 	DEC:   "--",
 
