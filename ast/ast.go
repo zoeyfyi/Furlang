@@ -57,7 +57,23 @@ func NewBasic(ident string) *Basic {
 	switch ident {
 	case "int":
 		return &Basic{
-			Type: types.BasicInt,
+			Type: types.IntType(0),
+		}
+	case "i8":
+		return &Basic{
+			Type: types.IntType(8),
+		}
+	case "i16":
+		return &Basic{
+			Type: types.IntType(16),
+		}
+	case "i32":
+		return &Basic{
+			Type: types.IntType(32),
+		}
+	case "i64":
+		return &Basic{
+			Type: types.IntType(64),
 		}
 	case "bool":
 		return &Basic{

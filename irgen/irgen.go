@@ -10,7 +10,8 @@ import (
 )
 
 type Irgen struct {
-	root ast.Ast
+	root            ast.Ast
+	currentFunction ast.Function
 
 	module *goory.Module
 	block  *goory.Block
@@ -36,12 +37,16 @@ func (g *Irgen) typ(node ast.Type) goorytypes.Type {
 }
 
 func (g *Irgen) function(node ast.Function) {
+	g.currentFunction = node
+
+	// Add function to module
 	function := g.module.NewFunction(node.Name.Value, g.typ(node.Type.Returns[0]))
 	for _, arg := range node.Type.Parameters {
 		function.AddArgument(g.typ(arg.Type), arg.Ident.Value)
 	}
 	g.block = function.Entry()
 
+	// Add expressions to function body
 	for _, exp := range node.Body.Expressions {
 		g.expression(exp)
 	}
@@ -59,7 +64,9 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 }
 
 func (g *Irgen) ret(node ast.Return) gooryvalues.Value {
-	g.block.Ret(g.expression(node.Value))
+	value := g.expression(node.Value)
+	value = g.block.Cast(value, g.currentFunction.Type.Returns[0].Llvm())
+	g.block.Ret(value)
 	return nil
 }
 

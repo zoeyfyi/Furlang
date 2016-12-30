@@ -67,17 +67,41 @@ type Basic struct {
 	name string
 }
 
+func IntType(bits int) *Basic {
+	var typ BasicType
+	var name string
+	switch bits {
+	case 0:
+		typ = Int
+		name = "int"
+	case 8:
+		typ = I8
+		name = "i8"
+	case 16:
+		typ = I16
+		name = "i16"
+	case 32:
+		typ = I32
+		name = "i32"
+	case 64:
+		typ = I64
+		name = "i64"
+	default:
+		panic("Invalid number of bits")
+	}
+
+	return &Basic{
+		typ:  typ,
+		name: name,
+		info: IsInt,
+	}
+}
+
 var (
 	BasicBool = &Basic{
 		typ:  Bool,
 		info: IsBool,
 		name: "bool",
-	}
-
-	BasicInt = &Basic{
-		typ:  Int,
-		info: IsInt,
-		name: "int",
 	}
 )
 
@@ -141,6 +165,14 @@ func (b *Basic) Llvm() goorytypes.Type {
 	case Bool:
 		return goorytypes.NewBoolType()
 	case Int:
+		return goorytypes.NewIntType(64)
+	case I8:
+		return goorytypes.NewIntType(8)
+	case I16:
+		return goorytypes.NewIntType(16)
+	case I32:
+		return goorytypes.NewIntType(32)
+	case I64:
 		return goorytypes.NewIntType(64)
 	default:
 		panic("TODO: finish this")

@@ -2,6 +2,8 @@ package irgen
 
 import (
 	"bytes"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os/exec"
 	"regexp"
@@ -33,29 +35,57 @@ func getReturnCode(ir string) (int, string) {
 	panic("No return code")
 }
 
-func TestIrgen(t *testing.T) {
+type TestCase struct {
+	name string
+	code string
+}
 
-	cases := []struct {
-		code string
-	}{
-		{
-			code: `
-				main :: -> int {
-					return 123
-				}
-			`,
-		},
+type FI struct {
+	name string
+}
+
+func (f *FI) Name() string { return f.name }
+
+func TestIrgen(t *testing.T) {
+	var cases []TestCase
+
+	// Test all
+	// files, err := ioutil.ReadDir("../tests/")
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+
+	files := []FI{
+		FI{"main.fur"},
+	}
+
+	for _, file := range files {
+		fmt.Println(file.Name())
+		c, err := ioutil.ReadFile(fmt.Sprintf("../tests/%s", file.Name()))
+		if err != nil {
+			t.Errorf("Error reading file: %s", err.Error())
+		}
+		cases = append(cases, TestCase{
+			name: file.Name(),
+			code: string(c),
+		})
 	}
 
 	for _, c := range cases {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("File: %s\nPanic: %s", c.name, r)
+			}
+		}()
+
 		lexer := lexer.NewLexer([]byte(c.code))
 		parser := parser.NewParser(lexer.Lex())
 		gen := NewIrgen(parser.Parse())
 		llvm := gen.Generate()
 
 		if code, msg := getReturnCode(llvm); code != 123 {
-			t.Errorf("Expected: 123, Got: %d", code)
-			t.Log(msg)
+			// Make a more desciptive error message
+			t.Errorf("File: %s\nReturn Code: %d\nOut: %s", c.name, code, msg)
 		}
 	}
 }
