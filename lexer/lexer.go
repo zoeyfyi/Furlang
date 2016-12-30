@@ -290,7 +290,7 @@ func (l *Lexer) Lex() (tokens []Token) {
 				l.insertSemi = false
 				tok.typ = SEMICOLON
 				tok.value = "\n"
-				tok.column--
+				// tok.column--
 				column = l.offset
 			case '"':
 				tok.typ = STRING
@@ -335,6 +335,8 @@ func (l *Lexer) Lex() (tokens []Token) {
 				}
 			case '-':
 				if l.currentRune == '>' {
+					// Consume arrow head
+					l.nextRune()
 					tok.typ = ARROW
 				} else {
 					tok.typ = l.switch3(SUB, SUB_ASSIGN, '-', DEC)
