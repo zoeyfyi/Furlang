@@ -43,7 +43,7 @@ func (c *Compiler) Compile(buildDirector string) error {
 	start := time.Now()
 
 	// Run lexer
-	l := lexer.NewLexer(c.program)
+	l := lexer.NewLexer([]byte(c.program))
 	tokens := l.Lex()
 
 	// Optionaly write tokens to file
