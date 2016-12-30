@@ -87,7 +87,7 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 	case ast.Integer:
 		return g.integer(node)
 	case ast.Ident:
-		return g.find(node.Value)
+		return g.block.Load(g.find(node.Value).(gooryvalues.Pointer))
 	default:
 		panic(fmt.Sprintf("Node not handled: %+v", node))
 	}
@@ -101,7 +101,7 @@ func (g *Irgen) assignment(node ast.Assignment) {
 	value := g.expression(node.Expression)
 	value = g.block.Cast(value, typ)
 	// Store value in current scope
-	g.scopes[g.currentScope][node.Name.Value] = value
+	g.scopes[g.currentScope][node.Name.Value] = alloc
 	g.block.Store(alloc, value)
 }
 
