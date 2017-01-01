@@ -1,8 +1,6 @@
 package types
 
-import (
-	goorytypes "github.com/bongo227/goory/types"
-)
+import goorytypes "github.com/bongo227/goory/types"
 
 // Type represents a type
 type Type interface {
@@ -97,6 +95,30 @@ func IntType(bits int) *Basic {
 	}
 }
 
+func FloatType(bits int) *Basic {
+	var typ BasicType
+	var name string
+	switch bits {
+	case 0:
+		typ = Float
+		name = "float"
+	case 32:
+		typ = F32
+		name = "f32"
+	case 64:
+		typ = F64
+		name = "f64"
+	default:
+		panic("Invalid number of bits")
+	}
+
+	return &Basic{
+		typ:  typ,
+		name: name,
+		info: IsFloat,
+	}
+}
+
 var (
 	BasicBool = &Basic{
 		typ:  Bool,
@@ -174,6 +196,12 @@ func (b *Basic) Llvm() goorytypes.Type {
 		return goorytypes.NewIntType(32)
 	case I64:
 		return goorytypes.NewIntType(64)
+	case Float:
+		return goorytypes.NewFloatType()
+	case F32:
+		return goorytypes.NewFloatType()
+	case F64:
+		return goorytypes.NewDoubleType()
 	default:
 		panic("TODO: finish this")
 	}

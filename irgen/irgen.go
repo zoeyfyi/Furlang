@@ -104,6 +104,8 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 		return g.binary(node)
 	case ast.Integer:
 		return g.integer(node)
+	case ast.Float:
+		return g.float(node)
 	case ast.Ident:
 		return g.block.Load(g.find(node.Value).(gooryvalues.Pointer))
 	}
@@ -116,7 +118,8 @@ func (g *Irgen) assignment(node ast.Assignment) {
 	value := g.expression(node.Expression)
 
 	if node.Type == nil {
-		typ = goory.IntType(32)
+		// typ = goory.IntType(32)
+		typ = value.Type()
 	} else {
 		typ = g.typ(node.Type)
 		value = g.block.Cast(value, typ)
@@ -153,6 +156,8 @@ func (g *Irgen) binary(node ast.Binary) gooryvalues.Value {
 	switch node.Op {
 	case lexer.ADD:
 		return g.block.Add(lhs, rhs)
+	case lexer.QUO:
+		return g.block.Fdiv(lhs, rhs)
 	}
 
 	panic("Unhandled binary operator")
@@ -166,4 +171,8 @@ func (g *Irgen) ret(node ast.Return) {
 
 func (g *Irgen) integer(node ast.Integer) gooryvalues.Value {
 	return goory.Constant(goory.IntType(64), node.Value)
+}
+
+func (g *Irgen) float(node ast.Float) gooryvalues.Value {
+	return goory.Constant(goory.DoubleType(), node.Value)
 }

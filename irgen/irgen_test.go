@@ -58,6 +58,7 @@ func TestIrgen(t *testing.T) {
 		"i32_type.fur",
 		"i64_type.fur",
 		"function.fur",
+		"float.fur",
 	}
 
 	for _, file := range files {
@@ -85,7 +86,7 @@ func TestIrgen(t *testing.T) {
 
 		if code, msg := runIr(llvm); code != 123 {
 			// Make a more desciptive error message
-			t.Errorf("File: %s\nReturn Code: %d\nOut: %s", c.name, code, msg)
+			t.Errorf("\nFile: %s\nIr:\n%s\nReturn Code: %d\nOut: %s", c.name, llvm, code, msg)
 		}
 	}
 }

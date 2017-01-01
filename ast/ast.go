@@ -77,6 +77,18 @@ func NewBasic(ident string) *Basic {
 		return &Basic{
 			Type: types.IntType(64),
 		}
+	case "float":
+		return &Basic{
+			Type: types.FloatType(0),
+		}
+	case "f32":
+		return &Basic{
+			Type: types.FloatType(32),
+		}
+	case "f64":
+		return &Basic{
+			Type: types.FloatType(64),
+		}
 	case "bool":
 		return &Basic{
 			Type: types.BasicBool,
