@@ -15,16 +15,18 @@ import (
 	"github.com/bongo227/Furlang/parser"
 )
 
-func getReturnCode(ir string) (int, string) {
-	example := exec.Command("lli-3.8")
-
+func runIr(ir string) (int, string) {
+	// Setup lli to run the llvm ir
+	cmd := exec.Command("lli-3.8")
+	cmd.Stdin = strings.NewReader(ir)
 	var out bytes.Buffer
-	example.Stdin = strings.NewReader(ir)
-	example.Stdout = &out
-	example.Stderr = &out
+	cmd.Stdout = &out
+	cmd.Stderr = &out
 
-	if err := example.Run(); err != nil {
+	// Run the command
+	if err := cmd.Run(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
+			// Extract the return code and return any error message
 			re := regexp.MustCompile("[0-9]+")
 			code, _ := strconv.Atoi(re.FindAllString(exitErr.Error(), -1)[0])
 			return code, out.String()
@@ -40,12 +42,6 @@ type TestCase struct {
 	code string
 }
 
-type FI struct {
-	name string
-}
-
-func (f *FI) Name() string { return f.name }
-
 func TestIrgen(t *testing.T) {
 	var cases []TestCase
 
@@ -55,21 +51,22 @@ func TestIrgen(t *testing.T) {
 	// 	t.Error(err)
 	// }
 
-	files := []FI{
-		FI{"main.fur"},
-		FI{"i8_type.fur"},
-		FI{"i16_type.fur"},
-		FI{"i32_type.fur"},
-		FI{"i64_type.fur"},
+	files := []string{
+		"main.fur",
+		"i8_type.fur",
+		"i16_type.fur",
+		"i32_type.fur",
+		"i64_type.fur",
+		"function.fur",
 	}
 
 	for _, file := range files {
-		c, err := ioutil.ReadFile(fmt.Sprintf("../tests/%s", file.Name()))
+		c, err := ioutil.ReadFile(fmt.Sprintf("../tests/%s", file))
 		if err != nil {
 			t.Errorf("Error reading file: %s", err.Error())
 		}
 		cases = append(cases, TestCase{
-			name: file.Name(),
+			name: file,
 			code: string(c),
 		})
 	}
@@ -86,7 +83,7 @@ func TestIrgen(t *testing.T) {
 		gen := NewIrgen(parser.Parse())
 		llvm := gen.Generate()
 
-		if code, msg := getReturnCode(llvm); code != 123 {
+		if code, msg := runIr(llvm); code != 123 {
 			// Make a more desciptive error message
 			t.Errorf("File: %s\nReturn Code: %d\nOut: %s", c.name, code, msg)
 		}

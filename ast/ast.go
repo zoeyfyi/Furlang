@@ -1,6 +1,8 @@
 package ast
 
 import (
+	"fmt"
+
 	"github.com/bongo227/Furlang/lexer"
 	types "github.com/bongo227/Furlang/types"
 	goorytypes "github.com/bongo227/goory/types"
@@ -81,7 +83,7 @@ func NewBasic(ident string) *Basic {
 		}
 	}
 
-	panic("Unrecognized basic type")
+	panic(fmt.Sprintf("Unrecognized basic type: %s", ident))
 }
 
 func (t Basic) typeNode()             {}
