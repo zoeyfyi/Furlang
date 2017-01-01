@@ -100,6 +100,10 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 		return nil
 	case ast.Call:
 		return g.call(node)
+	case *ast.If:
+		next := g.ifNode(node)
+		g.block = next
+		return nil
 	case ast.Binary:
 		return g.binary(node)
 	case ast.Integer:
@@ -107,10 +111,36 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 	case ast.Float:
 		return g.float(node)
 	case ast.Ident:
+		if node.Value == "true" || node.Value == "false" {
+			return g.boolNode(node)
+		}
+
 		return g.block.Load(g.find(node.Value).(gooryvalues.Pointer))
 	}
 
 	panic(fmt.Sprintf("Node not handled: %s", pp.Sprint(node)))
+}
+
+// block compiles a block and returns the start block and the end block (if it branches elsewhere)
+func (g *Irgen) blockNode(node ast.Block) (*goory.Block, *goory.Block) {
+	oldScope := g.currentScope
+	oldBlock := g.block
+
+	// Set new scope/block
+	newBlock := g.block.Function().AddBlock()
+	g.currentScope++
+	g.block = newBlock
+
+	// Compile expressions in block
+	for _, e := range node.Expressions {
+		g.expression(e)
+	}
+
+	// Restore scope/block
+	g.currentScope = oldScope
+	g.block = oldBlock
+
+	return newBlock, g.block
 }
 
 func (g *Irgen) assignment(node ast.Assignment) {
@@ -149,6 +179,47 @@ func (g *Irgen) call(node ast.Call) gooryvalues.Value {
 	return call
 }
 
+func (g *Irgen) ifNode(node *ast.If) (next *goory.Block) {
+	trueStart, trueEnd := g.blockNode(node.Block)
+	condition := g.expression(node.Condition)
+
+	var falseStart, falseEnd *goory.Block
+	nextBlock := g.block.Function().AddBlock()
+	if node.Else == nil {
+		// If node has no else so condition branch should branch to next block
+		falseStart = nextBlock
+		falseEnd = nextBlock
+	} else {
+		falseStart, falseEnd = g.blockNode(node.Else.Block)
+
+		// If else node has a condition insert a new block with a conditional check
+		if node.Else.Condition != nil {
+			falseConditionCheck := g.block.Function().AddBlock()
+			falseConditionCheck.CondBr(
+				g.expression(node.Else.Condition),
+				falseStart,
+				nextBlock)
+		}
+	}
+
+	g.block.CondBr(condition, trueStart, falseStart)
+
+	// Check if else if chain continues
+	if (node.Else != nil) && (node.Else.Else != nil) {
+		g.ifNode(node.Else.Else)
+	}
+
+	// If blocks dont terminate brach to next block
+	if !trueEnd.Terminated() {
+		trueEnd.Br(nextBlock)
+	}
+	if !falseEnd.Terminated() {
+		falseEnd.Br(nextBlock)
+	}
+
+	return nextBlock
+}
+
 func (g *Irgen) binary(node ast.Binary) gooryvalues.Value {
 	lhs := g.expression(node.Lhs)
 	rhs := g.expression(node.Rhs)
@@ -175,4 +246,15 @@ func (g *Irgen) integer(node ast.Integer) gooryvalues.Value {
 
 func (g *Irgen) float(node ast.Float) gooryvalues.Value {
 	return goory.Constant(goory.DoubleType(), node.Value)
+}
+
+func (g *Irgen) boolNode(node ast.Ident) gooryvalues.Value {
+	switch node.Value {
+	case "true":
+		return goory.Constant(goory.BoolType(), true)
+	case "false":
+		return goory.Constant(goory.BoolType(), false)
+	}
+
+	panic("Ident is not a bool")
 }
