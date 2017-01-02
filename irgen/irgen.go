@@ -95,6 +95,8 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 	case ast.Return:
 		g.ret(node)
 		return nil
+	case ast.Cast:
+		return g.cast(node)
 	case ast.Assignment:
 		g.assignment(node)
 		return nil
@@ -122,7 +124,7 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 }
 
 // block compiles a block and returns the start block and the end block (if it branches elsewhere)
-func (g *Irgen) blockNode(node ast.Block) (*goory.Block, *goory.Block) {
+func (g *Irgen) blockNode(node ast.Block) (start *goory.Block, end *goory.Block) {
 	oldScope := g.currentScope
 	oldBlock := g.block
 
@@ -143,19 +145,15 @@ func (g *Irgen) blockNode(node ast.Block) (*goory.Block, *goory.Block) {
 	return newBlock, g.block
 }
 
-func (g *Irgen) assignment(node ast.Assignment) {
-	var typ goorytypes.Type
+func (g *Irgen) cast(node ast.Cast) gooryvalues.Value {
 	value := g.expression(node.Expression)
+	return g.block.Cast(value, node.Type.Llvm())
+}
 
-	if node.Type == nil {
-		// typ = goory.IntType(32)
-		typ = value.Type()
-	} else {
-		typ = g.typ(node.Type)
-		value = g.block.Cast(value, typ)
-	}
+func (g *Irgen) assignment(node ast.Assignment) {
+	value := g.expression(node.Expression)
+	alloc := g.block.Alloca(node.Type.Llvm())
 
-	alloc := g.block.Alloca(typ)
 	// Store value in current scope
 	g.scopes[g.currentScope][node.Name.Value] = alloc
 	g.block.Store(alloc, value)
@@ -166,11 +164,9 @@ func (g *Irgen) call(node ast.Call) gooryvalues.Value {
 	function := g.find(node.Function.Value)
 
 	// Get argument values
-	var args []gooryvalues.Value
-	argTypes := function.Type().(goorytypes.Function).Arguments()
-	for i, a := range node.Arguments {
+	args := make([]gooryvalues.Value, len(node.Arguments))
+	for _, a := range node.Arguments {
 		value := g.expression(a)
-		value = g.block.Cast(value, argTypes[i])
 		args = append(args, value)
 	}
 

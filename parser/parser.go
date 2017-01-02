@@ -15,6 +15,13 @@ type Parser struct {
 	index  int
 }
 
+// Parse is a convience method for parsing a raw string of code
+func Parse(code string) ast.Expression {
+	lex := lexer.NewLexer([]byte(code))
+	parser := NewParser(lex.Lex())
+	return parser.Expression()
+}
+
 // NewParser creates a new parser
 func NewParser(tokens []lexer.Token) *Parser {
 	return &Parser{tokens: tokens}
@@ -314,30 +321,36 @@ func (p *Parser) reAssigment() ast.Assignment {
 func (p *Parser) increment() ast.Assignment {
 	ident := p.ident()
 	p.next()
-	return ast.Assignment{
-		Name: ident,
-		Expression: ast.Binary{
-			Lhs: ident,
-			Op:  lexer.ADD,
-			Rhs: ast.Integer{
-				Value: 1,
-			},
+
+	expression := ast.Expression(ast.Binary{
+		Lhs: ident,
+		Op:  lexer.ADD,
+		Rhs: ast.Integer{
+			Value: 1,
 		},
+	})
+
+	return ast.Assignment{
+		Name:       ident,
+		Expression: expression,
 	}
 }
 
 func (p *Parser) decrement() ast.Assignment {
 	ident := p.ident()
 	p.next()
-	return ast.Assignment{
-		Name: ident,
-		Expression: ast.Binary{
-			Lhs: ident,
-			Op:  lexer.SUB,
-			Rhs: ast.Integer{
-				Value: 1,
-			},
+
+	expression := ast.Expression(ast.Binary{
+		Lhs: ident,
+		Op:  lexer.SUB,
+		Rhs: ast.Integer{
+			Value: 1,
 		},
+	})
+
+	return ast.Assignment{
+		Name:       ident,
+		Expression: expression,
 	}
 }
 
@@ -345,13 +358,16 @@ func (p *Parser) addAssign() ast.Assignment {
 	ident := p.ident()
 	p.next()
 	value := p.Value()
+
+	expression := ast.Expression(ast.Binary{
+		Lhs: ident,
+		Op:  lexer.ADD,
+		Rhs: value,
+	})
+
 	return ast.Assignment{
-		Name: ident,
-		Expression: ast.Binary{
-			Lhs: ident,
-			Op:  lexer.ADD,
-			Rhs: value,
-		},
+		Name:       ident,
+		Expression: expression,
 	}
 }
 
@@ -359,13 +375,16 @@ func (p *Parser) subAssign() ast.Assignment {
 	ident := p.ident()
 	p.next()
 	value := p.Value()
+
+	expression := ast.Expression(ast.Binary{
+		Lhs: ident,
+		Op:  lexer.SUB,
+		Rhs: value,
+	})
+
 	return ast.Assignment{
-		Name: ident,
-		Expression: ast.Binary{
-			Lhs: ident,
-			Op:  lexer.SUB,
-			Rhs: value,
-		},
+		Name:       ident,
+		Expression: expression,
 	}
 }
 
@@ -508,7 +527,7 @@ func (p *Parser) Expression() ast.Expression {
 	return exp
 }
 
-func (p *Parser) Parse() ast.Ast {
+func (p *Parser) Parse() *ast.Ast {
 	var functions []ast.Function
 
 	for !p.eof() {
@@ -516,7 +535,7 @@ func (p *Parser) Parse() ast.Ast {
 		p.accept(lexer.SEMICOLON)
 	}
 
-	return ast.Ast{
+	return &ast.Ast{
 		Functions: functions,
 	}
 }
