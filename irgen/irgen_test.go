@@ -58,7 +58,7 @@ func TestIrgen(t *testing.T) {
 		"i16_type.fur",
 		"i32_type.fur",
 		"i64_type.fur",
-		// "function.fur",
+		//"function.fur",
 		// "float.fur",
 		// "if.fur",
 	}
@@ -83,11 +83,8 @@ func TestIrgen(t *testing.T) {
 
 		lexer := lexer.NewLexer([]byte(c.code))
 		parser := parser.NewParser(lexer.Lex())
-		passed := parser.Parse()
-		analysis := analysis.NewAnalysis(passed)
-		passed2 := analysis.Analalize()
-		gen := NewIrgen(*passed2)
-
+		analysis := analysis.NewAnalysis(parser.Parse())
+		gen := NewIrgen(analysis.Analalize())
 		llvm := gen.Generate()
 
 		if code, msg := runIr(llvm); code != 123 {
