@@ -114,24 +114,24 @@ This makes managing multiple versions of compilers trivial since you can just in
 ###Overview
 ```markdown
 ┌───────────────────────┐
-│        Lexer        │
+│         Lexer         │
 └───────────────────────┘
-		   ↓
+		    ↓
 ┌───────────────────────┐
-│       Parser        │
+│        Parser         │
 └───────────────────────┘
-           ↓
+            ↓
 ┌───────────────────────┐
-│      Analyzer       │
+│       Analyzer        │
 └───────────────────────┘
-		   ↓
+		    ↓
 ┌───────────────────────┐   ┌───────────────────────┐
-│    IR Generation    │ ⇄ │        Goory        │
+│     IR Generation     │ > │         Goory         │
 └───────────────────────┘   └───────────────────────┘
-		   ↓
+		    ↓
 ┌───────────────────────┐
-│  LLVM Optimization  │
-│     and linking     │
+│   LLVM Optimization   │
+│      and linking      │
 └───────────────────────┘
 ```
 1. First the lexer parses over the source code and converts the characters to tokens. Tokens are the smallest usable pieces of information the compiler needs to compile the program. The reason we use tokens is because it's much easier to express logic further down in the pipeline and its alot faster to operate on tokens than it is on strings.
