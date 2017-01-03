@@ -213,7 +213,7 @@ The input represents a sample of source code and the expected output is a list o
 Input | Expected | Result
 --- | --- | ---
 `"foo"` | `Token{IDENT, "foo", 1, 1}`, `Token{SEMICOLON, "\n", 1, 4}` | Pass
-`"foo"` | `Token{INT, "100", 1, 1}`, `Token{ADD, "", 1, 5}`, `Token{INT, "23", 1, 7}`, `Token{SEMICOLON, "\n", 1, 9}` | Pass
+`"100 + 23"` | `Token{INT, "100", 1, 1}`, `Token{ADD, "", 1, 5}`, `Token{INT, "23", 1, 7}`, `Token{SEMICOLON, "\n", 1, 9}` | Pass
 
 
 ----------
