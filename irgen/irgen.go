@@ -24,14 +24,14 @@ type Irgen struct {
 	block  *goory.Block
 }
 
-func NewIrgen(ast ast.Ast) *Irgen {
+func NewIrgen(ast *ast.Ast) *Irgen {
 	scopes := make([]scope, 1000)
 	for i := range scopes {
 		scopes[i] = make(scope)
 	}
 
 	return &Irgen{
-		root:         ast,
+		root:         *ast,
 		scopes:       scopes,
 		currentScope: 0,
 		module:       goory.NewModule("furlang"),

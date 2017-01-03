@@ -195,6 +195,7 @@ func (p *Parser) maths() ast.Expression {
 			}
 			operatorStack.Pop() // pop open bracket
 
+		// TODO: Can we remove this? (we now parse calls diffrently)
 		case lexer.COMMA:
 			// Increment argument count
 			as := arityStack.Pop().(int)

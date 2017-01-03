@@ -82,7 +82,8 @@ func TestIrgen(t *testing.T) {
 
 		lexer := lexer.NewLexer([]byte(c.code))
 		parser := parser.NewParser(lexer.Lex())
-		gen := NewIrgen(parser.Parse())
+		analysis := analysis.NewAnalysis(parser.Parse())
+		gen := NewIrgen(analysis.Analalize())
 		llvm := gen.Generate()
 
 		if code, msg := runIr(llvm); code != 123 {
