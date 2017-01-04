@@ -61,7 +61,7 @@ func TestIrgen(t *testing.T) {
 		"i64_type.fur",
 		"function.fur",
 		"float.fur",
-		// "if.fur",
+		"if.fur",
 	}
 
 	for _, file := range files {
