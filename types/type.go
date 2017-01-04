@@ -1,6 +1,10 @@
 package types
 
-import goorytypes "github.com/bongo227/goory/types"
+import (
+	"fmt"
+
+	goorytypes "github.com/bongo227/goory/types"
+)
 
 // Type represents a type
 type Type interface {
@@ -117,6 +121,32 @@ func FloatType(bits int) *Basic {
 		name: name,
 		info: IsFloat,
 	}
+}
+
+// Gets the type corsponding to the identifier
+func GetType(ident string) *Basic {
+	switch ident {
+	case "int":
+		return IntType(0)
+	case "i8":
+		return IntType(8)
+	case "i16":
+		return IntType(16)
+	case "i32":
+		return IntType(32)
+	case "i64":
+		return IntType(64)
+	case "float":
+		return FloatType(0)
+	case "f32":
+		return FloatType(32)
+	case "f64":
+		return FloatType(64)
+	case "bool":
+		return BasicBool
+	}
+
+	panic(fmt.Sprintf("Unrecognized basic type: %s", ident))
 }
 
 var (

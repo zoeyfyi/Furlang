@@ -49,6 +49,12 @@ func (a *Analysis) typ(node ast.Expression) (types.Type, error) {
 			return floatType, nil
 		}
 		return intType, nil
+	case ast.Call:
+		for _, f := range a.root.Functions {
+			if f.Name.Value == node.Function.Value {
+				return f.Type.Returns[0], nil
+			}
+		}
 	default:
 		return nil, fmt.Errorf("Unknown type: %s", reflect.TypeOf(node).String())
 	}
