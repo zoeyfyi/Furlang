@@ -7,10 +7,12 @@ import (
 	"log"
 	"os/exec"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/bongo227/Furlang/analysis"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/parser"
 )
@@ -77,6 +79,7 @@ func TestIrgen(t *testing.T) {
 		defer func() {
 			if r := recover(); r != nil {
 				t.Errorf("File: %s\nPanic: %s", c.name, r)
+				debug.PrintStack()
 			}
 		}()
 

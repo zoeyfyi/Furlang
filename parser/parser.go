@@ -6,6 +6,7 @@ import (
 
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
+	"github.com/bongo227/Furlang/types"
 	"github.com/oleiade/lane"
 )
 
@@ -13,6 +14,13 @@ import (
 type Parser struct {
 	tokens []lexer.Token
 	index  int
+}
+
+// Parse is a convience method for parsing a raw string of code
+func Parse(code string) ast.Expression {
+	lex := lexer.NewLexer([]byte(code))
+	parser := NewParser(lex.Lex())
+	return parser.Expression()
 }
 
 // NewParser creates a new parser
@@ -228,19 +236,20 @@ func (p *Parser) ret() ast.Return {
 	return ast.Return{p.maths()}
 }
 
-func (p *Parser) typ() ast.Type {
+func (p *Parser) typ() types.Type {
 	switch {
 	case p.peek().Type() == lexer.LBRACK:
+		// Parse array type
 		base := p.expect(lexer.IDENT)
 		p.expect(lexer.LBRACK)
 		length := p.integer()
 		p.expect(lexer.RBRACK)
-		return &ast.ArrayType{
-			Type:   ast.NewBasic(base.Value()),
-			Length: length,
-		}
+
+		// Assemble the array type
+		elementType := types.GetType(base.Value())
+		return types.NewArray(elementType, length.Value)
 	default:
-		return ast.NewBasic(p.expect(lexer.IDENT).Value())
+		return types.GetType(p.expect(lexer.IDENT).Value())
 	}
 }
 
@@ -263,7 +272,7 @@ func (p *Parser) argList() (args []ast.TypedIdent) {
 	return args
 }
 
-func (p *Parser) returnList() (returns []ast.Type) {
+func (p *Parser) returnList() (returns []types.Type) {
 	p.expect(lexer.ARROW)
 	for p.token().Type() != lexer.LBRACE {
 		returns = append(returns, p.typ())
@@ -280,11 +289,12 @@ func (p *Parser) function() ast.Function {
 	returns := p.returnList()
 	body := p.block()
 
+	// TODO: multiple returns
 	return ast.Function{
 		Name: name,
 		Type: ast.FunctionType{
 			Parameters: args,
-			Returns:    returns,
+			Return:     returns[0],
 		},
 		Body: body,
 	}
@@ -315,30 +325,36 @@ func (p *Parser) reAssigment() ast.Assignment {
 func (p *Parser) increment() ast.Assignment {
 	ident := p.ident()
 	p.next()
-	return ast.Assignment{
-		Name: ident,
-		Expression: ast.Binary{
-			Lhs: ident,
-			Op:  lexer.ADD,
-			Rhs: ast.Integer{
-				Value: 1,
-			},
+
+	expression := ast.Expression(ast.Binary{
+		Lhs: ident,
+		Op:  lexer.ADD,
+		Rhs: ast.Integer{
+			Value: 1,
 		},
+	})
+
+	return ast.Assignment{
+		Name:       ident,
+		Expression: expression,
 	}
 }
 
 func (p *Parser) decrement() ast.Assignment {
 	ident := p.ident()
 	p.next()
-	return ast.Assignment{
-		Name: ident,
-		Expression: ast.Binary{
-			Lhs: ident,
-			Op:  lexer.SUB,
-			Rhs: ast.Integer{
-				Value: 1,
-			},
+
+	expression := ast.Expression(ast.Binary{
+		Lhs: ident,
+		Op:  lexer.SUB,
+		Rhs: ast.Integer{
+			Value: 1,
 		},
+	})
+
+	return ast.Assignment{
+		Name:       ident,
+		Expression: expression,
 	}
 }
 
@@ -346,13 +362,16 @@ func (p *Parser) addAssign() ast.Assignment {
 	ident := p.ident()
 	p.next()
 	value := p.Value()
+
+	expression := ast.Expression(ast.Binary{
+		Lhs: ident,
+		Op:  lexer.ADD,
+		Rhs: value,
+	})
+
 	return ast.Assignment{
-		Name: ident,
-		Expression: ast.Binary{
-			Lhs: ident,
-			Op:  lexer.ADD,
-			Rhs: value,
-		},
+		Name:       ident,
+		Expression: expression,
 	}
 }
 
@@ -360,13 +379,16 @@ func (p *Parser) subAssign() ast.Assignment {
 	ident := p.ident()
 	p.next()
 	value := p.Value()
+
+	expression := ast.Expression(ast.Binary{
+		Lhs: ident,
+		Op:  lexer.SUB,
+		Rhs: value,
+	})
+
 	return ast.Assignment{
-		Name: ident,
-		Expression: ast.Binary{
-			Lhs: ident,
-			Op:  lexer.SUB,
-			Rhs: value,
-		},
+		Name:       ident,
+		Expression: expression,
 	}
 }
 
@@ -509,7 +531,7 @@ func (p *Parser) Expression() ast.Expression {
 	return exp
 }
 
-func (p *Parser) Parse() ast.Ast {
+func (p *Parser) Parse() *ast.Ast {
 	var functions []ast.Function
 
 	for !p.eof() {
@@ -517,7 +539,7 @@ func (p *Parser) Parse() ast.Ast {
 		p.accept(lexer.SEMICOLON)
 	}
 
-	return ast.Ast{
+	return &ast.Ast{
 		Functions: functions,
 	}
 }

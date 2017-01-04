@@ -1,6 +1,10 @@
 package types
 
-import goorytypes "github.com/bongo227/goory/types"
+import (
+	"fmt"
+
+	goorytypes "github.com/bongo227/goory/types"
+)
 
 // Type represents a type
 type Type interface {
@@ -119,6 +123,32 @@ func FloatType(bits int) *Basic {
 	}
 }
 
+// Gets the type corsponding to the identifier
+func GetType(ident string) *Basic {
+	switch ident {
+	case "int":
+		return IntType(0)
+	case "i8":
+		return IntType(8)
+	case "i16":
+		return IntType(16)
+	case "i32":
+		return IntType(32)
+	case "i64":
+		return IntType(64)
+	case "float":
+		return FloatType(0)
+	case "f32":
+		return FloatType(32)
+	case "f64":
+		return FloatType(64)
+	case "bool":
+		return BasicBool
+	}
+
+	panic(fmt.Sprintf("Unrecognized basic type: %s", ident))
+}
+
 var (
 	BasicBool = &Basic{
 		typ:  Bool,
@@ -141,10 +171,10 @@ func (b *Basic) Name() string {
 
 type Array struct {
 	typ    Type
-	length int
+	length int64
 }
 
-func NewArray(typ Type, length int) *Array {
+func NewArray(typ Type, length int64) *Array {
 	return &Array{typ, length}
 }
 
@@ -197,7 +227,7 @@ func (b *Basic) Llvm() goorytypes.Type {
 	case I64:
 		return goorytypes.NewIntType(64)
 	case Float:
-		return goorytypes.NewFloatType()
+		return goorytypes.NewDoubleType()
 	case F32:
 		return goorytypes.NewFloatType()
 	case F64:
@@ -210,7 +240,7 @@ func (b *Basic) Llvm() goorytypes.Type {
 func (b *Array) Base() Type { return b.typ }
 
 func (b *Array) Llvm() goorytypes.Type {
-	return goorytypes.NewArrayType(b.typ.Llvm(), b.length)
+	return goorytypes.NewArrayType(b.typ.Llvm(), int(b.length))
 }
 
 // func (b *Slice) Base() Type   { return b.typ }

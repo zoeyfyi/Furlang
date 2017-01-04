@@ -1,11 +1,8 @@
 package ast
 
 import (
-	"fmt"
-
 	"github.com/bongo227/Furlang/lexer"
 	types "github.com/bongo227/Furlang/types"
-	goorytypes "github.com/bongo227/goory/types"
 )
 
 // TODO: split into expressions and Values
@@ -18,97 +15,18 @@ type Expression interface {
 
 // Types
 type (
-	Type interface {
-		typeNode()
-		Llvm() goorytypes.Type
-	}
-
-	// Basic : type
-	Basic struct {
-		Type types.Type
-	}
-
-	// ArrayType : type[length]
-	ArrayType struct {
-		Type   Type
-		Length Integer
-	}
-
 	// TypedIdent : type identifier
 	TypedIdent struct {
-		Type  Type
+		Type  types.Type
 		Ident Ident
-	}
-
-	// StructType : {
-	//    type expressions
-	//    ...
-	// }
-	StructType struct {
-		Items []TypedIdent
 	}
 
 	// FunctionType : type identifier, type identifier, ... -> type, type, ...
 	FunctionType struct {
 		Parameters []TypedIdent
-		Returns    []Type
+		Return     types.Type
 	}
 )
-
-func NewBasic(ident string) *Basic {
-	switch ident {
-	case "int":
-		return &Basic{
-			Type: types.IntType(0),
-		}
-	case "i8":
-		return &Basic{
-			Type: types.IntType(8),
-		}
-	case "i16":
-		return &Basic{
-			Type: types.IntType(16),
-		}
-	case "i32":
-		return &Basic{
-			Type: types.IntType(32),
-		}
-	case "i64":
-		return &Basic{
-			Type: types.IntType(64),
-		}
-	case "float":
-		return &Basic{
-			Type: types.FloatType(0),
-		}
-	case "f32":
-		return &Basic{
-			Type: types.FloatType(32),
-		}
-	case "f64":
-		return &Basic{
-			Type: types.FloatType(64),
-		}
-	case "bool":
-		return &Basic{
-			Type: types.BasicBool,
-		}
-	}
-
-	panic(fmt.Sprintf("Unrecognized basic type: %s", ident))
-}
-
-func (t Basic) typeNode()             {}
-func (t Basic) Llvm() goorytypes.Type { return t.Type.Llvm() }
-
-func (t ArrayType) typeNode()             {}
-func (t ArrayType) Llvm() goorytypes.Type { return t.Type.Llvm() }
-
-// func (t StructType) typeNode()             {}
-// func (t StructType) Llvm() goorytypes.Type { return t.Type.Llvm() }
-
-// func (t FunctionType) typeNode()             {}
-// func (t FunctionType) Llvm() goorytypes.Type { return t.Type.Llvm() }
 
 // Operations
 type (
@@ -127,7 +45,7 @@ type (
 
 	Cast struct {
 		Expression Expression
-		Type       Type
+		Type       types.Type
 	}
 )
 
@@ -180,7 +98,7 @@ type (
 	}
 
 	Assignment struct {
-		Type       Type
+		Type       types.Type
 		Name       Ident
 		Expression Expression
 	}
