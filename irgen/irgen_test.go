@@ -60,7 +60,7 @@ func TestIrgen(t *testing.T) {
 		"i32_type.fur",
 		"i64_type.fur",
 		"function.fur",
-		// "float.fur",
+		"float.fur",
 		// "if.fur",
 	}
 
