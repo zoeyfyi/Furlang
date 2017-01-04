@@ -171,10 +171,10 @@ func (b *Basic) Name() string {
 
 type Array struct {
 	typ    Type
-	length int
+	length int64
 }
 
-func NewArray(typ Type, length int) *Array {
+func NewArray(typ Type, length int64) *Array {
 	return &Array{typ, length}
 }
 
@@ -240,7 +240,7 @@ func (b *Basic) Llvm() goorytypes.Type {
 func (b *Array) Base() Type { return b.typ }
 
 func (b *Array) Llvm() goorytypes.Type {
-	return goorytypes.NewArrayType(b.typ.Llvm(), b.length)
+	return goorytypes.NewArrayType(b.typ.Llvm(), int(b.length))
 }
 
 // func (b *Slice) Base() Type   { return b.typ }

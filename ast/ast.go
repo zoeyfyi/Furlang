@@ -24,7 +24,7 @@ type (
 	// FunctionType : type identifier, type identifier, ... -> type, type, ...
 	FunctionType struct {
 		Parameters []TypedIdent
-		Returns    types.Type
+		Return     types.Type
 	}
 )
 
@@ -45,7 +45,7 @@ type (
 
 	Cast struct {
 		Expression Expression
-		Type       Type
+		Type       types.Type
 	}
 )
 
@@ -98,7 +98,7 @@ type (
 	}
 
 	Assignment struct {
-		Type       Type
+		Type       types.Type
 		Name       Ident
 		Expression Expression
 	}

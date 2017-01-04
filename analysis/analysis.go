@@ -52,9 +52,11 @@ func (a *Analysis) typ(node ast.Expression) (types.Type, error) {
 	case ast.Call:
 		for _, f := range a.root.Functions {
 			if f.Name.Value == node.Function.Value {
-				return f.Type.Returns[0], nil
+				return f.Type.Return, nil
 			}
 		}
+
+		return nil, fmt.Errorf("No function named %q", node.Function.Value)
 	default:
 		return nil, fmt.Errorf("Unknown type: %s", reflect.TypeOf(node).String())
 	}
@@ -113,9 +115,7 @@ func (a *Analysis) assigment(node *ast.Assignment) ast.Expression {
 
 	// Infer assigment type
 	if node.Type == nil {
-		newAssign.Type = ast.Basic{
-			Type: nodeType,
-		}
+		newAssign.Type = nodeType
 		return newAssign
 	}
 
@@ -168,9 +168,7 @@ func (a *Analysis) binary(node *ast.Binary) ast.Expression {
 	if leftTyp, _ := a.typ(node.Lhs); leftTyp != typ {
 		node.Lhs = ast.Cast{
 			Expression: node.Lhs,
-			Type: ast.Basic{
-				Type: typ,
-			},
+			Type:       typ,
 		}
 	}
 
@@ -178,9 +176,7 @@ func (a *Analysis) binary(node *ast.Binary) ast.Expression {
 	if rightTyp, _ := a.typ(node.Rhs); rightTyp != typ {
 		node.Rhs = ast.Cast{
 			Expression: node.Rhs,
-			Type: ast.Basic{
-				Type: typ,
-			},
+			Type:       typ,
 		}
 	}
 

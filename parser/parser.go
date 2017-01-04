@@ -6,6 +6,7 @@ import (
 
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
+	"github.com/bongo227/Furlang/types"
 	"github.com/oleiade/lane"
 )
 
@@ -235,19 +236,20 @@ func (p *Parser) ret() ast.Return {
 	return ast.Return{p.maths()}
 }
 
-func (p *Parser) typ() ast.Type {
+func (p *Parser) typ() types.Type {
 	switch {
 	case p.peek().Type() == lexer.LBRACK:
+		// Parse array type
 		base := p.expect(lexer.IDENT)
 		p.expect(lexer.LBRACK)
 		length := p.integer()
 		p.expect(lexer.RBRACK)
-		return &ast.ArrayType{
-			Type:   ast.NewBasic(base.Value()),
-			Length: length,
-		}
+
+		// Assemble the array type
+		elementType := types.GetType(base.Value())
+		return types.NewArray(elementType, length.Value)
 	default:
-		return ast.NewBasic(p.expect(lexer.IDENT).Value())
+		return types.GetType(p.expect(lexer.IDENT).Value())
 	}
 }
 
@@ -270,7 +272,7 @@ func (p *Parser) argList() (args []ast.TypedIdent) {
 	return args
 }
 
-func (p *Parser) returnList() (returns []ast.Type) {
+func (p *Parser) returnList() (returns []types.Type) {
 	p.expect(lexer.ARROW)
 	for p.token().Type() != lexer.LBRACE {
 		returns = append(returns, p.typ())
@@ -287,11 +289,12 @@ func (p *Parser) function() ast.Function {
 	returns := p.returnList()
 	body := p.block()
 
+	// TODO: multiple returns
 	return ast.Function{
 		Name: name,
 		Type: ast.FunctionType{
 			Parameters: args,
-			Returns:    returns,
+			Return:     returns[0],
 		},
 		Body: body,
 	}

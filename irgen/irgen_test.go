@@ -7,6 +7,7 @@ import (
 	"log"
 	"os/exec"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"testing"
@@ -78,6 +79,7 @@ func TestIrgen(t *testing.T) {
 		defer func() {
 			if r := recover(); r != nil {
 				t.Errorf("File: %s\nPanic: %s", c.name, r)
+				debug.PrintStack()
 			}
 		}()
 

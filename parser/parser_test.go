@@ -7,6 +7,7 @@ import (
 
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
+	"github.com/bongo227/Furlang/types"
 	"github.com/k0kubun/pp"
 )
 
@@ -35,12 +36,7 @@ func TestParser(t *testing.T) {
 		{
 			source: `int[5] items = {1, 2, 3, 4, 5}`,
 			ast: ast.Assignment{
-				Type: &ast.ArrayType{
-					Type: ast.NewBasic("int"),
-					Length: ast.Integer{
-						Value: 5,
-					},
-				},
+				Type: types.NewArray(types.IntType(0), 5),
 				Name: ast.Ident{
 					Value: "items",
 				},
@@ -87,12 +83,7 @@ func TestParser(t *testing.T) {
 						},
 					},
 					ast.Assignment{
-						Type: &ast.ArrayType{
-							Type: ast.NewBasic("int"),
-							Length: ast.Integer{
-								Value: 2,
-							},
-						},
+						Type: types.NewArray(types.IntType(0), 2),
 						Name: ast.Ident{
 							Value: "pair",
 						},
@@ -240,7 +231,7 @@ func TestParser(t *testing.T) {
 				Block: ast.Block{
 					Expressions: []ast.Expression{
 						ast.Assignment{
-							Type: ast.NewBasic("int"),
+							Type: types.IntType(0),
 							Name: ast.Ident{
 								Value: "ben",
 							},
@@ -256,7 +247,7 @@ func TestParser(t *testing.T) {
 		{
 			source: `int i = (int)0.5`,
 			ast: ast.Assignment{
-				Type: ast.NewBasic("int"),
+				Type: types.IntType(0),
 				Name: ast.Ident{
 					Value: "i",
 				},
@@ -264,7 +255,7 @@ func TestParser(t *testing.T) {
 					Expression: ast.Float{
 						Value: 0.500000,
 					},
-					Type: ast.NewBasic("int"),
+					Type: types.IntType(0),
 				},
 			},
 		},
@@ -357,21 +348,19 @@ func TestParser(t *testing.T) {
 				Type: ast.FunctionType{
 					Parameters: []ast.TypedIdent{
 						ast.TypedIdent{
-							Type: ast.NewBasic("int"),
+							Type: types.IntType(0),
 							Ident: ast.Ident{
 								Value: "a",
 							},
 						},
 						ast.TypedIdent{
-							Type: ast.NewBasic("int"),
+							Type: types.IntType(0),
 							Ident: ast.Ident{
 								Value: "b",
 							},
 						},
 					},
-					Returns: []ast.Type{
-						ast.NewBasic("int"),
-					},
+					Return: types.IntType(0),
 				},
 				Name: ast.Ident{
 					Value: "add",

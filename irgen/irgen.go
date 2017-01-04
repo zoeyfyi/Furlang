@@ -5,6 +5,7 @@ import (
 
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
+	"github.com/bongo227/Furlang/types"
 	"github.com/bongo227/goory"
 	goorytypes "github.com/bongo227/goory/types"
 	gooryvalues "github.com/bongo227/goory/value"
@@ -60,7 +61,7 @@ func (g *Irgen) Generate() string {
 	return g.module.LLVM()
 }
 
-func (g *Irgen) typ(node ast.Type) goorytypes.Type {
+func (g *Irgen) typ(node types.Type) goorytypes.Type {
 	return node.Llvm()
 }
 
@@ -68,7 +69,7 @@ func (g *Irgen) function(node ast.Function) {
 	g.currentFunction = node
 	g.currentScope = 0
 	// Add function to module
-	function := g.module.NewFunction(node.Name.Value, g.typ(node.Type.Returns[0]))
+	function := g.module.NewFunction(node.Name.Value, g.typ(node.Type.Return))
 	g.block = function.Entry()
 
 	// Add function to scope
@@ -165,9 +166,9 @@ func (g *Irgen) call(node ast.Call) gooryvalues.Value {
 
 	// Get argument values
 	args := make([]gooryvalues.Value, len(node.Arguments))
-	for _, a := range node.Arguments {
+	for i, a := range node.Arguments {
 		value := g.expression(a)
-		args = append(args, value)
+		args[i] = value
 	}
 
 	// Call function with values
@@ -232,7 +233,7 @@ func (g *Irgen) binary(node ast.Binary) gooryvalues.Value {
 
 func (g *Irgen) ret(node ast.Return) {
 	value := g.expression(node.Value)
-	value = g.block.Cast(value, g.currentFunction.Type.Returns[0].Llvm())
+	value = g.block.Cast(value, g.currentFunction.Type.Return.Llvm())
 	g.block.Ret(value)
 }
 
