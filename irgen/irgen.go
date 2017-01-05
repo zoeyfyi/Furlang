@@ -164,11 +164,12 @@ func (g *Irgen) blockNode(node ast.Block) (start *goory.Block, end *goory.Block)
 
 	// Restore scope/block
 	g.currentScope = oldScope
+	endLocation := g.block
 	g.block = oldBlock
 
 	log.SetPrefix(oldPre)
 
-	return newBlock, g.block
+	return newBlock, endLocation
 }
 
 func (g *Irgen) cast(node ast.Cast) gooryvalues.Value {
@@ -178,6 +179,10 @@ func (g *Irgen) cast(node ast.Cast) gooryvalues.Value {
 
 func (g *Irgen) assignment(node ast.Assignment) {
 	log.Println("Assigment")
+
+	if node.Type == nil {
+		panic("Assigment type was nil")
+	}
 
 	value := g.expression(node.Expression)
 	alloc := g.block.Alloca(node.Type.Llvm())

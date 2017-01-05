@@ -65,17 +65,23 @@ func (a *Analysis) typ(node ast.Expression) (types.Type, error) {
 	}
 }
 
+func (a *Analysis) block(node *ast.Block) *ast.Block {
+	newBlock := &ast.Block{
+		Expressions: make([]ast.Expression, len(node.Expressions)),
+	}
+
+	for i, e := range node.Expressions {
+		newBlock.Expressions[i] = a.expression(e)
+	}
+
+	return newBlock
+}
+
 func (a *Analysis) function(node *ast.Function) *ast.Function {
 	newFunction := &ast.Function{
 		Name: node.Name,
 		Type: node.Type,
-		Body: ast.Block{
-			Expressions: make([]ast.Expression, len(node.Body.Expressions)),
-		},
-	}
-
-	for i, e := range node.Body.Expressions {
-		newFunction.Body.Expressions[i] = a.expression(e)
+		Body: *a.block(&node.Body),
 	}
 
 	return newFunction
@@ -109,8 +115,12 @@ func (a *Analysis) returnNode(node *ast.Return) ast.Expression {
 
 func (a *Analysis) forNode(node *ast.For) ast.For {
 	log.Println("For")
-	newIndex := a.expression(node.Index).(ast.Assignment)
-	node.Index = newIndex
+
+	node.Index = a.expression(node.Index).(ast.Assignment)
+	node.Condition = a.expression(node.Condition)
+	node.Increment = a.expression(node.Increment)
+	node.Block = *a.block(&node.Block)
+
 	return *node
 }
 
