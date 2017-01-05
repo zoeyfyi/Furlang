@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"log"
+
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/types"
@@ -130,6 +132,8 @@ func (p *Parser) arrayValue() ast.ArrayValue {
 
 // Maths parses binary expressions
 func (p *Parser) maths() ast.Expression {
+	log.Println("Maths")
+
 	outputStack := lane.NewStack()
 	operatorStack := lane.NewStack()
 	arityStack := lane.NewStack()
@@ -149,14 +153,13 @@ func (p *Parser) maths() ast.Expression {
 			!((token.Type() == lexer.COMMA || token.Type() == lexer.RPAREN) && depth == 0)
 	}
 
-	// fmt.Println("=== Begin maths ===")
-	// fmt.Println("Start token:", p.token().String())
+	log.Printf("Shunting yard: %s", p.peek().String())
 
 	depth := 0
 	for notEnded(p.token(), depth) {
 		token := p.token()
 
-		// fmt.Println("current: ", token.String())
+		log.Printf("Shunting yard: %s", token.String())
 
 		switch token.Type() {
 		case lexer.INT:
@@ -195,6 +198,7 @@ func (p *Parser) maths() ast.Expression {
 		case lexer.LPAREN:
 			depth++
 			operatorStack.Push(token)
+			p.next()
 
 		case lexer.RPAREN:
 			depth--
@@ -202,6 +206,9 @@ func (p *Parser) maths() ast.Expression {
 				popOperatorStack()
 			}
 			operatorStack.Pop() // pop open bracket
+			p.next()
+
+			// 33 + ((20 + 5) * 4) - 10
 
 		// TODO: Can we remove this? (we now parse calls diffrently)
 		case lexer.COMMA:
@@ -283,6 +290,8 @@ func (p *Parser) returnList() (returns []types.Type) {
 }
 
 func (p *Parser) function() ast.Function {
+	log.Println("Function")
+
 	name := p.ident()
 	p.expect(lexer.DOUBLE_COLON)
 	args := p.argList()
@@ -301,6 +310,8 @@ func (p *Parser) function() ast.Function {
 }
 
 func (p *Parser) assignment() ast.Assignment {
+	log.Println("Assignment")
+
 	typ := p.typ()
 	ident := p.ident()
 	p.expect(lexer.ASSIGN)
@@ -309,6 +320,8 @@ func (p *Parser) assignment() ast.Assignment {
 }
 
 func (p *Parser) inferAssigment() ast.Assignment {
+	log.Println("Infer Assignment")
+
 	ident := p.ident()
 	p.expect(lexer.DEFINE)
 	expression := p.Value()
@@ -393,6 +406,8 @@ func (p *Parser) subAssign() ast.Assignment {
 }
 
 func (p *Parser) block() ast.Block {
+	log.Println("Block")
+
 	p.expect(lexer.LBRACE)
 
 	var expressions []ast.Expression
@@ -402,7 +417,9 @@ func (p *Parser) block() ast.Block {
 
 	p.expect(lexer.RBRACE)
 
-	return ast.Block{expressions}
+	return ast.Block{
+		Expressions: expressions,
+	}
 }
 
 func (p *Parser) ifBlock() *ast.If {
@@ -476,10 +493,14 @@ func (p *Parser) list() ast.List {
 }
 
 func (p *Parser) Value() ast.Expression {
-	switch p.token().Type() {
-	case lexer.LPAREN:
+	log.Println("Value")
+
+	current := p.token().Type()
+	next := p.peek().Type()
+	switch {
+	case current == lexer.LPAREN && next == lexer.IDENT:
 		return p.cast()
-	case lexer.LBRACE:
+	case current == lexer.LBRACE:
 		return p.list()
 	default:
 		return p.maths()
@@ -488,6 +509,8 @@ func (p *Parser) Value() ast.Expression {
 }
 
 func (p *Parser) Expression() ast.Expression {
+	log.Printf("Expression, current: {%s}, next: {%s}", p.token().String(), p.peek().String())
+
 	var exp ast.Expression
 
 	switch p.token().Type() {
@@ -532,6 +555,8 @@ func (p *Parser) Expression() ast.Expression {
 }
 
 func (p *Parser) Parse() *ast.Ast {
+	log.Println("Starting parse")
+
 	var functions []ast.Function
 
 	for !p.eof() {

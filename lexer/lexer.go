@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"fmt"
+	"log"
 	"unicode"
 	"unicode/utf8"
 )
@@ -248,6 +249,8 @@ func (l *Lexer) switch4(tok0, tok1 TokenType, ch2 rune, tok2, tok3 TokenType) To
 }
 
 func (l *Lexer) Lex() (tokens []Token) {
+	log.Println("Starting lex")
+
 	l.nextRune()
 	if l.currentRune == 0xFEFF {
 		l.nextRune()
@@ -265,6 +268,7 @@ func (l *Lexer) Lex() (tokens []Token) {
 		currentRune := l.currentRune
 		switch {
 		case isLetter(currentRune):
+			log.Println("Ident")
 			tok.value = l.ident()
 			tok.typ = Lookup(tok.value)
 			switch tok.typ {
@@ -272,6 +276,7 @@ func (l *Lexer) Lex() (tokens []Token) {
 				l.insertSemi = true
 			}
 		case isDigit(currentRune):
+			log.Println("Number")
 			l.insertSemi = true
 			tok.typ, tok.value = l.number()
 		default:

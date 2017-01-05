@@ -3,6 +3,10 @@ package irgen
 import (
 	"fmt"
 
+	"log"
+
+	"reflect"
+
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/types"
@@ -23,6 +27,10 @@ type Irgen struct {
 
 	module *goory.Module
 	block  *goory.Block
+}
+
+func init() {
+	log.SetFlags(log.Lshortfile | log.Ltime)
 }
 
 func NewIrgen(ast *ast.Ast) *Irgen {
@@ -54,6 +62,8 @@ func (g *Irgen) find(v string) gooryvalues.Value {
 }
 
 func (g *Irgen) Generate() string {
+	log.Println("Generation started")
+
 	for _, function := range g.root.Functions {
 		g.function(function)
 	}
@@ -66,8 +76,11 @@ func (g *Irgen) typ(node types.Type) goorytypes.Type {
 }
 
 func (g *Irgen) function(node ast.Function) {
+	log.Printf("Function %q", node.Name.Value)
+
 	g.currentFunction = node
 	g.currentScope = 0
+
 	// Add function to module
 	function := g.module.NewFunction(node.Name.Value, g.typ(node.Type.Return))
 	g.block = function.Entry()
@@ -92,6 +105,8 @@ func (g *Irgen) function(node ast.Function) {
 }
 
 func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
+	log.Printf("Expression, type: %s", reflect.TypeOf(node).String())
+
 	switch node := node.(type) {
 	case ast.Return:
 		g.ret(node)
@@ -152,6 +167,8 @@ func (g *Irgen) cast(node ast.Cast) gooryvalues.Value {
 }
 
 func (g *Irgen) assignment(node ast.Assignment) {
+	log.Println("Assigment")
+
 	value := g.expression(node.Expression)
 	alloc := g.block.Alloca(node.Type.Llvm())
 
@@ -221,9 +238,14 @@ func (g *Irgen) binary(node ast.Binary) gooryvalues.Value {
 	lhs := g.expression(node.Lhs)
 	rhs := g.expression(node.Rhs)
 
+	// TODO: switch between fp and int instructions
 	switch node.Op {
 	case lexer.ADD:
 		return g.block.Add(lhs, rhs)
+	case lexer.SUB:
+		return g.block.Sub(lhs, rhs)
+	case lexer.MUL:
+		return g.block.Mul(lhs, rhs)
 	case lexer.QUO:
 		return g.block.Fdiv(lhs, rhs)
 	}
