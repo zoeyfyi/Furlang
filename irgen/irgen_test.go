@@ -62,6 +62,8 @@ func TestIrgen(t *testing.T) {
 		"function.fur",
 		"float.fur",
 		"if.fur",
+		"single_if.fur",
+		"rpn.fur",
 	}
 
 	for _, file := range files {
