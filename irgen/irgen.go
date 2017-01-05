@@ -122,6 +122,9 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 		next := g.ifNode(node)
 		g.block = next
 		return nil
+	case ast.For:
+		g.forNode(node)
+		return nil
 	case ast.Binary:
 		return g.binary(node)
 	case ast.Integer:
@@ -141,6 +144,11 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 
 // block compiles a block and returns the start block and the end block (if it branches elsewhere)
 func (g *Irgen) blockNode(node ast.Block) (start *goory.Block, end *goory.Block) {
+	log.Println("Block")
+
+	oldPre := log.Prefix()
+	log.SetPrefix(oldPre + "  ")
+
 	oldScope := g.currentScope
 	oldBlock := g.block
 
@@ -157,6 +165,8 @@ func (g *Irgen) blockNode(node ast.Block) (start *goory.Block, end *goory.Block)
 	// Restore scope/block
 	g.currentScope = oldScope
 	g.block = oldBlock
+
+	log.SetPrefix(oldPre)
 
 	return newBlock, g.block
 }
@@ -234,7 +244,36 @@ func (g *Irgen) ifNode(node *ast.If) (next *goory.Block) {
 	return nextBlock
 }
 
+func (g *Irgen) forNode(node ast.For) {
+	log.Println("For")
+
+	pp.Print(node)
+
+	// Compile for index
+	g.expression(node.Index)
+	log.Println("Index")
+
+	// Branch into for loop
+	condition := g.expression(node.Condition)
+	forStart, forEnd := g.blockNode(node.Block)
+	exitBlock := g.block.Function().AddBlock()
+	g.block.CondBr(condition, forStart, exitBlock)
+	log.Println("Branch in")
+
+	// Branch at end to loop or exit
+	g.block = forEnd
+	g.expression(node.Increment)
+	condition = g.expression(node.Condition)
+	g.block.CondBr(condition, forStart, exitBlock)
+	log.Println("Branch out")
+
+	// Continue compiling from exit block
+	g.block = exitBlock
+}
+
 func (g *Irgen) binary(node ast.Binary) gooryvalues.Value {
+	log.Println("Binary")
+
 	lhs := g.expression(node.Lhs)
 	rhs := g.expression(node.Rhs)
 
@@ -290,6 +329,7 @@ func (g *Irgen) ret(node ast.Return) {
 }
 
 func (g *Irgen) integer(node ast.Integer) gooryvalues.Value {
+	log.Println("Integer")
 	return goory.Constant(goory.IntType(64), node.Value)
 }
 

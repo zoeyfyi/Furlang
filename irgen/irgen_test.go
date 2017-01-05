@@ -54,6 +54,17 @@ func TestIrgen(t *testing.T) {
 	// }
 
 	files := []string{
+		"for_loop.fur",
+		"function.fur",
+		"i16_type.fur",
+		"i32_type.fur",
+		"i64_type.fur",
+		"i8_type.fur",
+		"if.fur",
+		"increment_multiple.fur",
+		"increment_single.fur",
+		"integer_equal_to.fur",
+		"integer_more_than.fur",
 		"integer_not_equal_to.fur",
 		"main.fur",
 		"mod_operator.fur",

@@ -5,6 +5,7 @@ import "github.com/bongo227/Furlang/types"
 
 import "fmt"
 import "reflect"
+import "log"
 
 var (
 	intType   = types.IntType(0)
@@ -24,6 +25,8 @@ func NewAnalysis(root *ast.Ast) *Analysis {
 }
 
 func (a *Analysis) Analalize() *ast.Ast {
+	log.Println("Analasis Started")
+
 	newAst := ast.Ast{
 		Functions: make([]ast.Function, len(a.root.Functions)),
 	}
@@ -79,9 +82,12 @@ func (a *Analysis) function(node *ast.Function) *ast.Function {
 }
 
 func (a *Analysis) expression(node ast.Expression) ast.Expression {
+
 	switch node := (node).(type) {
 	case ast.Assignment:
 		return a.assigment(&node)
+	case *ast.For:
+		return a.forNode(node)
 	case ast.Binary:
 		return a.binary(&node)
 	case ast.Call:
@@ -101,7 +107,14 @@ func (a *Analysis) returnNode(node *ast.Return) ast.Expression {
 	}
 }
 
-func (a *Analysis) assigment(node *ast.Assignment) ast.Expression {
+func (a *Analysis) forNode(node *ast.For) ast.For {
+	log.Println("For")
+	newIndex := a.expression(node.Index).(ast.Assignment)
+	node.Index = newIndex
+	return *node
+}
+
+func (a *Analysis) assigment(node *ast.Assignment) ast.Assignment {
 	newAssign := ast.Assignment{
 		Name:       node.Name,
 		Expression: a.expression(node.Expression),
