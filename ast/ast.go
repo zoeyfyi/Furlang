@@ -32,9 +32,10 @@ type (
 type (
 	// Binary operation i.e. +, - etc
 	Binary struct {
-		Lhs Expression
-		Op  lexer.TokenType
-		Rhs Expression
+		Lhs  Expression
+		Op   lexer.TokenType
+		Rhs  Expression
+		IsFp bool
 	}
 
 	// Unary operation i.e. +, - etc

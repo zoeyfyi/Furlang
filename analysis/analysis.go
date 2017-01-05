@@ -164,6 +164,8 @@ func (a *Analysis) call(node *ast.Call) ast.Expression {
 func (a *Analysis) binary(node *ast.Binary) ast.Expression {
 	typ, _ := a.typ(*node)
 
+	node.IsFp = typ == floatType
+
 	// If left part of the node doesnt match the type of the node cast it
 	if leftTyp, _ := a.typ(node.Lhs); leftTyp != typ {
 		node.Lhs = ast.Cast{

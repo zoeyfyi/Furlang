@@ -142,7 +142,11 @@ func (p *Parser) maths() ast.Expression {
 		token := operatorStack.Pop().(lexer.Token)
 		rhs := outputStack.Pop().(ast.Expression)
 		lhs := outputStack.Pop().(ast.Expression)
-		outputStack.Push(ast.Binary{lhs, token.Type(), rhs})
+		outputStack.Push(ast.Binary{
+			Lhs: lhs,
+			Op:  token.Type(),
+			Rhs: rhs,
+		})
 	}
 
 	// TODO: simplify this condition

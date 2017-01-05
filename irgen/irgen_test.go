@@ -54,16 +54,13 @@ func TestIrgen(t *testing.T) {
 	// }
 
 	files := []string{
+		"integer_not_equal_to.fur",
 		"main.fur",
-		"i8_type.fur",
-		"i16_type.fur",
-		"i32_type.fur",
-		"i64_type.fur",
-		"function.fur",
-		"float.fur",
-		"if.fur",
-		"single_if.fur",
+		"mod_operator.fur",
+		"reassignment.fur",
+		"returns.fur",
 		"rpn.fur",
+		"single_if.fur",
 	}
 
 	for _, file := range files {

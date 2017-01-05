@@ -238,16 +238,46 @@ func (g *Irgen) binary(node ast.Binary) gooryvalues.Value {
 	lhs := g.expression(node.Lhs)
 	rhs := g.expression(node.Rhs)
 
-	// TODO: switch between fp and int instructions
-	switch node.Op {
-	case lexer.ADD:
-		return g.block.Add(lhs, rhs)
-	case lexer.SUB:
-		return g.block.Sub(lhs, rhs)
-	case lexer.MUL:
-		return g.block.Mul(lhs, rhs)
-	case lexer.QUO:
-		return g.block.Fdiv(lhs, rhs)
+	if node.IsFp {
+		switch node.Op {
+		case lexer.ADD:
+			return g.block.Fadd(lhs, rhs)
+		case lexer.SUB:
+			return g.block.Fsub(lhs, rhs)
+		case lexer.MUL:
+			return g.block.Fmul(lhs, rhs)
+		case lexer.QUO:
+			return g.block.Fdiv(lhs, rhs)
+		case lexer.NEQ:
+			return g.block.Fcmp(goory.FloatOne, lhs, rhs)
+		case lexer.EQL:
+			return g.block.Fcmp(goory.FloatOeq, lhs, rhs)
+		case lexer.GTR:
+			return g.block.Fcmp(goory.FloatOgt, lhs, rhs)
+		case lexer.LSS:
+			return g.block.Fcmp(goory.FloatOlt, lhs, rhs)
+		}
+	} else {
+		switch node.Op {
+		case lexer.ADD:
+			return g.block.Add(lhs, rhs)
+		case lexer.SUB:
+			return g.block.Sub(lhs, rhs)
+		case lexer.MUL:
+			return g.block.Mul(lhs, rhs)
+		case lexer.QUO:
+			return g.block.Div(lhs, rhs)
+		case lexer.REM:
+			return g.block.Srem(lhs, rhs)
+		case lexer.NEQ:
+			return g.block.Icmp(goory.IntNe, lhs, rhs)
+		case lexer.EQL:
+			return g.block.Icmp(goory.IntEq, lhs, rhs)
+		case lexer.GTR:
+			return g.block.Icmp(goory.IntSgt, lhs, rhs)
+		case lexer.LSS:
+			return g.block.Icmp(goory.IntSlt, lhs, rhs)
+		}
 	}
 
 	panic("Unhandled binary operator")
