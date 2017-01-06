@@ -141,6 +141,11 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 	case ast.For:
 		g.forNode(node)
 		return nil
+	case *ast.Block:
+		start, end := g.blockNode(*node)
+		g.block.Br(start)
+		g.block = end
+		return nil
 	case ast.Binary:
 		return g.binary(node)
 	case ast.Integer:
@@ -192,12 +197,12 @@ func (g *Irgen) cast(node ast.Cast) gooryvalues.Value {
 }
 
 func (g *Irgen) assignment(node ast.Assignment) {
-	log.Println("Assigment")
+	log.Printf("Assigment %b", node.Declare)
 
 	value := g.expression(node.Expression)
 
 	// Reassign
-	if alloc := g.find(node.Name.Value); alloc != nil {
+	if alloc := g.find(node.Name.Value); !node.Declare && alloc != nil {
 		g.block.Store(alloc.(gooryvalues.Pointer), value)
 		return
 	}

@@ -57,6 +57,17 @@ func TestIrgen(t *testing.T) {
 	// }
 
 	files := []string{
+		"blocks.fur",
+		"cast_from_f32_type.fur",
+		"cast_from_f64_type.fur",
+		"cast_to_i16_type.fur",
+		"cast_to_i32_type.fur",
+		"cast_to_i64_type.fur",
+		"cast_to_i8_type.fur",
+		"complex_control_flow.fur",
+		"decrement_multiple.fur",
+		"decrement_single.fur",
+		"float.fur",
 		"float_equal_to.fur",
 		"float_less_than.fur",
 		"float_more_than.fur",

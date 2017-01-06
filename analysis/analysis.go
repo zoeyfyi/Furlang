@@ -100,6 +100,8 @@ func (a *Analysis) expression(node ast.Expression) ast.Expression {
 		return a.forNode(node)
 	case *ast.If:
 		return a.ifNode(node)
+	case ast.Block:
+		return a.block(&node)
 	case ast.Binary:
 		return a.binary(&node)
 	case ast.Call:
@@ -150,6 +152,7 @@ func (a *Analysis) assigment(node *ast.Assignment) ast.Assignment {
 	newAssign := ast.Assignment{
 		Name:       node.Name,
 		Expression: a.expression(node.Expression),
+		Declare:    node.Declare,
 	}
 
 	// Get type of assigment expression

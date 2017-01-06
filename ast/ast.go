@@ -102,6 +102,7 @@ type (
 		Type       types.Type
 		Name       Ident
 		Expression Expression
+		Declare    bool
 	}
 
 	Integer struct {

@@ -320,7 +320,12 @@ func (p *Parser) assignment() ast.Assignment {
 	ident := p.ident()
 	p.expect(lexer.ASSIGN)
 	expression := p.Value()
-	return ast.Assignment{typ, ident, expression}
+	return ast.Assignment{
+		Type:       typ,
+		Name:       ident,
+		Expression: expression,
+		Declare:    true,
+	}
 }
 
 func (p *Parser) inferAssigment() ast.Assignment {
@@ -329,14 +334,25 @@ func (p *Parser) inferAssigment() ast.Assignment {
 	ident := p.ident()
 	p.expect(lexer.DEFINE)
 	expression := p.Value()
-	return ast.Assignment{nil, ident, expression}
+	return ast.Assignment{
+		Type:       nil,
+		Name:       ident,
+		Expression: expression,
+		Declare:    true,
+	}
 }
 
 func (p *Parser) reAssigment() ast.Assignment {
 	ident := p.ident()
 	p.expect(lexer.ASSIGN)
 	expression := p.Value()
-	return ast.Assignment{nil, ident, expression}
+	return ast.Assignment{
+		Type:       nil,
+		Name:       ident,
+		Expression: expression,
+		Declare:    false,
+	}
+
 }
 
 func (p *Parser) increment() ast.Assignment {
