@@ -21,6 +21,7 @@ type scope map[string]gooryvalues.Value
 type Irgen struct {
 	root            ast.Ast
 	currentFunction ast.Function
+	functions       map[string]*goory.Function
 
 	scopes       []scope
 	currentScope int
@@ -34,17 +35,30 @@ func init() {
 }
 
 func NewIrgen(ast *ast.Ast) *Irgen {
+	g := &Irgen{
+		root:         *ast,
+		currentScope: 0,
+		functions:    make(map[string]*goory.Function),
+		module:       goory.NewModule("furlang"),
+	}
+
+	// Create new functions for each function in the ast
+	for _, f := range ast.Functions {
+		function := g.module.NewFunction(f.Name.Value, g.typ(f.Type.Return))
+		g.functions[f.Name.Value] = function
+	}
+
+	g.newScope()
+
+	return g
+}
+
+func (g *Irgen) newScope() {
 	scopes := make([]scope, 1000)
 	for i := range scopes {
 		scopes[i] = make(scope)
 	}
-
-	return &Irgen{
-		root:         *ast,
-		scopes:       scopes,
-		currentScope: 0,
-		module:       goory.NewModule("furlang"),
-	}
+	g.scopes = scopes
 }
 
 // Finds a scoped value
@@ -58,7 +72,7 @@ func (g *Irgen) find(v string) gooryvalues.Value {
 		search--
 	}
 
-	panic(fmt.Sprintf("Varible not in scope: %s", v))
+	return nil
 }
 
 func (g *Irgen) Generate() string {
@@ -78,11 +92,13 @@ func (g *Irgen) typ(node types.Type) goorytypes.Type {
 func (g *Irgen) function(node ast.Function) {
 	log.Printf("Function %q", node.Name.Value)
 
+	// Clear scope
+	// TODO: move/hoist this to a better location
 	g.currentFunction = node
+	g.newScope()
 	g.currentScope = 0
 
-	// Add function to module
-	function := g.module.NewFunction(node.Name.Value, g.typ(node.Type.Return))
+	function := g.functions[node.Name.Value]
 	g.block = function.Entry()
 
 	// Add function to scope
@@ -144,11 +160,9 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 
 // block compiles a block and returns the start block and the end block (if it branches elsewhere)
 func (g *Irgen) blockNode(node ast.Block) (start *goory.Block, end *goory.Block) {
-	log.Println("Block")
+	log.Println("Start Block")
 
-	oldPre := log.Prefix()
-	log.SetPrefix(oldPre + "  ")
-
+	// Save old scope/block
 	oldScope := g.currentScope
 	oldBlock := g.block
 
@@ -161,13 +175,13 @@ func (g *Irgen) blockNode(node ast.Block) (start *goory.Block, end *goory.Block)
 	for _, e := range node.Expressions {
 		g.expression(e)
 	}
+	endLocation := g.block
 
 	// Restore scope/block
 	g.currentScope = oldScope
-	endLocation := g.block
 	g.block = oldBlock
 
-	log.SetPrefix(oldPre)
+	log.Println("End Block")
 
 	return newBlock, endLocation
 }
@@ -180,11 +194,18 @@ func (g *Irgen) cast(node ast.Cast) gooryvalues.Value {
 func (g *Irgen) assignment(node ast.Assignment) {
 	log.Println("Assigment")
 
+	value := g.expression(node.Expression)
+
+	// Reassign
+	if alloc := g.find(node.Name.Value); alloc != nil {
+		g.block.Store(alloc.(gooryvalues.Pointer), value)
+		return
+	}
+
 	if node.Type == nil {
 		panic("Assigment type was nil")
 	}
 
-	value := g.expression(node.Expression)
 	alloc := g.block.Alloca(node.Type.Llvm())
 
 	// Store value in current scope
@@ -194,7 +215,7 @@ func (g *Irgen) assignment(node ast.Assignment) {
 
 func (g *Irgen) call(node ast.Call) gooryvalues.Value {
 	// Find function in scope
-	function := g.find(node.Function.Value)
+	function := g.functions[node.Function.Value]
 
 	// Get argument values
 	args := make([]gooryvalues.Value, len(node.Arguments))
@@ -328,9 +349,13 @@ func (g *Irgen) binary(node ast.Binary) gooryvalues.Value {
 }
 
 func (g *Irgen) ret(node ast.Return) {
+	log.Print("Start Return")
+
 	value := g.expression(node.Value)
 	value = g.block.Cast(value, g.currentFunction.Type.Return.Llvm())
 	g.block.Ret(value)
+
+	log.Print("End Return")
 }
 
 func (g *Irgen) integer(node ast.Integer) gooryvalues.Value {

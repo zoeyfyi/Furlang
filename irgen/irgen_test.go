@@ -30,13 +30,16 @@ func runIr(ir string) (int, string) {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			// Extract the return code and return any error message
 			re := regexp.MustCompile("[0-9]+")
-			code, _ := strconv.Atoi(re.FindAllString(exitErr.Error(), -1)[0])
-			return code, out.String()
+			numbers := re.FindAllString(exitErr.Error(), -1)
+			if len(numbers) > 0 {
+				code, _ := strconv.Atoi(numbers[0])
+				return code, out.String()
+			}
 		}
 		log.Fatal(err)
 	}
 
-	panic("No return code")
+	panic(fmt.Sprintf("No return code, err: %s", out.String()))
 }
 
 type TestCase struct {
@@ -86,6 +89,7 @@ func TestIrgen(t *testing.T) {
 	}
 
 	for _, c := range cases {
+
 		defer func() {
 			if r := recover(); r != nil {
 				t.Errorf("File: %s\nPanic: %s", c.name, r)
