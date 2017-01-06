@@ -1,10 +1,14 @@
 package analysis
 
-import "github.com/bongo227/Furlang/ast"
-import "github.com/bongo227/Furlang/types"
+import (
+	"reflect"
+
+	"github.com/bongo227/Furlang/ast"
+	"github.com/bongo227/Furlang/types"
+)
 
 import "fmt"
-import "reflect"
+
 import "log"
 
 var (
@@ -94,6 +98,8 @@ func (a *Analysis) expression(node ast.Expression) ast.Expression {
 		return a.assigment(&node)
 	case *ast.For:
 		return a.forNode(node)
+	case *ast.If:
+		return a.ifNode(node)
 	case ast.Binary:
 		return a.binary(&node)
 	case ast.Call:
@@ -120,6 +126,22 @@ func (a *Analysis) forNode(node *ast.For) ast.For {
 	node.Condition = a.expression(node.Condition)
 	node.Increment = a.expression(node.Increment)
 	node.Block = *a.block(&node.Block)
+
+	return *node
+}
+
+func (a *Analysis) ifNode(node *ast.If) ast.If {
+	log.Println("If")
+
+	if node.Condition != nil {
+		node.Condition = a.expression(node.Condition)
+	}
+	node.Block = *a.block(&node.Block)
+
+	if node.Else != nil {
+		newElse := a.ifNode(node.Else)
+		node.Else = &newElse
+	}
 
 	return *node
 }
@@ -185,8 +207,9 @@ func (a *Analysis) call(node *ast.Call) ast.Expression {
 }
 
 func (a *Analysis) binary(node *ast.Binary) ast.Expression {
-	typ, _ := a.typ(*node)
+	log.Printf("Binary %s node", node.Op.String())
 
+	typ, _ := a.typ(*node)
 	node.IsFp = typ == floatType
 
 	// If left part of the node doesnt match the type of the node cast it

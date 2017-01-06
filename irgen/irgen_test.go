@@ -57,6 +57,10 @@ func TestIrgen(t *testing.T) {
 	// }
 
 	files := []string{
+		"float_equal_to.fur",
+		"float_less_than.fur",
+		"float_more_than.fur",
+		"float_not_equal_to.fur",
 		"for_loop.fur",
 		"function.fur",
 		"i16_type.fur",

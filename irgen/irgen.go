@@ -134,7 +134,7 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 		return nil
 	case ast.Call:
 		return g.call(node)
-	case *ast.If:
+	case ast.If:
 		next := g.ifNode(node)
 		g.block = next
 		return nil
@@ -229,7 +229,7 @@ func (g *Irgen) call(node ast.Call) gooryvalues.Value {
 	return call
 }
 
-func (g *Irgen) ifNode(node *ast.If) (next *goory.Block) {
+func (g *Irgen) ifNode(node ast.If) (next *goory.Block) {
 	trueStart, trueEnd := g.blockNode(node.Block)
 	condition := g.expression(node.Condition)
 
@@ -256,7 +256,7 @@ func (g *Irgen) ifNode(node *ast.If) (next *goory.Block) {
 
 	// Check if else if chain continues
 	if (node.Else != nil) && (node.Else.Else != nil) {
-		g.ifNode(node.Else.Else)
+		g.ifNode(*node.Else.Else)
 	}
 
 	// If blocks dont terminate brach to next block
