@@ -47,8 +47,10 @@ func (a *Analysis) typ(node ast.Expression) (types.Type, error) {
 	switch node := node.(type) {
 	case ast.Integer:
 		return intType, nil
+
 	case ast.Float:
 		return floatType, nil
+
 	case ast.Binary:
 		lType, _ := a.typ(node.Lhs)
 		rType, _ := a.typ(node.Rhs)
@@ -56,14 +58,18 @@ func (a *Analysis) typ(node ast.Expression) (types.Type, error) {
 			return floatType, nil
 		}
 		return intType, nil
+
 	case ast.Call:
 		for _, f := range a.root.Functions {
 			if f.Name.Value == node.Function.Value {
 				return f.Type.Return, nil
 			}
 		}
-
 		return nil, fmt.Errorf("No function named %q", node.Function.Value)
+
+	case ast.ArrayList:
+		return node.Type, nil
+
 	default:
 		return nil, fmt.Errorf("Unknown type: %s", reflect.TypeOf(node).String())
 	}

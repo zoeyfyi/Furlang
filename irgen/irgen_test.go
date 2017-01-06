@@ -57,6 +57,7 @@ func TestIrgen(t *testing.T) {
 	// }
 
 	files := []string{
+		"array_int.fur",
 		"blocks.fur",
 		"cast_from_f32_type.fur",
 		"cast_from_f64_type.fur",

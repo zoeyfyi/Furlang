@@ -72,6 +72,11 @@ type (
 		Expressions []Expression
 	}
 
+	ArrayList struct {
+		Type types.Type
+		List List
+	}
+
 	Index struct {
 		Index Expression
 	}
@@ -86,9 +91,10 @@ type (
 	}
 )
 
-func (b Ident) expressionNode() {}
-func (b List) expressionNode()  {}
-func (b Block) expressionNode() {}
+func (b Ident) expressionNode()     {}
+func (b List) expressionNode()      {}
+func (b ArrayList) expressionNode() {}
+func (b Block) expressionNode()     {}
 
 // Values
 type (

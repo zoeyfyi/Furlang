@@ -121,13 +121,41 @@ func (p *Parser) call() ast.Call {
 	return ast.Call{function, args}
 }
 
-func (p *Parser) arrayValue() ast.ArrayValue {
-	array := p.ident()
+func (p *Parser) arrayType() types.Type {
+	arrayType := p.ident().Value
 	p.expect(lexer.LBRACK)
-	index := p.maths()
+	length := p.integer()
 	p.expect(lexer.RBRACK)
 
-	return ast.ArrayValue{array, ast.Index{index}}
+	return types.NewArray(types.GetType(arrayType), length.Value)
+}
+
+func (p *Parser) arrayListOrValue() ast.Expression {
+	// Parse array type or array value
+	ident := p.ident()
+	p.expect(lexer.LBRACK)
+	value := p.Value()
+	p.expect(lexer.RBRACK)
+
+	if p.token().Type() != lexer.LBRACE {
+		// Not array list, must be array value
+		return ast.ArrayValue{
+			Array: ident,
+			Index: ast.Index{
+				Index: value,
+			},
+		}
+	}
+
+	// Assemble the array type
+	elementType := types.GetType(ident.Value)
+	arrayType := types.NewArray(elementType, value.(ast.Integer).Value)
+	list := p.list()
+
+	return ast.ArrayList{
+		Type: arrayType,
+		List: list,
+	}
 }
 
 // Maths parses binary expressions
@@ -136,7 +164,6 @@ func (p *Parser) maths() ast.Expression {
 
 	outputStack := lane.NewStack()
 	operatorStack := lane.NewStack()
-	arityStack := lane.NewStack()
 
 	popOperatorStack := func() {
 		token := operatorStack.Pop().(lexer.Token)
@@ -154,7 +181,9 @@ func (p *Parser) maths() ast.Expression {
 		return token.Type() != lexer.SEMICOLON &&
 			token.Type() != lexer.LBRACE &&
 			token.Type() != lexer.RBRACE &&
-			!((token.Type() == lexer.COMMA || token.Type() == lexer.RPAREN) && depth == 0)
+			token.Type() != lexer.RBRACK &&
+			token.Type() != lexer.COMMA &&
+			!(token.Type() == lexer.RPAREN && depth == 0)
 	}
 
 	log.Printf("Shunting yard: %s", p.peek().String())
@@ -186,13 +215,13 @@ func (p *Parser) maths() ast.Expression {
 
 		case lexer.IDENT:
 			switch {
-			// Token is a function name, push it onto the operator stack
+			// Token is a function name
 			case notEnded(p.peek(), depth) && p.peek().Type() == lexer.LPAREN:
 				outputStack.Push(p.call())
 
 			// Token is a array index
 			case notEnded(p.peek(), depth) && p.peek().Type() == lexer.LBRACK:
-				outputStack.Push(p.arrayValue())
+				outputStack.Push(p.arrayListOrValue())
 
 			// Token is a varible name, push it onto the out queue
 			default:
@@ -212,27 +241,9 @@ func (p *Parser) maths() ast.Expression {
 			operatorStack.Pop() // pop open bracket
 			p.next()
 
-			// 33 + ((20 + 5) * 4) - 10
-
-		// TODO: Can we remove this? (we now parse calls diffrently)
-		case lexer.COMMA:
-			// Increment argument count
-			as := arityStack.Pop().(int)
-			arityStack.Push(as + 1)
-
-			for operatorStack.Head().(lexer.Token).Type() != lexer.LPAREN {
-				popOperatorStack()
-			}
-
-			if operatorStack.Empty() {
-				panic("Misplaced comma or mismatched parentheses")
-			}
-
 		default:
 			panic("Unexpected math token: " + token.String())
 		}
-
-		// fmt.Println("next: ", p.token().String())
 	}
 
 	for !operatorStack.Empty() {
@@ -248,20 +259,11 @@ func (p *Parser) ret() ast.Return {
 }
 
 func (p *Parser) typ() types.Type {
-	switch {
-	case p.peek().Type() == lexer.LBRACK:
-		// Parse array type
-		base := p.expect(lexer.IDENT)
-		p.expect(lexer.LBRACK)
-		length := p.integer()
-		p.expect(lexer.RBRACK)
-
-		// Assemble the array type
-		elementType := types.GetType(base.Value())
-		return types.NewArray(elementType, length.Value)
-	default:
-		return types.GetType(p.expect(lexer.IDENT).Value())
+	if p.peek().Type() == lexer.LBRACK {
+		return p.arrayType()
 	}
+
+	return types.GetType(p.expect(lexer.IDENT).Value())
 }
 
 func (p *Parser) namedTyp() ast.TypedIdent {
@@ -513,15 +515,18 @@ func (p *Parser) list() ast.List {
 }
 
 func (p *Parser) Value() ast.Expression {
-	log.Println("Value")
-
 	current := p.token().Type()
 	next := p.peek().Type()
+
+	log.Printf("Value current: %s", current.String())
+
 	switch {
 	case current == lexer.LPAREN && next == lexer.IDENT:
 		return p.cast()
 	case current == lexer.LBRACE:
 		return p.list()
+	case current == lexer.IDENT && next == lexer.LBRACK:
+		return p.arrayListOrValue()
 	default:
 		return p.maths()
 	}

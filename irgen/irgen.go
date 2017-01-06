@@ -141,6 +141,10 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 	case ast.For:
 		g.forNode(node)
 		return nil
+	case ast.ArrayList:
+		return g.array(node)
+	case ast.ArrayValue:
+		return g.arrayValue(node)
 	case *ast.Block:
 		start, end := g.blockNode(*node)
 		g.block.Br(start)
@@ -300,6 +304,26 @@ func (g *Irgen) forNode(node ast.For) {
 
 	// Continue compiling from exit block
 	g.block = exitBlock
+}
+
+func (g *Irgen) array(node ast.ArrayList) gooryvalues.Value {
+	log.Println("Array")
+
+	arrayType := node.Type.Llvm()
+
+	values := make([]gooryvalues.Value, len(node.List.Expressions))
+	for i, val := range node.List.Expressions {
+		values[i] = g.expression(val)
+	}
+
+	return goory.Constant(arrayType, values)
+}
+
+func (g *Irgen) arrayValue(node ast.ArrayValue) gooryvalues.Value {
+	arrayAlloc := g.find(node.Array.Value)
+	array := g.block.Load(arrayAlloc.(gooryvalues.Pointer))
+	index := g.expression(node.Index.Index)
+	return g.block.Extractvalue(array, index)
 }
 
 func (g *Irgen) binary(node ast.Binary) gooryvalues.Value {

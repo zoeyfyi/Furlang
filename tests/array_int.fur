@@ -1,4 +1,4 @@
 main :: -> i32 {
-    test := [4]int{1, 2, 3, 123}
+    test := int[4]{1, 2, 3, 123}
     return test[3]
 }
