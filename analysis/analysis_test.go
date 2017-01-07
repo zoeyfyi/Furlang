@@ -52,10 +52,9 @@ func TestInferAssigment(t *testing.T) {
 
 	for _, c := range cases {
 		node := parser.Parse(c.code).(ast.Assignment)
-		typ := ast.Basic{c.typ}
-		newNode := a.assigment(&node).(ast.Assignment)
+		newNode := a.assigment(&node)
 
-		if newNode.Type != typ {
+		if newNode.Type != c.typ {
 			t.Errorf("Expected %s to have infer int type but got type: %s", c.code, pp.Sprint(node.Type))
 		}
 	}
@@ -65,7 +64,7 @@ func TestAssigment(t *testing.T) {
 	code := "i8 a = 123"
 
 	node := parser.Parse(code).(ast.Assignment)
-	newNode := a.assigment(&node).(ast.Assignment)
+	newNode := a.assigment(&node)
 
 	if _, ok := newNode.Expression.(ast.Cast); !ok {
 		t.Errorf("Expected value of: %s to be a cast node, got %s",

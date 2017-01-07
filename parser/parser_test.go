@@ -59,6 +59,7 @@ func TestParser(t *testing.T) {
 						},
 					},
 				},
+				Declare: true,
 			},
 		},
 		// {
@@ -97,6 +98,7 @@ func TestParser(t *testing.T) {
 								},
 							},
 						},
+						Declare: true,
 					},
 				},
 			},
@@ -203,6 +205,7 @@ func TestParser(t *testing.T) {
 					Expression: ast.Integer{
 						Value: 0,
 					},
+					Declare: true,
 				},
 				Condition: ast.Binary{
 					Lhs: ast.Ident{
@@ -212,6 +215,7 @@ func TestParser(t *testing.T) {
 					Rhs: ast.Integer{
 						Value: 100,
 					},
+					IsFp: false,
 				},
 				Increment: ast.Assignment{
 					Type: nil,
@@ -226,18 +230,21 @@ func TestParser(t *testing.T) {
 						Rhs: ast.Integer{
 							Value: 1,
 						},
+						IsFp: false,
 					},
+					Declare: false,
 				},
 				Block: ast.Block{
 					Expressions: []ast.Expression{
 						ast.Assignment{
-							Type: types.IntType(0),
+							Type: types.GetType("int"),
 							Name: ast.Ident{
 								Value: "ben",
 							},
 							Expression: ast.Ident{
 								Value: "i",
 							},
+							Declare: true,
 						},
 					},
 				},
@@ -257,6 +264,7 @@ func TestParser(t *testing.T) {
 					},
 					Type: types.IntType(0),
 				},
+				Declare: true,
 			},
 		},
 		// {
