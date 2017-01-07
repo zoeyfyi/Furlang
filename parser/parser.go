@@ -39,18 +39,8 @@ func (p *Parser) next() lexer.Token {
 	return p.tokens[p.index]
 }
 
-// TODO: remove this
-func (p *Parser) back() {
-	p.index--
-}
-
 func (p *Parser) peek() lexer.Token {
 	return p.tokens[p.index+1]
-}
-
-// TODO: Can we remove this?
-func (p *Parser) peekpeek() lexer.Token {
-	return p.tokens[p.index+2]
 }
 
 func (p *Parser) eof() bool {
