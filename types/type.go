@@ -6,6 +6,10 @@ import (
 	goorytypes "github.com/bongo227/goory/types"
 )
 
+// TODO: when we implement custom type defininitions create a unresolved type.
+// when we run through with ananlysis this type will be substituted with the
+// actual type.
+
 // Type represents a type
 type Type interface {
 	// Gets the base type of the type
