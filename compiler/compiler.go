@@ -69,7 +69,10 @@ func (c *Compiler) Compile(buildDirectory string) error {
 
 	// Run parser
 	parser := parser.NewParser(tokens)
-	ast := parser.Parse()
+	ast, err := parser.Parse()
+	if err != nil {
+		return err
+	}
 
 	// Run analyser
 	analyser := analysis.NewAnalysis(ast)

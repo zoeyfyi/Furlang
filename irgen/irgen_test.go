@@ -121,7 +121,11 @@ func TestIrgen(t *testing.T) {
 			t.Error(err)
 		}
 		parser := parser.NewParser(tokens)
-		analysis := analysis.NewAnalysis(parser.Parse())
+		tree, err := parser.Parse()
+		if err != nil {
+			t.Error(err)
+		}
+		analysis := analysis.NewAnalysis(tree)
 		gen := NewIrgen(analysis.Analalize())
 		llvm := gen.Generate()
 

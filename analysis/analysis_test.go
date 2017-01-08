@@ -114,7 +114,12 @@ func TestCall(t *testing.T) {
 	}
 
 	parser := parser.NewParser(tokens)
-	ana := NewAnalysis(parser.Parse())
+	tree, err := parser.Parse()
+	if err != nil {
+		t.Error(err)
+	}
+
+	ana := NewAnalysis(tree)
 
 	a := ana.Analalize()
 
