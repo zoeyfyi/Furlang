@@ -452,7 +452,7 @@ func (l *Lexer) Lex() ([]Token, error) {
 				tok.typ = l.switch3(OR, OR_ASSIGN, '|', LOR)
 			default:
 				if l.currentRune == 0xFEFF {
-					panic(fmt.Sprintf("illegal character %#U", l.currentRune))
+					return nil, l.newError(fmt.Sprintf("illegal character %#U", l.currentRune))
 				}
 				tok.typ = ILLEGAL
 			}
