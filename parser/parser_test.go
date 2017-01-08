@@ -394,7 +394,12 @@ func TestParser(t *testing.T) {
 
 	for _, c := range cases {
 		lexer := lexer.NewLexer([]byte(c.source))
-		parser := NewParser(lexer.Lex())
+		tokens, err := lexer.Lex()
+		if err != nil {
+			t.Error(err)
+		}
+
+		parser := NewParser(tokens)
 		t.Log("=== Start tokens ===")
 		for _, tok := range parser.tokens {
 			t.Log(tok.String())

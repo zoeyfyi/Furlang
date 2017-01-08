@@ -3,6 +3,8 @@ package analysis
 import (
 	"testing"
 
+	"reflect"
+
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/parser"
@@ -14,7 +16,13 @@ var a = &Analysis{}
 
 func TestFloatPromotion(t *testing.T) {
 	code := "10 + 14.5"
-	node := parser.Parse(code).(ast.Binary)
+
+	exp, err := parser.Parse(code)
+	if err != nil {
+		t.Error(err)
+	}
+
+	node := exp.(ast.Binary)
 	a.binary(&node)
 
 	if _, ok := node.Lhs.(ast.Cast); !ok {
@@ -51,11 +59,19 @@ func TestInferAssigment(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		node := parser.Parse(c.code).(ast.Assignment)
-		newNode := a.assigment(&node)
+		node, err := parser.Parse(c.code)
+		if err != nil {
+			t.Error(err)
+		}
 
-		if newNode.Type != c.typ {
-			t.Errorf("Expected %s to have infer int type but got type: %s", c.code, pp.Sprint(node.Type))
+		assigmentNode, ok := node.(ast.Assignment)
+		if !ok {
+			t.Errorf("Expected node to have type assigment, got type: %s", reflect.TypeOf(assigmentNode).String())
+		}
+
+		if a.assigment(&assigmentNode).Type != c.typ {
+			// TODO: give types.Type a string method so we dont have to pp.Print
+			t.Errorf("Expected %s to have infer int type but got type: %s", c.code, pp.Sprint(assigmentNode.Type))
 		}
 	}
 }
@@ -63,12 +79,20 @@ func TestInferAssigment(t *testing.T) {
 func TestAssigment(t *testing.T) {
 	code := "i8 a = 123"
 
-	node := parser.Parse(code).(ast.Assignment)
-	newNode := a.assigment(&node)
+	node, err := parser.Parse(code)
+	if err != nil {
+		t.Error(err)
+	}
 
-	if _, ok := newNode.Expression.(ast.Cast); !ok {
+	assigmentNode, ok := node.(ast.Assignment)
+	if !ok {
+		t.Errorf("Expected node to have type assigment, got type: %s", reflect.TypeOf(assigmentNode).String())
+	}
+
+	analizedNode := a.assigment(&assigmentNode)
+	if _, ok := analizedNode.Expression.(ast.Cast); !ok {
 		t.Errorf("Expected value of: %s to be a cast node, got %s",
-			code, pp.Sprint(node.Expression))
+			code, pp.Sprint(assigmentNode.Expression))
 	}
 }
 
@@ -84,21 +108,32 @@ func TestCall(t *testing.T) {
 	`
 
 	lex := lexer.NewLexer([]byte(code))
-	parser := parser.NewParser(lex.Lex())
+	tokens, err := lex.Lex()
+	if err != nil {
+		t.Error(err)
+	}
+
+	parser := parser.NewParser(tokens)
 	ana := NewAnalysis(parser.Parse())
-	// irgen := irgen.NewIrgen(ana.Analalize())
 
 	a := ana.Analalize()
 
-	returnSmt := a.Functions[1].Body.Expressions[0].(ast.Return)
-	exps := returnSmt.Value.(ast.Call).Arguments
-
-	if _, ok := exps[1].(ast.Integer); !ok {
-		t.Errorf("Expected parameter 1 to be a integer got: %s", pp.Sprint(exps[1]))
+	firstExp := a.Functions[1].Body.Expressions[0]
+	returnSmt, ok := firstExp.(ast.Return)
+	if !ok {
+		t.Errorf("Expected first expression to be a return statement, got: %s", reflect.TypeOf(firstExp).String())
 	}
 
-	if _, ok := exps[0].(ast.Cast); !ok {
-		t.Errorf("Expected parameter 0 to be a cast got: %s", pp.Sprint(exps[0]))
+	call, ok := returnSmt.Value.(ast.Call)
+	if !ok {
+		t.Errorf("Expected return value to be of type call, got: %s", reflect.TypeOf(call).String())
 	}
 
+	if _, ok := call.Arguments[1].(ast.Integer); !ok {
+		t.Errorf("Expected parameter 1 to be a integer got: %s", pp.Sprint(call.Arguments[1]))
+	}
+
+	if _, ok := call.Arguments[0].(ast.Cast); !ok {
+		t.Errorf("Expected parameter 0 to be a cast got: %s", pp.Sprint(call.Arguments[0]))
+	}
 }

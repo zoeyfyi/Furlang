@@ -49,7 +49,10 @@ func (c *Compiler) Compile(buildDirectory string) error {
 
 	// Run lexer
 	l := lexer.NewLexer([]byte(c.program))
-	tokens := l.Lex()
+	tokens, err := l.Lex()
+	if err != nil {
+		return err
+	}
 
 	// Optionaly write tokens to file
 	if c.OutputTokens {

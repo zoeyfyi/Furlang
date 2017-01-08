@@ -19,10 +19,16 @@ type Parser struct {
 }
 
 // Parse is a convience method for parsing a raw string of code
-func Parse(code string) ast.Expression {
+func Parse(code string) (ast.Expression, error) {
 	lex := lexer.NewLexer([]byte(code))
-	parser := NewParser(lex.Lex())
-	return parser.Expression()
+
+	tokens, err := lex.Lex()
+	if err != nil {
+		return nil, err
+	}
+
+	parser := NewParser(tokens)
+	return parser.Expression(), nil
 }
 
 // NewParser creates a new parser
