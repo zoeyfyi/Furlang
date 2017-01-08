@@ -15,11 +15,11 @@ func (e *DeclareStatement) First() lexer.Token { return e.Statement.First() }
 func (e *DeclareStatement) Last() lexer.Token  { return e.Statement.Last() }
 func (e *DeclareStatement) statementNode()     {}
 
-// AssignmentStatement is a statement in the form: expression := expression
+// AssignmentStatement is a statement in the form: expression = expression
 type AssignmentStatement struct {
-	Left  Expression
-	Token lexer.Token
-	Right Expression
+	Left   Expression
+	Assign lexer.Token
+	Right  Expression
 }
 
 func (e *AssignmentStatement) First() lexer.Token { return e.Left.First() }
@@ -63,7 +63,9 @@ func (e *IfStatment) statementNode()     {}
 type ForStatement struct {
 	For       lexer.Token
 	Index     Statement
+	Semi1     lexer.Token
 	Condition Expression
+	Semi2     lexer.Token
 	Increment Statement
 	Body      *BlockStatement
 }

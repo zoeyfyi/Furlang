@@ -14,10 +14,11 @@ type Declare interface {
 // FunctionDeclaration is a declare node in the form:
 // ident :: type ident, ... -> type { statement; ... }
 type FunctionDeclaration struct {
-	Name      *IdentExpression
-	Arguments map[string]types.Type
-	Return    types.Type
-	Body      *BlockStatement
+	Name        *IdentExpression
+	DoubleColon lexer.Token
+	Arguments   map[IdentExpression]types.Type
+	Return      types.Type
+	Body        *BlockStatement
 }
 
 func (e *FunctionDeclaration) First() lexer.Token { return e.Name.First() }
