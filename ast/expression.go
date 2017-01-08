@@ -1,6 +1,10 @@
 package ast
 
-import "github.com/bongo227/Furlang/lexer"
+import (
+	"github.com/bongo227/Furlang/types"
+
+	"github.com/bongo227/Furlang/lexer"
+)
 
 type Expression interface {
 	Node
@@ -27,13 +31,13 @@ func (e *LiteralExpression) expressionNode()    {}
 
 // BraceLiteralExpression is an expression in the form: type{expression, expression, ...}
 type BraceLiteralExpression struct {
-	Type       Expression
+	Type       types.Type
 	LeftBrace  lexer.Token
 	Elements   []Expression
 	RightBrace lexer.Token
 }
 
-func (e *BraceLiteralExpression) First() lexer.Token { return e.Type.First() }
+func (e *BraceLiteralExpression) First() lexer.Token { return e.LeftBrace }
 func (e *BraceLiteralExpression) Last() lexer.Token  { return e.RightBrace }
 func (e *BraceLiteralExpression) expressionNode()    {}
 
@@ -65,6 +69,7 @@ type SliceExpression struct {
 	Expression Expression
 	LeftBrack  lexer.Token
 	Low        Expression
+	Colon      lexer.Token
 	High       Expression
 	RightBrack lexer.Token
 }
@@ -82,6 +87,18 @@ type CallExpression struct {
 func (e *CallExpression) First() lexer.Token { return e.Function.First() }
 func (e *CallExpression) Last() lexer.Token  { return e.Arguments.Last() }
 func (e *CallExpression) expressionNode()    {}
+
+// CastExpression is an expression in the form: (type)expression
+type CastExpression struct {
+	LeftParen  lexer.Token
+	Type       types.Type
+	RightParen lexer.Token
+	Expression Expression
+}
+
+func (e *CastExpression) First() lexer.Token { return e.LeftParen }
+func (e *CastExpression) Last() lexer.Token  { return e.Expression.Last() }
+func (e *CastExpression) expressionNode()    {}
 
 // BinaryExpression is an expression in the form: expression operator expression
 type BinaryExpression struct {
