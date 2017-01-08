@@ -6,6 +6,8 @@ import (
 
 	"log"
 
+	"errors"
+
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/types"
@@ -71,7 +73,8 @@ func (p *Parser) eof() bool {
 func (p *Parser) expect(typ lexer.TokenType) lexer.Token {
 	token := p.token()
 	if token.Type() != typ {
-		panic(fmt.Sprintf("Expected: %s, Got: %s", typ.String(), token.Type().String()))
+		err := p.newError(fmt.Sprintf("Expected: %s, Got: %s", typ.String(), token.Type().String()))
+		panic(err)
 	}
 
 	if !p.eof() {
@@ -614,8 +617,23 @@ func (p *Parser) Expression() ast.Expression {
 	return exp
 }
 
-func (p *Parser) Parse() *ast.Ast {
+func (p *Parser) Parse() (tree *ast.Ast, err error) {
 	log.Println("Starting parse")
+
+	// Recover from panic
+	defer func() {
+		if r := recover(); r != nil {
+			tree = nil
+
+			if parserError, ok := r.(*Error); ok {
+				// Parser error
+				err = parserError
+			} else {
+				// Unknown error
+				err = errors.New("Internal error")
+			}
+		}
+	}()
 
 	var functions []ast.Function
 
@@ -624,7 +642,9 @@ func (p *Parser) Parse() *ast.Ast {
 		p.accept(lexer.SEMICOLON)
 	}
 
-	return &ast.Ast{
+	tree = &ast.Ast{
 		Functions: functions,
 	}
+
+	return tree, err
 }
