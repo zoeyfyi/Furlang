@@ -300,7 +300,9 @@ func (p *Parser) maths() ast.Expression {
 
 func (p *Parser) ret() ast.Return {
 	p.expect(lexer.RETURN)
-	return ast.Return{p.maths()}
+	return ast.Return{
+		Value: p.maths(),
+	}
 }
 
 func (p *Parser) typ() types.Type {
@@ -655,6 +657,15 @@ func (p *Parser) Parse() (tree *ast.Ast, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			tree = nil
+
+			switch r := r.(type) {
+			case *Error:
+				err = r
+			case *InternalError:
+				err = r
+			default:
+				err = fmt.Errorf("Unhandled internal error: %q", r)
+			}
 
 			if parserError, ok := r.(*Error); ok {
 				// Parser error

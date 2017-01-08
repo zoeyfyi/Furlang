@@ -120,14 +120,20 @@ func TestIrgen(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+
 		parser := parser.NewParser(tokens)
 		tree, err := parser.Parse()
 		if err != nil {
 			t.Error(err)
 		}
+
 		analysis := analysis.NewAnalysis(tree)
+
 		gen := NewIrgen(analysis.Analalize())
-		llvm := gen.Generate()
+		llvm, err := gen.Generate()
+		if err != nil {
+			t.Error(err)
+		}
 
 		if code, msg := runIr(llvm); code != 123 {
 			// Make a more desciptive error message

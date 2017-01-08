@@ -32,19 +32,19 @@ type Irgen struct {
 	block  *goory.Block
 }
 
-type internalError struct {
+type InternalError struct {
 	Message string
 	Stack   string
 }
 
-func (g *Irgen) newInternalError(message string) *internalError {
-	return &internalError{
+func (g *Irgen) newInternalError(message string) *InternalError {
+	return &InternalError{
 		Message: message,
 		Stack:   string(debug.Stack()),
 	}
 }
 
-func (e *internalError) Error() string {
+func (e *InternalError) Error() string {
 	return e.Message
 }
 
@@ -95,14 +95,28 @@ func (g *Irgen) find(v string) gooryvalues.Value {
 }
 
 // Generate returns the llvm ir of the ast
-func (g *Irgen) Generate() string {
+func (g *Irgen) Generate() (ir string, err error) {
 	log.Println("Generation started")
+
+	// Recover from panic
+	defer func() {
+		if r := recover(); r != nil {
+			ir = ""
+
+			switch r := r.(type) {
+			case *InternalError:
+				err = r
+			default:
+				err = fmt.Errorf("Unhandled internal error: %q", r)
+			}
+		}
+	}()
 
 	for _, function := range g.root.Functions {
 		g.function(function)
 	}
 
-	return g.module.LLVM()
+	return g.module.LLVM(), nil
 }
 
 func (g *Irgen) typ(node types.Type) goorytypes.Type {

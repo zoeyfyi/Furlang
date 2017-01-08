@@ -93,7 +93,11 @@ func (c *Compiler) Compile(buildDirectory string) error {
 	// Compile ast to llvm
 	if !c.NoCompile {
 		ir := irgen.NewIrgen(ast)
-		llvm := ir.Generate()
+		llvm, err := ir.Generate()
+		if err != nil {
+			return err
+		}
+
 		f, err := os.Create(buildDirectory + "/ben.ll")
 		if err != nil {
 			return fmt.Errorf("problem creating llvm ir file: %s", err.Error())
