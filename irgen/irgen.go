@@ -198,7 +198,9 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 		return g.block.Load(g.find(node.Value).(gooryvalues.Pointer))
 	}
 
-	panic(fmt.Sprintf("Node not handled: %s", pp.Sprint(node)))
+	nodeType := reflect.TypeOf(node).String()
+	err := g.newInternalError(fmt.Sprintf("Node of type %q not handled", nodeType))
+	panic(err)
 }
 
 // block compiles a block and returns the start block and the end block (if it branches elsewhere)
@@ -415,7 +417,8 @@ func (g *Irgen) binary(node ast.Binary) gooryvalues.Value {
 		}
 	}
 
-	panic("Unhandled binary operator")
+	err := g.newInternalError("Unhandled binary operator")
+	panic(err)
 }
 
 func (g *Irgen) ret(node ast.Return) {
@@ -445,5 +448,6 @@ func (g *Irgen) boolNode(node ast.Ident) gooryvalues.Value {
 		return goory.Constant(goory.BoolType(), false)
 	}
 
-	panic("Ident is not a bool")
+	err := g.newInternalError("Ident is not a bool")
+	panic(err)
 }
