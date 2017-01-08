@@ -63,7 +63,12 @@ func TestLex(t *testing.T) {
 
 	for _, c := range cases {
 		l := NewLexer([]byte(c.input))
-		got := l.Lex()
+		got, err := l.Lex()
+
+		if err != nil {
+			t.Errorf("Lexer errored: %s", err.Error())
+		}
+
 		if !reflect.DeepEqual(c.expected, got) {
 			t.Log("Expected: ")
 			for _, tok := range c.expected {

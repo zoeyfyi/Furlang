@@ -7,6 +7,8 @@ import (
 
 	"reflect"
 
+	"runtime/debug"
+
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/types"
@@ -30,10 +32,27 @@ type Irgen struct {
 	block  *goory.Block
 }
 
+type InternalError struct {
+	Message string
+	Stack   string
+}
+
+func (g *Irgen) newInternalError(message string) *InternalError {
+	return &InternalError{
+		Message: message,
+		Stack:   string(debug.Stack()),
+	}
+}
+
+func (e *InternalError) Error() string {
+	return e.Message
+}
+
 func init() {
 	log.SetFlags(log.Lshortfile | log.Ltime)
 }
 
+// NewIrgen creates a new ir generator
 func NewIrgen(ast *ast.Ast) *Irgen {
 	g := &Irgen{
 		root:         *ast,
@@ -61,7 +80,7 @@ func (g *Irgen) newScope() {
 	g.scopes = scopes
 }
 
-// Finds a scoped value
+// find finds a scoped value
 func (g *Irgen) find(v string) gooryvalues.Value {
 	// Start at current scope and work backwords until the value is found
 	search := g.currentScope
@@ -75,14 +94,29 @@ func (g *Irgen) find(v string) gooryvalues.Value {
 	return nil
 }
 
-func (g *Irgen) Generate() string {
+// Generate returns the llvm ir of the ast
+func (g *Irgen) Generate() (ir string, err error) {
 	log.Println("Generation started")
+
+	// Recover from panic
+	defer func() {
+		if r := recover(); r != nil {
+			ir = ""
+
+			switch r := r.(type) {
+			case *InternalError:
+				err = r
+			default:
+				err = fmt.Errorf("Unhandled internal error: %q", r)
+			}
+		}
+	}()
 
 	for _, function := range g.root.Functions {
 		g.function(function)
 	}
 
-	return g.module.LLVM()
+	return g.module.LLVM(), nil
 }
 
 func (g *Irgen) typ(node types.Type) goorytypes.Type {
@@ -164,7 +198,9 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 		return g.block.Load(g.find(node.Value).(gooryvalues.Pointer))
 	}
 
-	panic(fmt.Sprintf("Node not handled: %s", pp.Sprint(node)))
+	nodeType := reflect.TypeOf(node).String()
+	err := g.newInternalError(fmt.Sprintf("Node of type %q not handled", nodeType))
+	panic(err)
 }
 
 // block compiles a block and returns the start block and the end block (if it branches elsewhere)
@@ -381,7 +417,8 @@ func (g *Irgen) binary(node ast.Binary) gooryvalues.Value {
 		}
 	}
 
-	panic("Unhandled binary operator")
+	err := g.newInternalError("Unhandled binary operator")
+	panic(err)
 }
 
 func (g *Irgen) ret(node ast.Return) {
@@ -411,5 +448,6 @@ func (g *Irgen) boolNode(node ast.Ident) gooryvalues.Value {
 		return goory.Constant(goory.BoolType(), false)
 	}
 
-	panic("Ident is not a bool")
+	err := g.newInternalError("Ident is not a bool")
+	panic(err)
 }

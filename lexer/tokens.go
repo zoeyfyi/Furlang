@@ -213,8 +213,11 @@ func (t Token) String() string {
 }
 
 const (
-	LowestPrecedence  = 0
-	UnaryPrecedence   = 6
+	// LowestPrecedence is the lowest precedence
+	LowestPrecedence = 0
+	// UnaryPrecedence is the precedence of unary operators
+	UnaryPrecedence = 6
+	// HighestPrecedence is the highest precedence
 	HighestPrecedence = 7
 )
 
@@ -235,25 +238,31 @@ func (t Token) Precedence() int {
 	return LowestPrecedence
 }
 
+// Line returns the line number of the token
 func (t Token) Line() int {
 	return t.line
 }
 
+// Column returns the column number of the token
 func (t Token) Column() int {
 	return t.column
 }
 
+// Type returns the type of the token
 func (t Token) Type() TokenType {
 	return t.typ
 }
 
+// Value returns the value of the token
 func (t Token) Value() string {
 	return t.value
 }
 
+// Map of keywords to their respective types
 var keywords map[string]TokenType
 
 func init() {
+	// Initialize keyword map
 	keywords = make(map[string]TokenType)
 	for i := keywords_begin + 1; i < keywords_end; i++ {
 		keywords[tokens[i]] = i

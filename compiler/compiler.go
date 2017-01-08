@@ -49,7 +49,10 @@ func (c *Compiler) Compile(buildDirectory string) error {
 
 	// Run lexer
 	l := lexer.NewLexer([]byte(c.program))
-	tokens := l.Lex()
+	tokens, err := l.Lex()
+	if err != nil {
+		return err
+	}
 
 	// Optionaly write tokens to file
 	if c.OutputTokens {
@@ -66,7 +69,10 @@ func (c *Compiler) Compile(buildDirectory string) error {
 
 	// Run parser
 	parser := parser.NewParser(tokens)
-	ast := parser.Parse()
+	ast, err := parser.Parse()
+	if err != nil {
+		return err
+	}
 
 	// Run analyser
 	analyser := analysis.NewAnalysis(ast)
@@ -87,7 +93,11 @@ func (c *Compiler) Compile(buildDirectory string) error {
 	// Compile ast to llvm
 	if !c.NoCompile {
 		ir := irgen.NewIrgen(ast)
-		llvm := ir.Generate()
+		llvm, err := ir.Generate()
+		if err != nil {
+			return err
+		}
+
 		f, err := os.Create(buildDirectory + "/ben.ll")
 		if err != nil {
 			return fmt.Errorf("problem creating llvm ir file: %s", err.Error())

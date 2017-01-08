@@ -6,6 +6,10 @@ import (
 
 	"log"
 
+	"errors"
+
+	"runtime/debug"
+
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/types"
@@ -18,11 +22,49 @@ type Parser struct {
 	index  int
 }
 
+// Error represents an error in the parser package
+type Error struct {
+	Message string
+}
+
+// InternalError represents an error in the parser package that is unexpected
+type InternalError struct {
+	Message string
+	Stack   string
+}
+
+func (p *Parser) newError(message string) *Error {
+	return &Error{
+		Message: message,
+	}
+}
+
+func (e *Error) Error() string {
+	return e.Message
+}
+
+func (p *Parser) newInternalError(message string) *InternalError {
+	return &InternalError{
+		Message: "Internal error: " + message,
+		Stack:   string(debug.Stack()),
+	}
+}
+
+func (e *InternalError) Error() string {
+	return e.Message
+}
+
 // Parse is a convience method for parsing a raw string of code
-func Parse(code string) ast.Expression {
+func Parse(code string) (ast.Expression, error) {
 	lex := lexer.NewLexer([]byte(code))
-	parser := NewParser(lex.Lex())
-	return parser.Expression()
+
+	tokens, err := lex.Lex()
+	if err != nil {
+		return nil, err
+	}
+
+	parser := NewParser(tokens)
+	return parser.Expression(), nil
 }
 
 // NewParser creates a new parser
@@ -50,7 +92,8 @@ func (p *Parser) eof() bool {
 func (p *Parser) expect(typ lexer.TokenType) lexer.Token {
 	token := p.token()
 	if token.Type() != typ {
-		panic(fmt.Sprintf("Expected: %s, Got: %s", typ.String(), token.Type().String()))
+		err := p.newError(fmt.Sprintf("Expected: %s, Got: %s", typ.String(), token.Type().String()))
+		panic(err)
 	}
 
 	if !p.eof() {
@@ -75,25 +118,33 @@ func (p *Parser) accept(typ lexer.TokenType) (lexer.Token, bool) {
 }
 
 func (p *Parser) ident() ast.Ident {
-	return ast.Ident{p.expect(lexer.IDENT).Value()}
+	return ast.Ident{
+		Value: p.expect(lexer.IDENT).Value(),
+	}
 }
 
 func (p *Parser) integer() ast.Integer {
 	value, err := strconv.ParseInt(p.expect(lexer.INT).Value(), 10, 16)
 	if err != nil {
-		panic(err)
+		// Error should never occor because lexer should never give us an invalid int literal
+		panic(p.newInternalError(err.Error()))
 	}
 
-	return ast.Integer{int64(value)}
+	return ast.Integer{
+		Value: int64(value),
+	}
 }
 
 func (p *Parser) float() ast.Float {
 	value, err := strconv.ParseFloat(p.expect(lexer.FLOAT).Value(), 64)
 	if err != nil {
-		panic(err)
+		// Error should never occor because lexer should never give us an invalid float literal
+		panic(p.newInternalError(err.Error()))
 	}
 
-	return ast.Float{float64(value)}
+	return ast.Float{
+		Value: float64(value),
+	}
 }
 
 func (p *Parser) call() ast.Call {
@@ -108,7 +159,10 @@ func (p *Parser) call() ast.Call {
 
 	p.expect(lexer.RPAREN)
 
-	return ast.Call{function, args}
+	return ast.Call{
+		Function:  function,
+		Arguments: args,
+	}
 }
 
 func (p *Parser) arrayType() types.Type {
@@ -232,7 +286,8 @@ func (p *Parser) maths() ast.Expression {
 			p.next()
 
 		default:
-			panic("Unexpected math token: " + token.String())
+			err := p.newError(fmt.Sprintf("Unexpected math token %q", token.String()))
+			panic(err)
 		}
 	}
 
@@ -245,7 +300,9 @@ func (p *Parser) maths() ast.Expression {
 
 func (p *Parser) ret() ast.Return {
 	p.expect(lexer.RETURN)
-	return ast.Return{p.maths()}
+	return ast.Return{
+		Value: p.maths(),
+	}
 }
 
 func (p *Parser) typ() types.Type {
@@ -593,8 +650,32 @@ func (p *Parser) Expression() ast.Expression {
 	return exp
 }
 
-func (p *Parser) Parse() *ast.Ast {
+func (p *Parser) Parse() (tree *ast.Ast, err error) {
 	log.Println("Starting parse")
+
+	// Recover from panic
+	defer func() {
+		if r := recover(); r != nil {
+			tree = nil
+
+			switch r := r.(type) {
+			case *Error:
+				err = r
+			case *InternalError:
+				err = r
+			default:
+				err = fmt.Errorf("Unhandled internal error: %q", r)
+			}
+
+			if parserError, ok := r.(*Error); ok {
+				// Parser error
+				err = parserError
+			} else {
+				// Unknown error
+				err = errors.New("Internal error")
+			}
+		}
+	}()
 
 	var functions []ast.Function
 
@@ -603,7 +684,9 @@ func (p *Parser) Parse() *ast.Ast {
 		p.accept(lexer.SEMICOLON)
 	}
 
-	return &ast.Ast{
+	tree = &ast.Ast{
 		Functions: functions,
 	}
+
+	return tree, err
 }
