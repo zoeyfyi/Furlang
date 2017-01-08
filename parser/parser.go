@@ -18,6 +18,21 @@ type Parser struct {
 	index  int
 }
 
+// Error represents an error in the parser package
+type Error struct {
+	Message string
+}
+
+func (p *Parser) newError(message string) *Error {
+	return &Error{
+		Message: message,
+	}
+}
+
+func (e *Error) Error() string {
+	return e.Message
+}
+
 // Parse is a convience method for parsing a raw string of code
 func Parse(code string) (ast.Expression, error) {
 	lex := lexer.NewLexer([]byte(code))
