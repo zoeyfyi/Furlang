@@ -286,7 +286,8 @@ func (p *Parser) maths() ast.Expression {
 			p.next()
 
 		default:
-			panic("Unexpected math token: " + token.String())
+			err := p.newError(fmt.Sprintf("Unexpected math token %q", token.String()))
+			panic(err)
 		}
 	}
 
