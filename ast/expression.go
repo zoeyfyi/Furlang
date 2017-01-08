@@ -76,7 +76,7 @@ func (e *SliceExpression) expressionNode()    {}
 // CallExpression is an expression in the form: expression(expression, expression, ...)
 type CallExpression struct {
 	Function  Expression
-	Arguments *ParenList
+	Arguments *ParenLiteralExpression
 }
 
 func (e *CallExpression) First() lexer.Token { return e.Function.First() }

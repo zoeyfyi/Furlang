@@ -1,12 +1,9 @@
 package ast
 
-import (
-	"go/token"
-
-	"github.com/bongo227/Furlang/lexer"
-)
+import "github.com/bongo227/Furlang/lexer"
 
 type Statement interface {
+	Node
 	statementNode()
 }
 
@@ -31,7 +28,7 @@ func (e *AssignmentStatement) statementNode()     {}
 
 // ReturnStatement is a statement in the form: return expression
 type ReturnStatement struct {
-	Return Token
+	Return lexer.Token
 	Result Expression
 }
 
@@ -52,7 +49,7 @@ func (e *BlockStatement) statementNode()     {}
 
 // IfStatment is a statement in the form: if expression {statement; ...} ...
 type IfStatment struct {
-	If        token.Pos
+	If        lexer.Token
 	Condition Expression
 	Body      *BlockStatement
 	Else      *IfStatment
