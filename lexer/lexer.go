@@ -225,7 +225,7 @@ func (l *Lexer) string() (string, error) {
 	return string(l.source[offset:l.offset]), nil
 }
 
-func (l *Lexer) number() (TokenType, string) {
+func (l *Lexer) number() (TokenType, string, error) {
 	offset := l.offset
 	tok := INT
 
@@ -238,10 +238,10 @@ func (l *Lexer) number() (TokenType, string) {
 			l.nextRune()
 			l.mantissa(16)
 			if l.offset-offset <= 2 {
-				panic("Illegal hex number")
+				return ILLEGAL, "", l.newError("Illegal hex number")
 			}
 		} else {
-			// octal
+			// assume octal
 			octal := true
 			l.mantissa(8)
 			if l.currentRune == '8' || l.currentRune == '9' {
@@ -253,7 +253,7 @@ func (l *Lexer) number() (TokenType, string) {
 				goto fraction
 			}
 			if !octal {
-				panic("Illegal octal number")
+				return ILLEGAL, "", l.newError("Illegal octal number")
 			}
 		}
 		goto exit
@@ -269,7 +269,7 @@ fraction:
 	}
 
 exit:
-	return tok, string(l.source[offset:l.offset])
+	return tok, string(l.source[offset:l.offset]), nil
 }
 
 // switch helper functions deside between 2-4 runes in the case of multi symbol runes
@@ -343,7 +343,14 @@ func (l *Lexer) Lex() ([]Token, error) {
 		case isDigit(currentRune):
 			log.Println("Number")
 			l.insertSemi = true
-			tok.typ, tok.value = l.number()
+
+			typ, value, err := l.number()
+			if err != nil {
+				return nil, err
+			}
+
+			tok.typ = typ
+			tok.value = value
 		default:
 			l.nextRune()
 			switch currentRune {
