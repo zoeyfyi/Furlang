@@ -7,6 +7,8 @@ import (
 
 	"reflect"
 
+	"runtime/debug"
+
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/types"
@@ -30,10 +32,27 @@ type Irgen struct {
 	block  *goory.Block
 }
 
+type internalError struct {
+	Message string
+	Stack   string
+}
+
+func (g *Irgen) newInternalError(message string) *internalError {
+	return &internalError{
+		Message: message,
+		Stack:   string(debug.Stack()),
+	}
+}
+
+func (e *internalError) Error() string {
+	return e.Message
+}
+
 func init() {
 	log.SetFlags(log.Lshortfile | log.Ltime)
 }
 
+// NewIrgen creates a new ir generator
 func NewIrgen(ast *ast.Ast) *Irgen {
 	g := &Irgen{
 		root:         *ast,
@@ -61,7 +80,7 @@ func (g *Irgen) newScope() {
 	g.scopes = scopes
 }
 
-// Finds a scoped value
+// find finds a scoped value
 func (g *Irgen) find(v string) gooryvalues.Value {
 	// Start at current scope and work backwords until the value is found
 	search := g.currentScope
@@ -75,6 +94,7 @@ func (g *Irgen) find(v string) gooryvalues.Value {
 	return nil
 }
 
+// Generate returns the llvm ir of the ast
 func (g *Irgen) Generate() string {
 	log.Println("Generation started")
 
