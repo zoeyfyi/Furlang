@@ -312,6 +312,12 @@ func (p *Parser) assignment() ast.Assignment {
 	ident := p.ident()
 	p.expect(lexer.ASSIGN)
 	expression := p.Value()
+
+	// If we are assigning an array give the list the array name
+	if exp, ok := expression.(ast.ArrayList); ok {
+		exp.Name = ident
+	}
+
 	return ast.Assignment{
 		Type:       typ,
 		Name:       ident,
@@ -326,6 +332,17 @@ func (p *Parser) inferAssigment() ast.Assignment {
 	ident := p.ident()
 	p.expect(lexer.DEFINE)
 	expression := p.Value()
+
+	// If we are assigning an array give the list the array name
+	if exp, ok := expression.(ast.ArrayList); ok {
+		expression = ast.ArrayList{
+			Name: ident,
+			Type: exp.Type,
+			List: exp.List,
+		}
+
+	}
+
 	return ast.Assignment{
 		Type:       nil,
 		Name:       ident,
@@ -335,16 +352,23 @@ func (p *Parser) inferAssigment() ast.Assignment {
 }
 
 func (p *Parser) reAssigment() ast.Assignment {
+	log.Println("Re-Assignment")
+
 	ident := p.ident()
 	p.expect(lexer.ASSIGN)
 	expression := p.Value()
+
+	// If we are assigning an array give the list the array name
+	if exp, ok := expression.(ast.ArrayList); ok {
+		exp.Name = ident
+	}
+
 	return ast.Assignment{
 		Type:       nil,
 		Name:       ident,
 		Expression: expression,
 		Declare:    false,
 	}
-
 }
 
 func (p *Parser) increment() ast.Assignment {

@@ -110,6 +110,8 @@ func (a *Analysis) expression(node ast.Expression) ast.Expression {
 		return a.block(&node)
 	case ast.Binary:
 		return a.binary(&node)
+	case ast.ArrayList:
+		return a.arrayList(&node)
 	case ast.Call:
 		return a.call(&node)
 	case ast.Return:
@@ -213,6 +215,32 @@ func (a *Analysis) call(node *ast.Call) ast.Expression {
 	}
 
 	return newCall
+}
+
+func (a *Analysis) arrayList(node *ast.ArrayList) ast.ArrayList {
+	log.Println("ArrayList")
+
+	newArrayList := ast.ArrayList{
+		Name: node.Name,
+		Type: node.Type,
+		List: ast.List{
+			Expressions: make([]ast.Expression, len(node.List.Expressions)),
+		},
+	}
+
+	for i, e := range node.List.Expressions {
+		newExpression := a.expression(e)
+		if typ, _ := a.typ(newExpression); typ != node.Type {
+			newExpression = ast.Cast{
+				Type:       node.Type.(*types.Array).Type(),
+				Expression: newExpression,
+			}
+		}
+
+		newArrayList.List.Expressions[i] = newExpression
+	}
+
+	return newArrayList
 }
 
 func (a *Analysis) binary(node *ast.Binary) ast.Expression {

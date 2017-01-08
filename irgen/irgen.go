@@ -201,25 +201,25 @@ func (g *Irgen) cast(node ast.Cast) gooryvalues.Value {
 }
 
 func (g *Irgen) assignment(node ast.Assignment) {
-	log.Printf("Assigment %b", node.Declare)
+	log.Printf("Assigment %t", node.Declare)
 
+	// Check if assignment is a reassignment
+	alloc := g.find(node.Name.Value)
+	reassign := !node.Declare && alloc != nil
+
+	if !reassign {
+		// Allocate space for new value and store it in scope
+		alloc = g.block.Alloca(node.Type.Llvm())
+		g.scopes[g.currentScope][node.Name.Value] = alloc
+	}
+
+	// Compile value to assign
 	value := g.expression(node.Expression)
 
-	// Reassign
-	if alloc := g.find(node.Name.Value); !node.Declare && alloc != nil {
+	// Store value
+	if value != nil {
 		g.block.Store(alloc.(gooryvalues.Pointer), value)
-		return
 	}
-
-	if node.Type == nil {
-		panic("Assigment type was nil")
-	}
-
-	alloc := g.block.Alloca(node.Type.Llvm())
-
-	// Store value in current scope
-	g.scopes[g.currentScope][node.Name.Value] = alloc
-	g.block.Store(alloc, value)
 }
 
 func (g *Irgen) call(node ast.Call) gooryvalues.Value {
@@ -307,16 +307,23 @@ func (g *Irgen) forNode(node ast.For) {
 }
 
 func (g *Irgen) array(node ast.ArrayList) gooryvalues.Value {
-	log.Println("Array")
+	log.Printf("Array %s", node.Name.Value)
 
-	arrayType := node.Type.Llvm()
+	alloc := g.find(node.Name.Value)
 
-	values := make([]gooryvalues.Value, len(node.List.Expressions))
 	for i, val := range node.List.Expressions {
-		values[i] = g.expression(val)
+		// Get pointer to element in array
+		indexPtr := g.block.Getelementptr(node.Type.(*types.Array).Type().Llvm(),
+			alloc.(gooryvalues.Pointer),
+			goory.Constant(goory.IntType(64), 0),
+			goory.Constant(goory.IntType(64), i))
+
+		// Store value at index pointer
+		value := g.expression(val)
+		g.block.Store(indexPtr, value)
 	}
 
-	return goory.Constant(arrayType, values)
+	return nil
 }
 
 func (g *Irgen) arrayValue(node ast.ArrayValue) gooryvalues.Value {

@@ -73,6 +73,7 @@ type (
 	}
 
 	ArrayList struct {
+		Name Ident
 		Type types.Type
 		List List
 	}
