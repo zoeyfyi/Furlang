@@ -10,5 +10,5 @@ type Node interface {
 }
 
 type Ast struct {
-	Functions []FunctionDeclaration
+	Functions []*FunctionDeclaration
 }

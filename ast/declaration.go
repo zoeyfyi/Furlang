@@ -1,9 +1,8 @@
 package ast
 
 import (
-	"go/types"
-
 	"github.com/bongo227/Furlang/lexer"
+	"github.com/bongo227/Furlang/types"
 )
 
 type Declare interface {

@@ -62,7 +62,7 @@ func Parse(code string) (ast.Expression, error) {
 	}
 
 	parser := NewParser(tokens)
-	return parser.Expression(), nil
+	return parser.expression(), nil
 }
 
 // NewParser creates a new parser
@@ -115,8 +115,16 @@ func (p *Parser) accept(typ lexer.TokenType) (lexer.Token, bool) {
 	return token, true
 }
 
-func (p *Parser) typ() (types.Type, bool) {
+func (p *Parser) typ() types.Type {
+	baseType := types.GetType(p.ident().Value.Value())
 
+	if p.token().Type() == lexer.LBRACK {
+		p.next()
+		elementCount := p.expression()
+		return types.NewArray(baseType, 10)
+	}
+
+	return baseType
 }
 
 func (p *Parser) ident() *ast.IdentExpression {
@@ -158,27 +166,27 @@ func (p *Parser) parenLiteral() *ast.ParenLiteralExpression {
 
 func (p *Parser) indexNode() *ast.IndexExpression {
 	return &ast.IndexExpression{
-		Expression: p.Expression(),
+		Expression: p.expression(),
 		LeftBrack:  p.expect(lexer.LBRACK),
-		Index:      p.Expression(),
+		Index:      p.expression(),
 		RightBrack: p.expect(lexer.RBRACK),
 	}
 }
 
 func (p *Parser) slice() *ast.SliceExpression {
 	return &ast.SliceExpression{
-		Expression: p.Expression(),
+		Expression: p.expression(),
 		LeftBrack:  p.expect(lexer.LBRACK),
-		Low:        p.Expression(),
+		Low:        p.expression(),
 		Colon:      p.expect(lexer.COLON),
-		High:       p.Expression(),
+		High:       p.expression(),
 		RightBrack: p.expect(lexer.RBRACK),
 	}
 }
 
 func (p *Parser) call() *ast.CallExpression {
 	return &ast.CallExpression{
-		Function:  p.Expression(),
+		Function:  p.expression(),
 		Arguments: p.parenLiteral(),
 	}
 }
@@ -188,22 +196,22 @@ func (p *Parser) cast() *ast.CastExpression {
 		LeftParen:  p.expect(lexer.LPAREN),
 		Type:       p.typ(),
 		RightParen: p.expect(lexer.RPAREN),
-		Expression: p.Expression(),
+		Expression: p.expression(),
 	}
 }
 
 func (p *Parser) assignment() *ast.AssignmentStatement {
 	return &ast.AssignmentStatement{
-		Left:   p.Expression(),
+		Left:   p.expression(),
 		Assign: p.expect(lexer.ASSIGN),
-		Right:  p.Expression(),
+		Right:  p.expression(),
 	}
 }
 
 func (p *Parser) returnNode() *ast.ReturnStatement {
 	return &ast.ReturnStatement{
 		Return: p.expect(lexer.RETURN),
-		Result: p.Expression(),
+		Result: p.expression(),
 	}
 }
 
@@ -218,7 +226,7 @@ func (p *Parser) block() *ast.BlockStatement {
 func (p *Parser) ifNode() *ast.IfStatment {
 	return &ast.IfStatment{
 		If:        p.expect(lexer.IF),
-		Condition: p.Expression(),
+		Condition: p.expression(),
 		Body:      p.block(),
 		Else: (func() *ast.IfStatment {
 			// Check for else/else if
@@ -248,7 +256,7 @@ func (p *Parser) forNode() *ast.ForStatement {
 		For:       p.expect(lexer.FOR),
 		Index:     p.statement(),
 		Semi1:     p.expect(lexer.SEMICOLON),
-		Condition: p.Expression(),
+		Condition: p.expression(),
 		Semi2:     p.expect(lexer.SEMICOLON),
 		Increment: p.statement(),
 		Body:      p.block(),
@@ -268,7 +276,7 @@ func (p *Parser) function() *ast.FunctionDeclaration {
 func (p *Parser) expressionList(delimiter lexer.TokenType) []ast.Expression {
 	var expressions []ast.Expression
 	for p.token().Type() != delimiter {
-		expressions = append(expressions, p.Expression())
+		expressions = append(expressions, p.expression())
 		p.accept(lexer.COMMA)
 	}
 
@@ -278,7 +286,7 @@ func (p *Parser) expressionList(delimiter lexer.TokenType) []ast.Expression {
 func (p *Parser) statementList(delimiter lexer.TokenType) []ast.Statement {
 	var statements []ast.Statement
 	for p.token().Type() != delimiter {
-		statements = append(statements, p.Statement())
+		statements = append(statements, p.statement())
 		p.accept(lexer.SEMICOLON)
 	}
 
@@ -289,7 +297,7 @@ func (p *Parser) argumentList() map[ast.IdentExpression]types.Type {
 	arguments := make(map[ast.IdentExpression]types.Type)
 
 	for p.token().Type() != lexer.ARROW {
-		arguments[p.ident()] = p.typ()
+		arguments[*p.ident()] = p.typ()
 		p.accept(lexer.COMMA)
 	}
 
@@ -298,10 +306,15 @@ func (p *Parser) argumentList() map[ast.IdentExpression]types.Type {
 
 func (p *Parser) expression() ast.Expression {
 	switch {
-	case p.token() == lexer.INT, p.token() == lexer.FLOAT:
+	case p.token().Type() == lexer.INT, p.token().Type() == lexer.FLOAT:
 		return p.literal()
-	case p.token() == lexer.LPAREN:
+	case p.token().Type() == lexer.LPAREN:
 		return p.parenLiteral()
+	}
+}
+
+func (p *Parser) statement() ast.Statement {
+	switch {
 
 	}
 }
@@ -333,7 +346,7 @@ func (p *Parser) Parse() (tree *ast.Ast, err error) {
 		}
 	}()
 
-	var functions []ast.Function
+	var functions []*ast.FunctionDeclaration
 
 	for !p.eof() {
 		functions = append(functions, p.function())
