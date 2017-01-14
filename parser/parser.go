@@ -115,16 +115,20 @@ func (p *Parser) accept(typ lexer.TokenType) (lexer.Token, bool) {
 	return token, true
 }
 
-func (p *Parser) typ() types.Type {
+func (p *Parser) typ() *ast.TypeExpression {
 	baseType := types.GetType(p.ident().Value.Value())
 
 	if p.token().Type() == lexer.LBRACK {
 		p.next()
 		elementCount := p.expression()
-		return types.NewArray(baseType, 10)
+		return &ast.TypeExpression{
+			Type: types.NewArray(baseType, 10),
+		}
 	}
 
-	return baseType
+	return &ast.TypeExpression{
+		Type: baseType,
+	}
 }
 
 func (p *Parser) ident() *ast.IdentExpression {
@@ -305,11 +309,35 @@ func (p *Parser) argumentList() map[ast.IdentExpression]types.Type {
 }
 
 func (p *Parser) expression() ast.Expression {
-	switch {
-	case p.token().Type() == lexer.INT, p.token().Type() == lexer.FLOAT:
+	current := p.token().Type()
+
+	switch current {
+	// int || float || string
+	case lexer.INT, lexer.FLOAT, lexer.STRING:
 		return p.literal()
-	case p.token().Type() == lexer.LPAREN:
+
+	// ident
+	case lexer.IDENT:
+		return p.ident()
+
+	case lexer.I8TYPE, lexer.I16TYPE, lexer.I32TYPE, lexer.I64TYPE, lexer.INTTYPE,
+		lexer.F32TYPE, lexer.F64TYPE, lexer.FLOAT:
+		return p.typ()
+
+	case lexer.LPAREN:
+		// Check if basic type (cast)
+		if types.IsBasic(p.peek().Value()) {
+			return p.cast()
+		}
+
 		return p.parenLiteral()
+
+	// (expression, expression, ...) or (type)expression
+	case current == lexer.LPAREN:
+		lparen := p.expect(lexer.LPAREN)
+
+		return p.parenLiteral()
+
 	}
 }
 

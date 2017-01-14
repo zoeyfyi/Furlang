@@ -11,6 +11,17 @@ type Expression interface {
 	expressionNode()
 }
 
+// TypeExpression is a type
+type TypeExpression struct {
+	Type types.Type
+}
+
+// TODO: add start and end to this node
+
+func (e *TypeExpression) First() lexer.Token { return lexer.Token{} }
+func (e *TypeExpression) Last() lexer.Token  { return lexer.Token{} }
+func (e *TypeExpression) expressionNode()    {}
+
 // IdentExpression is any identifier
 type IdentExpression struct {
 	Value lexer.Token

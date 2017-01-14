@@ -127,6 +127,15 @@ func FloatType(bits int) *Basic {
 	}
 }
 
+func IsBasic(ident string) bool {
+	switch ident {
+	case "int", "i8", "i16", "i32", "i64", "float", "f32", "f64":
+		return true
+	default:
+		return false
+	}
+}
+
 // Gets the type corsponding to the identifier
 func GetType(ident string) *Basic {
 	switch ident {
