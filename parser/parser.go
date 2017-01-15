@@ -343,6 +343,8 @@ func (p *Parser) functionDcl() *ast.FunctionDeclaration {
 
 	block := p.block()
 
+	p.expect(lexer.SEMICOLON)
+
 	return &ast.FunctionDeclaration{
 		Name:        name,
 		DoubleColon: colon,
@@ -393,4 +395,34 @@ func (p *Parser) Parse() *ast.Ast {
 	return &ast.Ast{
 		Functions: functions,
 	}
+}
+
+func ParseExpression(code string) (ast.Expression, error) {
+	tokens, err := lexer.NewLexer([]byte(code)).Lex()
+	if err != nil {
+		return nil, err
+	}
+
+	ast := NewParser(tokens).expression(0)
+	return ast, nil
+}
+
+func ParseStatement(code string) (ast.Statement, error) {
+	tokens, err := lexer.NewLexer([]byte(code)).Lex()
+	if err != nil {
+		return nil, err
+	}
+
+	ast := NewParser(tokens).statement()
+	return ast, nil
+}
+
+func ParseDeclaration(code string) (ast.Declare, error) {
+	tokens, err := lexer.NewLexer([]byte(code)).Lex()
+	if err != nil {
+		return nil, err
+	}
+
+	ast := NewParser(tokens).declaration()
+	return ast, nil
 }

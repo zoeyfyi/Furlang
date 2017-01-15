@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/bongo227/Furlang/ast"
+	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/types"
 )
 
@@ -31,91 +32,75 @@ func NewAnalysis(root *ast.Ast) *Analysis {
 func (a *Analysis) Analalize() *ast.Ast {
 	log.Println("Analasis Started")
 
-	newAst := ast.Ast{
-		Functions: make([]ast.Function, len(a.root.Functions)),
+	for _, f := range a.root.Functions {
+		a.function(f)
 	}
 
-	for i, f := range a.root.Functions {
-		newAst.Functions[i] = *a.function(&f)
-	}
-
-	return &newAst
+	return a.root
 }
 
 // Gets the type of a node
 func (a *Analysis) typ(node ast.Expression) (types.Type, error) {
 	switch node := node.(type) {
-	case ast.Integer:
-		return intType, nil
+	case *ast.LiteralExpression:
+		switch node.Value.Type() {
+		case lexer.INT:
+			return intType, nil
+		case lexer.FLOAT:
+			return floatType, nil
+		}
+		return nil, fmt.Errorf("Unregcognized literal type: %s", node.Value.Type().String())
 
-	case ast.Float:
-		return floatType, nil
-
-	case ast.Binary:
-		lType, _ := a.typ(node.Lhs)
-		rType, _ := a.typ(node.Rhs)
+	case *ast.BinaryExpression:
+		lType, _ := a.typ(node.Left)
+		rType, _ := a.typ(node.Right)
 		if lType == floatType || rType == floatType {
 			return floatType, nil
 		}
 		return intType, nil
 
-	case ast.Call:
-		for _, f := range a.root.Functions {
-			if f.Name.Value == node.Function.Value {
-				return f.Type.Return, nil
-			}
-		}
-		return nil, fmt.Errorf("No function named %q", node.Function.Value)
+	case *ast.CallExpression:
+		return a.typ(node.Function)
 
-	case ast.ArrayList:
-		return node.Type, nil
+	// case ast.ArrayList:
+	// 	return node.Type, nil
 
 	default:
 		return nil, fmt.Errorf("Unknown type: %s", reflect.TypeOf(node).String())
 	}
 }
 
-func (a *Analysis) block(node *ast.Block) *ast.Block {
-	newBlock := &ast.Block{
-		Expressions: make([]ast.Expression, len(node.Expressions)),
+func (a *Analysis) block(node *ast.BlockStatement) {
+	for _, e := range node.Statements {
+		a.statement(e)
 	}
-
-	for i, e := range node.Expressions {
-		newBlock.Expressions[i] = a.expression(e)
-	}
-
-	return newBlock
 }
 
-func (a *Analysis) function(node *ast.Function) *ast.Function {
-	newFunction := &ast.Function{
-		Name: node.Name,
-		Type: node.Type,
-		Body: *a.block(&node.Body),
-	}
+func (a *Analysis) function(node *ast.FunctionDeclaration) {
+	a.block(node.Body)
+}
 
-	return newFunction
+func (a *Analysis) statement(node ast.Statement) {
+	switch node := (node).(type) {
+	case *ast.AssignmentStatement:
+		a.assigment(node)
+	case *ast.ForStatement:
+		a.forNode(node)
+	case *ast.IfStatment:
+		a.ifNode(node)
+	case *ast.BlockStatement:
+		a.block(node)
+	case *ast.ReturnStatement:
+		a.returnNode(node)
+	}
 }
 
 func (a *Analysis) expression(node ast.Expression) ast.Expression {
-
 	switch node := (node).(type) {
-	case ast.Assignment:
-		return a.assigment(&node)
-	case *ast.For:
-		return a.forNode(node)
-	case *ast.If:
-		return a.ifNode(node)
-	case ast.Block:
-		return a.block(&node)
-	case ast.Binary:
-		return a.binary(&node)
-	case ast.ArrayList:
-		return a.arrayList(&node)
-	case ast.Call:
-		return a.call(&node)
-	case ast.Return:
-		return a.returnNode(&node)
+	case *ast.BinaryExpression:
+		a.binary(node)
+	case *ast.CallExpression:
+		a.call(node)
 	default:
 		fmt.Printf("Unhandled: %s\n", reflect.TypeOf(node).String())
 	}
@@ -123,147 +108,94 @@ func (a *Analysis) expression(node ast.Expression) ast.Expression {
 	return node
 }
 
-func (a *Analysis) returnNode(node *ast.Return) ast.Expression {
-	return ast.Return{
-		Value: a.expression(node.Value),
-	}
+func (a *Analysis) returnNode(node *ast.ReturnStatement) {
+	a.expression(node.Result)
 }
 
-func (a *Analysis) forNode(node *ast.For) ast.For {
+func (a *Analysis) forNode(node *ast.ForStatement) {
 	log.Println("For")
 
-	node.Index = a.expression(node.Index).(ast.Assignment)
-	node.Condition = a.expression(node.Condition)
-	node.Increment = a.expression(node.Increment)
-	node.Block = *a.block(&node.Block)
-
-	return *node
+	a.statement(node.Index)
+	a.expression(node.Condition)
+	a.statement(node.Increment)
+	a.block(node.Body)
 }
 
-func (a *Analysis) ifNode(node *ast.If) ast.If {
+func (a *Analysis) ifNode(node *ast.IfStatment) {
 	log.Println("If")
 
 	if node.Condition != nil {
-		node.Condition = a.expression(node.Condition)
+		a.expression(node.Condition)
 	}
-	node.Block = *a.block(&node.Block)
+
+	a.block(node.Body)
 
 	if node.Else != nil {
-		newElse := a.ifNode(node.Else)
-		node.Else = &newElse
+		a.ifNode(node.Else)
 	}
-
-	return *node
 }
 
-func (a *Analysis) assigment(node *ast.Assignment) ast.Assignment {
-	newAssign := ast.Assignment{
-		Name:       node.Name,
-		Expression: a.expression(node.Expression),
-		Declare:    node.Declare,
-	}
-
+func (a *Analysis) assigment(node *ast.AssignmentStatement) {
 	// Get type of assigment expression
-	nodeType, err := a.typ(newAssign.Expression)
+	leftType, err := a.typ(node.Left)
+	if err != nil {
+		panic(err)
+	}
+	rightType, err := a.typ(node.Right)
 	if err != nil {
 		panic(err)
 	}
 
-	// Infer assigment type
-	if node.Type == nil {
-		newAssign.Type = nodeType
-		return newAssign
-	}
-
-	newAssign.Type = node.Type
-
 	// Expression doesnt match assigment type
-	if node.Type.Llvm() != nodeType.Llvm() {
+	if leftType.Llvm() != rightType.Llvm() {
 		// Cast it
-		expression := ast.Expression(ast.Cast{
-			Expression: node.Expression,
-			Type:       node.Type,
+		node.Right = ast.Expression(&ast.CastExpression{
+			Expression: node.Right,
+			Type:       leftType,
 		})
-		newAssign.Expression = expression
 	}
-
-	return newAssign
 }
 
-func (a *Analysis) call(node *ast.Call) ast.Expression {
-	newCall := ast.Call{
-		Function:  node.Function,
-		Arguments: make([]ast.Expression, len(node.Arguments)),
-	}
+func (a *Analysis) call(node *ast.CallExpression) {
+	// for _, f := range a.root.Functions {
+	// 	if f.Name.Value == node.Function.Value {
+	// 		for i, arg := range node.Arguments {
+	// 			// Check if parameters match argument type
+	// 			fType := f.Type.Parameters[i].Type
+	// 			if typ, _ := a.typ(arg); typ.Llvm() != fType.Llvm() {
+	// 				newCall.Arguments[i] = ast.Cast{
+	// 					Expression: arg,
+	// 					Type:       fType,
+	// 				}
+	// 			} else {
+	// 				newCall.Arguments[i] = arg
+	// 			}
+	// 		}
+	// 		break
+	// 	}
+	// }
 
-	for _, f := range a.root.Functions {
-		if f.Name.Value == node.Function.Value {
-			for i, arg := range node.Arguments {
-				// Check if parameters match argument type
-				fType := f.Type.Parameters[i].Type
-				if typ, _ := a.typ(arg); typ.Llvm() != fType.Llvm() {
-					newCall.Arguments[i] = ast.Cast{
-						Expression: arg,
-						Type:       fType,
-					}
-				} else {
-					newCall.Arguments[i] = arg
-				}
-			}
-			break
-		}
-	}
-
-	return newCall
+	// return newCall
 }
 
-func (a *Analysis) arrayList(node *ast.ArrayList) ast.ArrayList {
-	log.Println("ArrayList")
+func (a *Analysis) binary(node *ast.BinaryExpression) {
+	log.Printf("Binary %s node", node.Operator.String())
 
-	newArrayList := ast.ArrayList{
-		Name: node.Name,
-		Type: node.Type,
-		List: ast.List{
-			Expressions: make([]ast.Expression, len(node.List.Expressions)),
-		},
-	}
-
-	for i, e := range node.List.Expressions {
-		newExpression := a.expression(e)
-		if typ, _ := a.typ(newExpression); typ != node.Type {
-			newExpression = ast.Cast{
-				Type:       node.Type.(*types.Array).Type(),
-				Expression: newExpression,
-			}
-		}
-
-		newArrayList.List.Expressions[i] = newExpression
-	}
-
-	return newArrayList
-}
-
-func (a *Analysis) binary(node *ast.Binary) ast.Expression {
-	log.Printf("Binary %s node", node.Op.String())
-
-	typ, _ := a.typ(*node)
-	node.IsFp = typ == floatType
+	typ, _ := a.typ(node)
 
 	// If left part of the node doesnt match the type of the node cast it
-	if leftTyp, _ := a.typ(node.Lhs); leftTyp != typ {
-		node.Lhs = ast.Cast{
-			Expression: node.Lhs,
+	if leftTyp, _ := a.typ(node.Left); leftTyp != typ {
+		node.Left = &ast.CastExpression{
+			Expression: node.Left,
 			Type:       typ,
 		}
 	}
 
 	// If the right part of the node doesnt match the type of the node cast it
-	if rightTyp, _ := a.typ(node.Rhs); rightTyp != typ {
-		node.Rhs = ast.Cast{
-			Expression: node.Rhs,
+	if rightTyp, _ := a.typ(node.Right); rightTyp != typ {
+		node.Right = &ast.CastExpression{
+			Expression: node.Right,
 			Type:       typ,
 		}
 	}
-
-	return *node
 }
