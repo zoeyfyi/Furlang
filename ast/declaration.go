@@ -22,7 +22,7 @@ type FunctionDeclaration struct {
 
 func (e *FunctionDeclaration) First() lexer.Token { return e.Name.First() }
 func (e *FunctionDeclaration) Last() lexer.Token  { return e.Body.Last() }
-func (e *FunctionDeclaration) expressionNode()    {}
+func (e *FunctionDeclaration) declareNode()       {}
 
 // VaribleDeclaration is a declare node in the form:
 // ident := expression || type ident = expression
@@ -34,4 +34,4 @@ type VaribleDeclaration struct {
 
 func (e *VaribleDeclaration) First() lexer.Token { return e.Name.First() }
 func (e *VaribleDeclaration) Last() lexer.Token  { return e.Value.Last() }
-func (e *VaribleDeclaration) expressionNode()    {}
+func (e *VaribleDeclaration) declareNode()       {}

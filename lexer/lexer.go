@@ -328,7 +328,12 @@ func (l *Lexer) Lex() ([]Token, error) {
 		l.clearWhitespace()
 
 		tok := Token{}
-		tok.column = l.offset + 1*line - column + 1
+		// TODO: fix this, this should be an if
+		if line == 1 {
+			tok.column = l.offset - column + 2
+		} else {
+			tok.column = l.offset - column + 1
+		}
 
 		currentRune := l.currentRune
 		switch {
@@ -367,7 +372,6 @@ func (l *Lexer) Lex() ([]Token, error) {
 				l.insertSemi = false
 				tok.typ = SEMICOLON
 				tok.value = "\n"
-				// tok.column--
 				column = l.offset
 			case '"':
 				tok.typ = STRING
