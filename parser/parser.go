@@ -104,7 +104,7 @@ func (p *Parser) accept(typ lexer.TokenType) (lexer.Token, bool) {
 
 	token := p.token()
 	if token.Type() != typ {
-		return token, false
+		return lexer.Token{}, false
 	}
 
 	p.next()
@@ -117,10 +117,10 @@ func bindingPower(token lexer.Token) int {
 		return 10
 	case lexer.MUL, lexer.QUO:
 		return 20
+	case lexer.LSS, lexer.LEQ, lexer.GTR, lexer.GEQ:
+		return 60
 	case lexer.LPAREN, lexer.LBRACK:
 		return 150
-	case lexer.EOF, lexer.SEMICOLON:
-		return 0
 	}
 
 	return 0
@@ -174,7 +174,9 @@ func (p *Parser) nud(token lexer.Token) ast.Expression {
 
 func (p *Parser) led(token lexer.Token, tree ast.Expression) ast.Expression {
 	switch token.Type() {
-	case lexer.ADD, lexer.SUB, lexer.MUL, lexer.QUO:
+	case lexer.ADD, lexer.SUB, lexer.MUL, lexer.QUO,
+		lexer.LSS, lexer.LEQ, lexer.GTR, lexer.GEQ:
+
 		e := p.expression(bindingPower(token))
 		fmt.Println("Hello their!")
 		return &ast.BinaryExpression{
@@ -262,12 +264,36 @@ func (p *Parser) block() *ast.BlockStatement {
 	}
 }
 
+func (p *Parser) ifSmt() *ast.IfStatment {
+	ifToken, hasCondition := p.accept(lexer.IF)
+	var condition ast.Expression
+	if hasCondition {
+		condition = p.expression(0)
+	}
+
+	block := p.block()
+
+	var elseSmt *ast.IfStatment
+	if _, ok := p.accept(lexer.ELSE); ok {
+		elseSmt = p.ifSmt()
+	}
+
+	return &ast.IfStatment{
+		If:        ifToken,
+		Condition: condition,
+		Body:      block,
+		Else:      elseSmt,
+	}
+}
+
 func (p *Parser) statement() ast.Statement {
 	switch p.token().Type() {
 	case lexer.RETURN:
 		return p.returnSmt()
 	case lexer.LBRACE:
 		return p.block()
+	case lexer.IF:
+		return p.ifSmt()
 	default:
 		return p.assigment()
 	}

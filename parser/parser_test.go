@@ -235,22 +235,114 @@ func TestParserStatements(t *testing.T) {
 
 		{
 			`{
-ben = 123
-}`,
+				ben = 123
+			}`,
 			&ast.BlockStatement{
 				LeftBrace: lexer.NewToken(lexer.LBRACE, "", 1, 1),
 				Statements: []ast.Statement{
 					&ast.AssignmentStatement{
 						Left: &ast.IdentExpression{
-							Value: lexer.NewToken(lexer.IDENT, "ben", 1, 3),
+							Value: lexer.NewToken(lexer.IDENT, "ben", 1, 7),
 						},
-						Assign: lexer.NewToken(lexer.ASSIGN, "", 1, 7),
+						Assign: lexer.NewToken(lexer.ASSIGN, "", 1, 11),
 						Right: &ast.LiteralExpression{
-							Value: lexer.NewToken(lexer.INT, "123", 1, 9),
+							Value: lexer.NewToken(lexer.INT, "123", 1, 13),
 						},
 					},
 				},
-				RightBrace: lexer.NewToken(lexer.RBRACE, "", 2, 1),
+				RightBrace: lexer.NewToken(lexer.RBRACE, "", 2, 4),
+			},
+		},
+
+		{
+			`if x > 3 {}`,
+			&ast.IfStatment{
+				If: lexer.NewToken(lexer.IF, "if", 1, 1),
+				Condition: &ast.BinaryExpression{
+					Left: &ast.IdentExpression{
+						Value: lexer.NewToken(lexer.IDENT, "x", 1, 4),
+					},
+					Operator: lexer.NewToken(lexer.GTR, "", 1, 6),
+					Right: &ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "3", 1, 8),
+					},
+				},
+				Body: &ast.BlockStatement{
+					LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 10),
+					Statements: []ast.Statement{},
+					RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 11),
+				},
+				Else: nil,
+			},
+		},
+
+		{
+			`if x > 3 {} else if x < 3 {}`,
+			&ast.IfStatment{
+				If: lexer.NewToken(lexer.IF, "if", 1, 1),
+				Condition: &ast.BinaryExpression{
+					Left: &ast.IdentExpression{
+						Value: lexer.NewToken(lexer.IDENT, "x", 1, 4),
+					},
+					Operator: lexer.NewToken(lexer.GTR, "", 1, 6),
+					Right: &ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "3", 1, 8),
+					},
+				},
+				Body: &ast.BlockStatement{
+					LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 10),
+					Statements: []ast.Statement{},
+					RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 11),
+				},
+				Else: &ast.IfStatment{
+					If: lexer.NewToken(lexer.IF, "if", 1, 18),
+					Condition: &ast.BinaryExpression{
+						Left: &ast.IdentExpression{
+							Value: lexer.NewToken(lexer.IDENT, "x", 1, 21),
+						},
+						Operator: lexer.NewToken(lexer.LSS, "", 1, 23),
+						Right: &ast.LiteralExpression{
+							Value: lexer.NewToken(lexer.INT, "3", 1, 25),
+						},
+					},
+					Body: &ast.BlockStatement{
+						LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 27),
+						Statements: []ast.Statement{},
+						RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 28),
+					},
+					Else: nil,
+				},
+			},
+		},
+
+		{
+			`if x > 3 {} else {}`,
+			&ast.IfStatment{
+				If: lexer.NewToken(lexer.IF, "if", 1, 1),
+				Condition: &ast.BinaryExpression{
+					Left: &ast.IdentExpression{
+						Value: lexer.NewToken(lexer.IDENT, "x", 1, 4),
+					},
+					Operator: lexer.NewToken(lexer.GTR, "", 1, 6),
+					Right: &ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "3", 1, 8),
+					},
+				},
+				Body: &ast.BlockStatement{
+					LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 10),
+					Statements: []ast.Statement{},
+					RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 11),
+				},
+				Else: &ast.IfStatment{
+					If:        lexer.Token{},
+					Condition: nil,
+					Body: &ast.BlockStatement{
+						LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 18),
+						Statements: []ast.Statement{},
+						RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 19),
+					},
+					Else: nil,
+				},
 			},
 		},
 	}
