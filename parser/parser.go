@@ -383,3 +383,14 @@ func (p *Parser) declaration() ast.Declare {
 		return p.varibleDcl()
 	}
 }
+
+func (p *Parser) Parse() *ast.Ast {
+	var functions []*ast.FunctionDeclaration
+	for !p.eof() {
+		functions = append(functions, p.declaration().(*ast.FunctionDeclaration))
+	}
+
+	return &ast.Ast{
+		Functions: functions,
+	}
+}
