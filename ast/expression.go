@@ -121,3 +121,13 @@ type BinaryExpression struct {
 func (e *BinaryExpression) First() lexer.Token { return e.Left.First() }
 func (e *BinaryExpression) Last() lexer.Token  { return e.Right.Last() }
 func (e *BinaryExpression) expressionNode()    {}
+
+// UnaryExpression is an expression in the form: operator expression
+type UnaryExpression struct {
+	Operator   lexer.Token
+	Expression Expression
+}
+
+func (e *UnaryExpression) First() lexer.Token { return e.Operator }
+func (e *UnaryExpression) Last() lexer.Token  { return e.Expression.Last() }
+func (e *UnaryExpression) expressionNode()    {}

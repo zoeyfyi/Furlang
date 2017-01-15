@@ -12,6 +12,11 @@ type Token struct {
 	column int
 }
 
+// NewToken is a convenice method for making new tokens for testing etc.
+func NewToken(typ TokenType, value string, line, column int) Token {
+	return Token{typ, value, line, column}
+}
+
 // TokenType is the type of a token
 type TokenType int
 
@@ -104,14 +109,14 @@ const (
 	SWITCH
 	TYPE
 	VAR
-	I8TYPE
-	I16TYPE
-	I32TYPE
-	I64TYPE
-	INTTYPE
-	F32TYPE
-	F64TYPE
-	FLOATTYPE
+	// I8TYPE
+	// I16TYPE
+	// I32TYPE
+	// I64TYPE
+	// INTTYPE
+	// F32TYPE
+	// F64TYPE
+	// FLOATTYPE
 	keywords_end
 )
 
@@ -208,14 +213,14 @@ var tokens = [...]string{
 	TYPE:   "type",
 	VAR:    "var",
 
-	I8TYPE:    "i8",
-	I16TYPE:   "i16",
-	I32TYPE:   "i32",
-	I64TYPE:   "i64",
-	INTTYPE:   "int",
-	F32TYPE:   "f32",
-	F64TYPE:   "f64",
-	FLOATTYPE: "float",
+	// I8TYPE:    "i8",
+	// I16TYPE:   "i16",
+	// I32TYPE:   "i32",
+	// I64TYPE:   "i64",
+	// INTTYPE:   "int",
+	// F32TYPE:   "f32",
+	// F64TYPE:   "f64",
+	// FLOATTYPE: "float",
 }
 
 func (t TokenType) String() string {

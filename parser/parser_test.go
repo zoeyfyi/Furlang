@@ -7,7 +7,6 @@ import (
 
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
-	"github.com/bongo227/Furlang/types"
 	"github.com/k0kubun/pp"
 )
 
@@ -18,376 +17,161 @@ func TestParser(t *testing.T) {
 		source string
 		ast    interface{}
 	}{
-		// call(123)
 		{
-			source: `call(123)`,
-			ast: ast.Call{
-				Function: ast.Ident{
-					Value: "call",
+			`123`,
+			&ast.LiteralExpression{
+				Value: lexer.NewToken(lexer.INT, "123", 1, 1),
+			},
+		},
+
+		{
+			`321 + 123`,
+			&ast.BinaryExpression{
+				Left: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "321", 1, 1),
 				},
-				Arguments: []ast.Expression{
-					ast.Integer{
-						Value: 123,
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 5),
+				Right: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "123", 1, 7),
+				},
+			},
+		},
+
+		{
+			`-123`,
+			&ast.UnaryExpression{
+				Operator: lexer.NewToken(lexer.SUB, "", 1, 1),
+				Expression: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "123", 1, 2),
+				},
+			},
+		},
+
+		{
+			`+123`,
+			&ast.UnaryExpression{
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 1),
+				Expression: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "123", 1, 2),
+				},
+			},
+		},
+
+		{
+			`()`,
+			&ast.ParenLiteralExpression{
+				LeftParen:  lexer.NewToken(lexer.LPAREN, "", 1, 1),
+				Elements:   []ast.Expression{},
+				RightParen: lexer.NewToken(lexer.RPAREN, "", 1, 2),
+			},
+		},
+
+		{
+			`(123)`,
+			&ast.LiteralExpression{
+				Value: lexer.NewToken(lexer.INT, "123", 1, 2),
+			},
+		},
+
+		{
+			`(123, 321)`,
+			&ast.ParenLiteralExpression{
+				LeftParen: lexer.NewToken(lexer.LPAREN, "", 1, 1),
+				Elements: []ast.Expression{
+					&ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "123", 1, 2),
+					},
+					&ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "321", 1, 7),
+					},
+				},
+				RightParen: lexer.NewToken(lexer.RPAREN, "", 1, 10),
+			},
+		},
+
+		{
+			`call()`,
+			&ast.CallExpression{
+				Function: &ast.IdentExpression{
+					Value: lexer.NewToken(lexer.IDENT, "call", 1, 1),
+				},
+				Arguments: &ast.ParenLiteralExpression{
+					LeftParen:  lexer.NewToken(lexer.LPAREN, "", 1, 5),
+					Elements:   []ast.Expression{},
+					RightParen: lexer.NewToken(lexer.RPAREN, "", 1, 6),
+				},
+			},
+		},
+
+		{
+			`call(123)`,
+			&ast.CallExpression{
+				Function: &ast.IdentExpression{
+					Value: lexer.NewToken(lexer.IDENT, "call", 1, 1),
+				},
+				Arguments: &ast.ParenLiteralExpression{
+					LeftParen: lexer.NewToken(lexer.LPAREN, "", 1, 5),
+					Elements: []ast.Expression{
+						&ast.LiteralExpression{
+							Value: lexer.NewToken(lexer.INT, "123", 1, 6),
+						},
+					},
+					RightParen: lexer.NewToken(lexer.RPAREN, "", 1, 9),
+				},
+			},
+		},
+
+		{
+			`call(123, 321)`,
+			&ast.CallExpression{
+				Function: &ast.IdentExpression{
+					Value: lexer.NewToken(lexer.IDENT, "call", 1, 1),
+				},
+				Arguments: &ast.ParenLiteralExpression{
+					LeftParen: lexer.NewToken(lexer.LPAREN, "", 1, 5),
+					Elements: []ast.Expression{
+						&ast.LiteralExpression{
+							Value: lexer.NewToken(lexer.INT, "123", 1, 6),
+						},
+						&ast.LiteralExpression{
+							Value: lexer.NewToken(lexer.INT, "321", 1, 11),
+						},
+					},
+					RightParen: lexer.NewToken(lexer.RPAREN, "", 1, 14),
+				},
+			},
+		},
+
+		{
+			`123 * (321 + 45)`,
+			&ast.BinaryExpression{
+				Left: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "123", 1, 1),
+				},
+				Operator: lexer.NewToken(lexer.MUL, "", 1, 5),
+				Right: &ast.BinaryExpression{
+					Left: &ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "321", 1, 8),
+					},
+					Operator: lexer.NewToken(lexer.ADD, "", 1, 12),
+					Right: &ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "45", 1, 14),
 					},
 				},
 			},
 		},
-		// int[5] items = {1, 2, 3, 4, 5}
+
 		{
-			source: `int[5] items = {1, 2, 3, 4, 5}`,
-			ast: ast.Assignment{
-				Type: types.NewArray(types.IntType(0), 5),
-				Name: ast.Ident{
-					Value: "items",
+			`test[12]`,
+			&ast.IndexExpression{
+				Expression: &ast.IdentExpression{
+					Value: lexer.NewToken(lexer.IDENT, "test", 1, 1),
 				},
-				Expression: ast.List{
-					Expressions: []ast.Expression{
-						ast.Integer{
-							Value: 1,
-						},
-						ast.Integer{
-							Value: 2,
-						},
-						ast.Integer{
-							Value: 3,
-						},
-						ast.Integer{
-							Value: 4,
-						},
-						ast.Integer{
-							Value: 5,
-						},
-					},
+				LeftBrack: lexer.NewToken(lexer.LBRACK, "", 1, 5),
+				Index: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "12", 1, 6),
 				},
-				Declare: true,
-			},
-		},
-		// {
-		// 		call(123)
-		// 		int[2] pair = {5, 6}
-		// }
-		{
-			source: `{
-				call(123)
-				int[2] pair = {5, 6}
-			}`,
-			ast: ast.Block{
-				Expressions: []ast.Expression{
-					ast.Call{
-						Function: ast.Ident{
-							Value: "call",
-						},
-						Arguments: []ast.Expression{
-							ast.Integer{
-								Value: 123,
-							},
-						},
-					},
-					ast.Assignment{
-						Type: types.NewArray(types.IntType(0), 2),
-						Name: ast.Ident{
-							Value: "pair",
-						},
-						Expression: ast.List{
-							Expressions: []ast.Expression{
-								ast.Integer{
-									Value: 5,
-								},
-								ast.Integer{
-									Value: 6,
-								},
-							},
-						},
-						Declare: true,
-					},
-				},
-			},
-		},
-		// if ben > bob {
-		// 	return ben
-		// }
-		{
-			source: `if ben > ben {
-				return ben
-			}`,
-			ast: &ast.If{
-				Condition: ast.Binary{
-					Lhs: ast.Ident{
-						Value: "ben",
-					},
-					Op: lexer.GTR,
-					Rhs: ast.Ident{
-						Value: "ben",
-					},
-				},
-				Block: ast.Block{
-					Expressions: []ast.Expression{
-						ast.Return{
-							Value: ast.Ident{
-								Value: "ben",
-							},
-						},
-					},
-				},
-				Else: (*ast.If)(nil),
-			},
-		},
-		// if bill {
-		// 	bob
-		// } else if bob {
-		// 	bill
-		// } else {
-		// 	ben
-		// }
-		{
-			source: `if bill {
-				return bob
-			} else if bob {
-				return bill
-			} else {
-				return ben
-			}`,
-			ast: &ast.If{
-				Condition: ast.Ident{
-					Value: "bill",
-				},
-				Block: ast.Block{
-					Expressions: []ast.Expression{
-						ast.Return{
-							Value: ast.Ident{
-								Value: "bob",
-							},
-						},
-					},
-				},
-				Else: &ast.If{
-					Condition: ast.Ident{
-						Value: "bob",
-					},
-					Block: ast.Block{
-						Expressions: []ast.Expression{
-							ast.Return{
-								Value: ast.Ident{
-									Value: "bill",
-								},
-							},
-						},
-					},
-					Else: &ast.If{
-						Condition: nil,
-						Block: ast.Block{
-							Expressions: []ast.Expression{
-								ast.Return{
-									Value: ast.Ident{
-										Value: "ben",
-									},
-								},
-							},
-						},
-						Else: (*ast.If)(nil),
-					},
-				},
-			},
-		},
-		// for i := 0; i < 100; i = i+1 {
-		// 	int ben = i
-		// }
-		{
-			source: `for i := 0; i < 100; i = i+1 {
-				int ben = i
-			}`,
-			ast: &ast.For{
-				Index: ast.Assignment{
-					Type: nil,
-					Name: ast.Ident{
-						Value: "i",
-					},
-					Expression: ast.Integer{
-						Value: 0,
-					},
-					Declare: true,
-				},
-				Condition: ast.Binary{
-					Lhs: ast.Ident{
-						Value: "i",
-					},
-					Op: 39,
-					Rhs: ast.Integer{
-						Value: 100,
-					},
-					IsFp: false,
-				},
-				Increment: ast.Assignment{
-					Type: nil,
-					Name: ast.Ident{
-						Value: "i",
-					},
-					Expression: ast.Binary{
-						Lhs: ast.Ident{
-							Value: "i",
-						},
-						Op: 11,
-						Rhs: ast.Integer{
-							Value: 1,
-						},
-						IsFp: false,
-					},
-					Declare: false,
-				},
-				Block: ast.Block{
-					Expressions: []ast.Expression{
-						ast.Assignment{
-							Type: types.GetType("int"),
-							Name: ast.Ident{
-								Value: "ben",
-							},
-							Expression: ast.Ident{
-								Value: "i",
-							},
-							Declare: true,
-						},
-					},
-				},
-			},
-		},
-		// int i = (int)0.5
-		{
-			source: `int i = (int)0.5`,
-			ast: ast.Assignment{
-				Type: types.IntType(0),
-				Name: ast.Ident{
-					Value: "i",
-				},
-				Expression: ast.Cast{
-					Expression: ast.Float{
-						Value: 0.500000,
-					},
-					Type: types.IntType(0),
-				},
-				Declare: true,
-			},
-		},
-		// {
-		// 	i++
-		// 	i--
-		// 	i+=10
-		// 	i-=10
-		// }
-		{
-			source: `{
-				i++
-				i--
-				i+=10
-				i-=10
-			}`,
-			ast: ast.Block{
-				Expressions: []ast.Expression{
-					ast.Assignment{
-						Type: nil,
-						Name: ast.Ident{
-							Value: "i",
-						},
-						Expression: ast.Binary{
-							Lhs: ast.Ident{
-								Value: "i",
-							},
-							Op: 11,
-							Rhs: ast.Integer{
-								Value: 1,
-							},
-						},
-					},
-					ast.Assignment{
-						Type: nil,
-						Name: ast.Ident{
-							Value: "i",
-						},
-						Expression: ast.Binary{
-							Lhs: ast.Ident{
-								Value: "i",
-							},
-							Op: 12,
-							Rhs: ast.Integer{
-								Value: 1,
-							},
-						},
-					},
-					ast.Assignment{
-						Type: nil,
-						Name: ast.Ident{
-							Value: "i",
-						},
-						Expression: ast.Binary{
-							Lhs: ast.Ident{
-								Value: "i",
-							},
-							Op: 11,
-							Rhs: ast.Integer{
-								Value: 10,
-							},
-						},
-					},
-					ast.Assignment{
-						Type: nil,
-						Name: ast.Ident{
-							Value: "i",
-						},
-						Expression: ast.Binary{
-							Lhs: ast.Ident{
-								Value: "i",
-							},
-							Op: 12,
-							Rhs: ast.Integer{
-								Value: 10,
-							},
-						},
-					},
-				},
-			},
-		},
-		// add :: int a, int b -> int {
-		// 	return a + b
-		// }
-		{
-			source: `add :: int a, int b -> int {
-				return a + b
-			}`,
-			ast: ast.Function{
-				Type: ast.FunctionType{
-					Parameters: []ast.TypedIdent{
-						ast.TypedIdent{
-							Type: types.IntType(0),
-							Ident: ast.Ident{
-								Value: "a",
-							},
-						},
-						ast.TypedIdent{
-							Type: types.IntType(0),
-							Ident: ast.Ident{
-								Value: "b",
-							},
-						},
-					},
-					Return: types.IntType(0),
-				},
-				Name: ast.Ident{
-					Value: "add",
-				},
-				Body: ast.Block{
-					Expressions: []ast.Expression{
-						ast.Return{
-							Value: ast.Binary{
-								Lhs: ast.Ident{
-									Value: "a",
-								},
-								Op: 11,
-								Rhs: ast.Ident{
-									Value: "b",
-								},
-							},
-						},
-					},
-				},
+				RightBrack: lexer.NewToken(lexer.RBRACK, "", 1, 8),
 			},
 		},
 	}
@@ -405,10 +189,10 @@ func TestParser(t *testing.T) {
 			t.Log(tok.String())
 		}
 		t.Log("=== End tokens ===\n\n")
-		ast := parser.Expression()
+		ast := parser.expression(0)
 		if !reflect.DeepEqual(c.ast, ast) {
-
-			t.Errorf("Source:\n%q\nExpected:\n%s\nGot:\n%s\n", c.source, pp.Sprint(c.ast), pp.Sprint(ast))
+			t.Errorf("Source:\n%q\nExpected:\n%s\nGot:\n%s\n",
+				c.source, pp.Sprint(c.ast), pp.Sprint(ast))
 		}
 	}
 
