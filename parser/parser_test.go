@@ -7,6 +7,7 @@ import (
 
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
+	"github.com/bongo227/Furlang/types"
 	"github.com/k0kubun/pp"
 )
 
@@ -408,6 +409,57 @@ func TestParserStatements(t *testing.T) {
 		}
 		t.Log("=== End tokens ===\n\n")
 		ast := parser.statement()
+		if !reflect.DeepEqual(c.ast, ast) {
+			t.Errorf("Source:\n%q\nExpected:\n%s\nGot:\n%s\n",
+				c.source, pp.Sprint(c.ast), pp.Sprint(ast))
+		}
+	}
+}
+
+func TestParserDeclarations(t *testing.T) {
+	cases := []struct {
+		source string
+		ast    ast.Declare
+	}{
+		{
+			`proc function :: int a, int b -> int {}`,
+			&ast.FunctionDeclaration{
+				Name: &ast.IdentExpression{
+					Value: lexer.NewToken(lexer.IDENT, "function", 1, 6),
+				},
+				DoubleColon: lexer.NewToken(lexer.DOUBLE_COLON, "", 1, 15),
+				Arguments: map[ast.IdentExpression]types.Type{
+					ast.IdentExpression{
+						Value: lexer.NewToken(lexer.IDENT, "a", 1, 22),
+					}: types.GetType("int"),
+					ast.IdentExpression{
+						Value: lexer.NewToken(lexer.IDENT, "b", 1, 29),
+					}: types.GetType("int"),
+				},
+				Return: types.GetType("int"),
+				Body: &ast.BlockStatement{
+					LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 38),
+					Statements: []ast.Statement{},
+					RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 39),
+				},
+			},
+		},
+	}
+
+	for _, c := range cases {
+		lexer := lexer.NewLexer([]byte(c.source))
+		tokens, err := lexer.Lex()
+		if err != nil {
+			t.Error(err)
+		}
+
+		parser := NewParser(tokens)
+		t.Log("=== Start tokens ===")
+		for _, tok := range parser.tokens {
+			t.Log(tok.String())
+		}
+		t.Log("=== End tokens ===\n\n")
+		ast := parser.declaration()
 		if !reflect.DeepEqual(c.ast, ast) {
 			t.Errorf("Source:\n%q\nExpected:\n%s\nGot:\n%s\n",
 				c.source, pp.Sprint(c.ast), pp.Sprint(ast))

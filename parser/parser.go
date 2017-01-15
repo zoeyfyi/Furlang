@@ -7,6 +7,7 @@ import (
 
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
+	"github.com/bongo227/Furlang/types"
 	"github.com/k0kubun/pp"
 )
 
@@ -310,5 +311,49 @@ func (p *Parser) statement() ast.Statement {
 		return p.forSmt()
 	default:
 		return p.assigment()
+	}
+}
+
+func (p *Parser) functionDcl() *ast.FunctionDeclaration {
+	p.expect(lexer.PROC)
+	name := &ast.IdentExpression{
+		Value: p.expect(lexer.IDENT),
+	}
+	colon := p.expect(lexer.DOUBLE_COLON)
+	arguments := make(map[ast.IdentExpression]types.Type)
+
+	_, ok := p.accept(lexer.ARROW)
+	for !ok {
+		typeExp := p.expression(0)
+		typ := types.GetType(typeExp.(*ast.IdentExpression).Value.Value())
+		name := p.expect(lexer.IDENT)
+		arguments[ast.IdentExpression{Value: name}] = typ
+		_, ok = p.accept(lexer.ARROW)
+		if !ok {
+			p.expect(lexer.COMMA)
+		}
+	}
+
+	returnTypeExp := p.expression(0)
+	returnTyp := types.GetType(returnTypeExp.(*ast.IdentExpression).Value.Value())
+	fmt.Println(p.token().String())
+
+	block := p.block()
+
+	return &ast.FunctionDeclaration{
+		Name:        name,
+		DoubleColon: colon,
+		Arguments:   arguments,
+		Return:      returnTyp,
+		Body:        block,
+	}
+}
+
+func (p *Parser) declaration() *ast.FunctionDeclaration {
+	switch p.token().Type() {
+	case lexer.PROC:
+		return p.functionDcl()
+	default:
+		panic("Not a declaration statement")
 	}
 }
