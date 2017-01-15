@@ -422,6 +422,40 @@ func TestParserDeclarations(t *testing.T) {
 		ast    ast.Declare
 	}{
 		{
+			`proc function :: -> {}`,
+			&ast.FunctionDeclaration{
+				Name: &ast.IdentExpression{
+					Value: lexer.NewToken(lexer.IDENT, "function", 1, 6),
+				},
+				DoubleColon: lexer.NewToken(lexer.DOUBLE_COLON, "", 1, 15),
+				Arguments:   map[ast.IdentExpression]types.Type{},
+				Return:      nil,
+				Body: &ast.BlockStatement{
+					LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 21),
+					Statements: []ast.Statement{},
+					RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 22),
+				},
+			},
+		},
+
+		{
+			`proc function :: -> int {}`,
+			&ast.FunctionDeclaration{
+				Name: &ast.IdentExpression{
+					Value: lexer.NewToken(lexer.IDENT, "function", 1, 6),
+				},
+				DoubleColon: lexer.NewToken(lexer.DOUBLE_COLON, "", 1, 15),
+				Arguments:   map[ast.IdentExpression]types.Type{},
+				Return:      types.GetType("int"),
+				Body: &ast.BlockStatement{
+					LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 25),
+					Statements: []ast.Statement{},
+					RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 26),
+				},
+			},
+		},
+
+		{
 			`proc function :: int a, int b -> int {}`,
 			&ast.FunctionDeclaration{
 				Name: &ast.IdentExpression{

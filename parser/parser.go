@@ -334,9 +334,12 @@ func (p *Parser) functionDcl() *ast.FunctionDeclaration {
 		}
 	}
 
-	returnTypeExp := p.expression(0)
-	returnTyp := types.GetType(returnTypeExp.(*ast.IdentExpression).Value.Value())
-	fmt.Println(p.token().String())
+	var returnTyp types.Type
+	if p.token().Type() != lexer.LBRACE {
+		returnTypeExp := p.expression(0)
+		returnTyp = types.GetType(returnTypeExp.(*ast.IdentExpression).Value.Value())
+		fmt.Println(p.token().String())
+	}
 
 	block := p.block()
 
