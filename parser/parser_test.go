@@ -345,6 +345,53 @@ func TestParserStatements(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			`for i = 0; i < 10; i = i + 1 {}`,
+			&ast.ForStatement{
+				For: lexer.NewToken(lexer.FOR, "for", 1, 1),
+				Index: &ast.AssignmentStatement{
+					Left: &ast.IdentExpression{
+						Value: lexer.NewToken(lexer.IDENT, "i", 1, 5),
+					},
+					Assign: lexer.NewToken(lexer.ASSIGN, "", 1, 7),
+					Right: &ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "0", 1, 9),
+					},
+				},
+				Semi1: lexer.NewToken(lexer.SEMICOLON, "", 1, 10),
+				Condition: &ast.BinaryExpression{
+					Left: &ast.IdentExpression{
+						Value: lexer.NewToken(lexer.IDENT, "i", 1, 12),
+					},
+					Operator: lexer.NewToken(lexer.LSS, "", 1, 14),
+					Right: &ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "10", 1, 16),
+					},
+				},
+				Semi2: lexer.NewToken(lexer.SEMICOLON, "", 1, 18),
+				Increment: &ast.AssignmentStatement{
+					Left: &ast.IdentExpression{
+						Value: lexer.NewToken(lexer.IDENT, "i", 1, 20),
+					},
+					Assign: lexer.NewToken(lexer.ASSIGN, "", 1, 22),
+					Right: &ast.BinaryExpression{
+						Left: &ast.IdentExpression{
+							Value: lexer.NewToken(lexer.IDENT, "i", 1, 24),
+						},
+						Operator: lexer.NewToken(lexer.ADD, "", 1, 26),
+						Right: &ast.LiteralExpression{
+							Value: lexer.NewToken(lexer.INT, "1", 1, 28),
+						},
+					},
+				},
+				Body: &ast.BlockStatement{
+					LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 30),
+					Statements: []ast.Statement{},
+					RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 31),
+				},
+			},
+		},
 	}
 
 	for _, c := range cases {

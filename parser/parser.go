@@ -286,6 +286,18 @@ func (p *Parser) ifSmt() *ast.IfStatment {
 	}
 }
 
+func (p *Parser) forSmt() *ast.ForStatement {
+	return &ast.ForStatement{
+		For:       p.expect(lexer.FOR),
+		Index:     p.statement(),
+		Semi1:     p.expect(lexer.SEMICOLON),
+		Condition: p.expression(0),
+		Semi2:     p.expect(lexer.SEMICOLON),
+		Increment: p.statement(),
+		Body:      p.block(),
+	}
+}
+
 func (p *Parser) statement() ast.Statement {
 	switch p.token().Type() {
 	case lexer.RETURN:
@@ -294,6 +306,8 @@ func (p *Parser) statement() ast.Statement {
 		return p.block()
 	case lexer.IF:
 		return p.ifSmt()
+	case lexer.FOR:
+		return p.forSmt()
 	default:
 		return p.assigment()
 	}
