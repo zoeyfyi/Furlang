@@ -478,6 +478,32 @@ func TestParserDeclarations(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			`ben := 123`,
+			&ast.VaribleDeclaration{
+				Type: nil,
+				Name: &ast.IdentExpression{
+					Value: lexer.NewToken(lexer.IDENT, "ben", 1, 1),
+				},
+				Value: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "123", 1, 8),
+				},
+			},
+		},
+
+		{
+			`int ben = 123`,
+			&ast.VaribleDeclaration{
+				Type: types.GetType("int"),
+				Name: &ast.IdentExpression{
+					Value: lexer.NewToken(lexer.IDENT, "ben", 1, 5),
+				},
+				Value: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "123", 1, 11),
+				},
+			},
+		},
 	}
 
 	for _, c := range cases {

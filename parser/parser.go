@@ -352,11 +352,34 @@ func (p *Parser) functionDcl() *ast.FunctionDeclaration {
 	}
 }
 
-func (p *Parser) declaration() *ast.FunctionDeclaration {
+func (p *Parser) varibleDcl() *ast.VaribleDeclaration {
+	var typ types.Type
+	if p.peek().Type() != lexer.DEFINE {
+		typExp := p.expression(0)
+		typ = types.GetType(typExp.(*ast.IdentExpression).Value.Value())
+	}
+
+	name := &ast.IdentExpression{
+		Value: p.expect(lexer.IDENT),
+	}
+
+	_, ok := p.accept(lexer.DEFINE)
+	if !ok {
+		p.expect(lexer.ASSIGN)
+	}
+
+	return &ast.VaribleDeclaration{
+		Type:  typ,
+		Name:  name,
+		Value: p.expression(0),
+	}
+}
+
+func (p *Parser) declaration() ast.Declare {
 	switch p.token().Type() {
 	case lexer.PROC:
 		return p.functionDcl()
 	default:
-		panic("Not a declaration statement")
+		return p.varibleDcl()
 	}
 }
