@@ -228,3 +228,47 @@ func (p *Parser) expression(rightBindingPower int) ast.Expression {
 
 	return left
 }
+
+func (p *Parser) assigment() *ast.AssignmentStatement {
+	return &ast.AssignmentStatement{
+		Left:   p.expression(0),
+		Assign: p.expect(lexer.ASSIGN),
+		Right:  p.expression(0),
+	}
+}
+
+func (p *Parser) returnSmt() *ast.ReturnStatement {
+	return &ast.ReturnStatement{
+		Return: p.expect(lexer.RETURN),
+		Result: p.expression(0),
+	}
+}
+
+func (p *Parser) block() *ast.BlockStatement {
+	lbrace := p.expect(lexer.LBRACE)
+
+	statements := []ast.Statement{}
+	rbrace, ok := p.accept(lexer.RBRACE)
+	for !ok {
+		statements = append(statements, p.statement())
+		p.expect(lexer.SEMICOLON)
+		rbrace, ok = p.accept(lexer.RBRACE)
+	}
+
+	return &ast.BlockStatement{
+		LeftBrace:  lbrace,
+		Statements: statements,
+		RightBrace: rbrace,
+	}
+}
+
+func (p *Parser) statement() ast.Statement {
+	switch p.token().Type() {
+	case lexer.RETURN:
+		return p.returnSmt()
+	case lexer.LBRACE:
+		return p.block()
+	default:
+		return p.assigment()
+	}
+}

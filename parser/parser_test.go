@@ -10,9 +10,7 @@ import (
 	"github.com/k0kubun/pp"
 )
 
-func TestParser(t *testing.T) {
-	// int[5] a = {1, 2, 3, 4, 5}
-
+func TestParserExpressions(t *testing.T) {
 	cases := []struct {
 		source string
 		ast    interface{}
@@ -196,4 +194,84 @@ func TestParser(t *testing.T) {
 		}
 	}
 
+}
+
+func TestParserStatements(t *testing.T) {
+	cases := []struct {
+		source string
+		ast    ast.Statement
+	}{
+		{
+			`ben = 123`,
+			&ast.AssignmentStatement{
+				Left: &ast.IdentExpression{
+					Value: lexer.NewToken(lexer.IDENT, "ben", 1, 1),
+				},
+				Assign: lexer.NewToken(lexer.ASSIGN, "", 1, 5),
+				Right: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "123", 1, 7),
+				},
+			},
+		},
+
+		{
+			`return 123`,
+			&ast.ReturnStatement{
+				Return: lexer.NewToken(lexer.RETURN, "return", 1, 1),
+				Result: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "123", 1, 8),
+				},
+			},
+		},
+
+		{
+			`{}`,
+			&ast.BlockStatement{
+				LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 1),
+				Statements: []ast.Statement{},
+				RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 2),
+			},
+		},
+
+		{
+			`{
+ben = 123
+}`,
+			&ast.BlockStatement{
+				LeftBrace: lexer.NewToken(lexer.LBRACE, "", 1, 1),
+				Statements: []ast.Statement{
+					&ast.AssignmentStatement{
+						Left: &ast.IdentExpression{
+							Value: lexer.NewToken(lexer.IDENT, "ben", 1, 3),
+						},
+						Assign: lexer.NewToken(lexer.ASSIGN, "", 1, 7),
+						Right: &ast.LiteralExpression{
+							Value: lexer.NewToken(lexer.INT, "123", 1, 9),
+						},
+					},
+				},
+				RightBrace: lexer.NewToken(lexer.RBRACE, "", 2, 1),
+			},
+		},
+	}
+
+	for _, c := range cases {
+		lexer := lexer.NewLexer([]byte(c.source))
+		tokens, err := lexer.Lex()
+		if err != nil {
+			t.Error(err)
+		}
+
+		parser := NewParser(tokens)
+		t.Log("=== Start tokens ===")
+		for _, tok := range parser.tokens {
+			t.Log(tok.String())
+		}
+		t.Log("=== End tokens ===\n\n")
+		ast := parser.statement()
+		if !reflect.DeepEqual(c.ast, ast) {
+			t.Errorf("Source:\n%q\nExpected:\n%s\nGot:\n%s\n",
+				c.source, pp.Sprint(c.ast), pp.Sprint(ast))
+		}
+	}
 }
