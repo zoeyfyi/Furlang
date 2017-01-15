@@ -59,6 +59,19 @@ func TestLex(t *testing.T) {
 				Token{SEMICOLON, "\n", 1, 13},
 			},
 		},
+		{
+			input: `1
+2
+3`,
+			expected: []Token{
+				Token{INT, "1", 1, 1},
+				Token{SEMICOLON, "\n", 1, 2},
+				Token{INT, "2", 2, 1},
+				Token{SEMICOLON, "\n", 2, 2},
+				Token{INT, "3", 3, 1},
+				Token{SEMICOLON, "\n", 3, 2},
+			},
+		},
 	}
 
 	for _, c := range cases {
