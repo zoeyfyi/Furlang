@@ -38,6 +38,7 @@ func (e *ReturnStatement) statementNode()     {}
 
 // BlockStatement is a statement in the form: {statement; statement; ...}
 type BlockStatement struct {
+	Scope      *Scope
 	LeftBrace  lexer.Token
 	Statements []Statement
 	RightBrace lexer.Token

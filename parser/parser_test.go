@@ -228,6 +228,7 @@ func TestParserStatements(t *testing.T) {
 		{
 			`{}`,
 			&ast.BlockStatement{
+				Scope:      &ast.Scope{},
 				LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 1),
 				Statements: []ast.Statement{},
 				RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 2),

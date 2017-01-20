@@ -14,6 +14,7 @@ import (
 // Parser creates an abstract syntax tree from a sequence of tokens
 type Parser struct {
 	tokens []lexer.Token
+	scope  *ast.Scope
 	index  int
 }
 
@@ -64,7 +65,10 @@ func (e *InternalError) Error() string {
 
 // NewParser creates a new parser
 func NewParser(tokens []lexer.Token) *Parser {
-	return &Parser{tokens: tokens}
+	return &Parser{
+		scope:  ast.NewScope(),
+		tokens: tokens,
+	}
 }
 
 func (p *Parser) token() lexer.Token {
@@ -248,6 +252,7 @@ func (p *Parser) returnSmt() *ast.ReturnStatement {
 }
 
 func (p *Parser) block() *ast.BlockStatement {
+	p.scope = p.scope.Enter()
 	lbrace := p.expect(lexer.LBRACE)
 
 	statements := []ast.Statement{}
@@ -258,7 +263,11 @@ func (p *Parser) block() *ast.BlockStatement {
 		rbrace, ok = p.accept(lexer.RBRACE)
 	}
 
+	blockScope := p.scope
+	p.scope = p.scope.Exit()
+
 	return &ast.BlockStatement{
+		Scope:      blockScope,
 		LeftBrace:  lbrace,
 		Statements: statements,
 		RightBrace: rbrace,
@@ -327,7 +336,8 @@ func (p *Parser) functionDcl() *ast.FunctionDeclaration {
 		typeExp := p.expression(0)
 		typ := types.GetType(typeExp.(*ast.IdentExpression).Value.Value())
 		name := p.expect(lexer.IDENT)
-		arguments[ast.IdentExpression{Value: name}] = typ
+		ident := ast.IdentExpression{Value: name}
+		arguments[ident] = typ
 		_, ok = p.accept(lexer.ARROW)
 		if !ok {
 			p.expect(lexer.COMMA)
@@ -342,16 +352,27 @@ func (p *Parser) functionDcl() *ast.FunctionDeclaration {
 	}
 
 	block := p.block()
+	// Inject function arguments into block scope
+	for ident, argType := range arguments {
+		block.Scope.Insert(ident.Value.Value(), &ast.VaribleDeclaration{
+			Name:  &ident,
+			Type:  argType,
+			Value: nil,
+		})
+	}
 
 	p.expect(lexer.SEMICOLON)
 
-	return &ast.FunctionDeclaration{
+	funcDcl := &ast.FunctionDeclaration{
 		Name:        name,
 		DoubleColon: colon,
 		Arguments:   arguments,
 		Return:      returnTyp,
 		Body:        block,
 	}
+
+	p.scope.Insert(name.Value.Value(), funcDcl)
+	return funcDcl
 }
 
 func (p *Parser) varibleDcl() *ast.VaribleDeclaration {
@@ -370,11 +391,14 @@ func (p *Parser) varibleDcl() *ast.VaribleDeclaration {
 		p.expect(lexer.ASSIGN)
 	}
 
-	return &ast.VaribleDeclaration{
+	varDcl := &ast.VaribleDeclaration{
 		Type:  typ,
 		Name:  name,
 		Value: p.expression(0),
 	}
+
+	p.scope.Insert(name.Value.Value(), varDcl)
+	return varDcl
 }
 
 func (p *Parser) declaration() ast.Declare {
