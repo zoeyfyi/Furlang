@@ -15,7 +15,7 @@ type Declare interface {
 type FunctionDeclaration struct {
 	Name        *IdentExpression
 	DoubleColon lexer.Token
-	Arguments   map[IdentExpression]types.Type
+	Arguments   []*ArgumentDeclaration
 	Return      types.Type
 	Body        *BlockStatement
 }
@@ -23,6 +23,15 @@ type FunctionDeclaration struct {
 func (e *FunctionDeclaration) First() lexer.Token { return e.Name.First() }
 func (e *FunctionDeclaration) Last() lexer.Token  { return e.Body.Last() }
 func (e *FunctionDeclaration) declareNode()       {}
+
+type ArgumentDeclaration struct {
+	Name *IdentExpression
+	Type types.Type
+}
+
+func (e *ArgumentDeclaration) First() lexer.Token { return e.Name.First() }
+func (e *ArgumentDeclaration) Last() lexer.Token  { return e.Name.Last() }
+func (e *ArgumentDeclaration) declareNode()       {}
 
 // VaribleDeclaration is a declare node in the form:
 // ident := expression || type ident = expression

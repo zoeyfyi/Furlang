@@ -325,38 +325,49 @@ func (p *Parser) statement() ast.Statement {
 
 func (p *Parser) functionDcl() *ast.FunctionDeclaration {
 	p.expect(lexer.PROC)
+
+	// Parse function name
 	name := &ast.IdentExpression{
 		Value: p.expect(lexer.IDENT),
 	}
-	colon := p.expect(lexer.DOUBLE_COLON)
-	arguments := make(map[ast.IdentExpression]types.Type)
 
+	colon := p.expect(lexer.DOUBLE_COLON)
+
+	// Parse function arguments
+	arguments := []*ast.ArgumentDeclaration{}
 	_, ok := p.accept(lexer.ARROW)
 	for !ok {
 		typeExp := p.expression(0)
 		typ := types.GetType(typeExp.(*ast.IdentExpression).Value.Value())
 		name := p.expect(lexer.IDENT)
-		ident := ast.IdentExpression{Value: name}
-		arguments[ident] = typ
+		ident := &ast.IdentExpression{Value: name}
+
+		arguments = append(arguments, &ast.ArgumentDeclaration{
+			Name: ident,
+			Type: typ,
+		})
+
 		_, ok = p.accept(lexer.ARROW)
 		if !ok {
 			p.expect(lexer.COMMA)
 		}
 	}
 
+	// Get the return type
 	var returnTyp types.Type
 	if p.token().Type() != lexer.LBRACE {
 		returnTypeExp := p.expression(0)
 		returnTyp = types.GetType(returnTypeExp.(*ast.IdentExpression).Value.Value())
-		fmt.Println(p.token().String())
 	}
 
+	// Parse the function body
 	block := p.block()
+
 	// Inject function arguments into block scope
-	for ident, argType := range arguments {
-		block.Scope.Insert(ident.Value.Value(), &ast.VaribleDeclaration{
-			Name:  &ident,
-			Type:  argType,
+	for _, arg := range arguments {
+		block.Scope.Insert(arg.Name.Value.Value(), &ast.VaribleDeclaration{
+			Name:  arg.Name,
+			Type:  arg.Type,
 			Value: nil,
 		})
 	}
@@ -371,7 +382,9 @@ func (p *Parser) functionDcl() *ast.FunctionDeclaration {
 		Body:        block,
 	}
 
+	// Insert function into root scope
 	p.scope.Insert(name.Value.Value(), funcDcl)
+
 	return funcDcl
 }
 
@@ -418,6 +431,7 @@ func (p *Parser) Parse() *ast.Ast {
 
 	return &ast.Ast{
 		Functions: functions,
+		Scope:     p.scope,
 	}
 }
 

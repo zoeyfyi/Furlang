@@ -10,5 +10,6 @@ type Node interface {
 }
 
 type Ast struct {
+	Scope     *Scope
 	Functions []*FunctionDeclaration
 }
