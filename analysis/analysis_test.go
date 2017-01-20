@@ -29,7 +29,7 @@ func TestFloatPromotion(t *testing.T) {
 			code, pp.Sprint(node.Left))
 	}
 
-	if typ, _ := a.typ(node); typ != floatType {
+	if typ := a.typ(node); typ != floatType {
 		t.Errorf("Expected %s to have type float but got type: %s", code, pp.Sprint(typ))
 	}
 }
@@ -120,7 +120,6 @@ func TestCall(t *testing.T) {
 	// }
 
 	ana := NewAnalysis(tree)
-
 	a := ana.Analalize()
 
 	firstSmt := a.Functions[1].Body.Statements[0]
