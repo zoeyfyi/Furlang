@@ -266,3 +266,34 @@ func (b *Pointer) Base() Type { return b.typ }
 func (b *Pointer) Llvm() goorytypes.Type {
 	return goorytypes.NewPointerType(b.Base().Llvm())
 }
+
+type Function struct {
+	argTypes   []Type
+	returnType Type
+}
+
+func NewFunction(returnType Type, argTypes ...Type) *Function {
+	return &Function{
+		argTypes:   argTypes,
+		returnType: returnType,
+	}
+}
+
+func (b *Function) Arguments() []Type {
+	return b.argTypes
+}
+
+func (b *Function) Return() Type {
+	return b.returnType
+}
+
+func (b *Function) Base() Type { return b.returnType }
+
+func (b *Function) Llvm() goorytypes.Type {
+	argTypes := make([]goorytypes.Type, len(b.argTypes))
+	for i, arg := range b.argTypes {
+		argTypes[i] = arg.Llvm()
+	}
+
+	return goorytypes.NewFunction(b.returnType.Llvm(), argTypes...)
+}
