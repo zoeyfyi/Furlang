@@ -182,7 +182,7 @@ func TestParserExpressions(t *testing.T) {
 			t.Error(err)
 		}
 
-		parser := NewParser(tokens)
+		parser := NewParser(tokens, false)
 		t.Log("=== Start tokens ===")
 		for _, tok := range parser.tokens {
 			t.Log(tok.String())
@@ -228,7 +228,7 @@ func TestParserStatements(t *testing.T) {
 		{
 			`{}`,
 			&ast.BlockStatement{
-				Scope:      &ast.Scope{},
+				Scope:      nil,
 				LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 1),
 				Statements: []ast.Statement{},
 				RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 2),
@@ -403,7 +403,7 @@ func TestParserStatements(t *testing.T) {
 			t.Error(err)
 		}
 
-		parser := NewParser(tokens)
+		parser := NewParser(tokens, false)
 		t.Log("=== Start tokens ===")
 		for _, tok := range parser.tokens {
 			t.Log(tok.String())
@@ -417,10 +417,10 @@ func TestParserStatements(t *testing.T) {
 	}
 }
 
-func TestParserDeclarations(t *testing.T) {
+func TestFunctionDeclarations(t *testing.T) {
 	cases := []struct {
 		source string
-		ast    ast.Declare
+		ast    *ast.FunctionDeclaration
 	}{
 		{
 			`proc function :: -> {}`,
@@ -485,7 +485,40 @@ func TestParserDeclarations(t *testing.T) {
 				},
 			},
 		},
+	}
 
+	for _, c := range cases {
+		lexer := lexer.NewLexer([]byte(c.source))
+		tokens, err := lexer.Lex()
+		if err != nil {
+			t.Error(err)
+		}
+		parser := NewParser(tokens, false)
+		tree := parser.declaration()
+
+		testFunc := func(expect interface{}, got interface{}) {
+			if !reflect.DeepEqual(expect, got) {
+				t.Errorf("Source:\n%q\nExpected:\n%s\nGot:\n%s\n",
+					c.source, pp.Sprint(expect), pp.Sprint(got))
+			}
+		}
+
+		// Test all parts of the function declaration except scope
+		testFunc(c.ast.Name, tree.(*ast.FunctionDeclaration).Name)
+		testFunc(c.ast.DoubleColon, tree.(*ast.FunctionDeclaration).DoubleColon)
+		testFunc(c.ast.Arguments, tree.(*ast.FunctionDeclaration).Arguments)
+		testFunc(c.ast.Return, tree.(*ast.FunctionDeclaration).Return)
+		testFunc(c.ast.Body.LeftBrace, tree.(*ast.FunctionDeclaration).Body.LeftBrace)
+		testFunc(c.ast.Body.Statements, tree.(*ast.FunctionDeclaration).Body.Statements)
+		testFunc(c.ast.Body.RightBrace, tree.(*ast.FunctionDeclaration).Body.RightBrace)
+	}
+}
+
+func TestVaribleDeclarations(t *testing.T) {
+	cases := []struct {
+		source string
+		ast    *ast.VaribleDeclaration
+	}{
 		{
 			`ben := 123`,
 			&ast.VaribleDeclaration{
@@ -498,7 +531,6 @@ func TestParserDeclarations(t *testing.T) {
 				},
 			},
 		},
-
 		{
 			`int ben = 123`,
 			&ast.VaribleDeclaration{
@@ -520,16 +552,17 @@ func TestParserDeclarations(t *testing.T) {
 			t.Error(err)
 		}
 
-		parser := NewParser(tokens)
+		parser := NewParser(tokens, false)
 		t.Log("=== Start tokens ===")
 		for _, tok := range parser.tokens {
 			t.Log(tok.String())
 		}
 		t.Log("=== End tokens ===\n\n")
-		ast := parser.declaration()
-		if !reflect.DeepEqual(c.ast, ast) {
+		tree := parser.declaration()
+		if !reflect.DeepEqual(c.ast, tree) {
+
 			t.Errorf("Source:\n%q\nExpected:\n%s\nGot:\n%s\n",
-				c.source, pp.Sprint(c.ast), pp.Sprint(ast))
+				c.source, pp.Sprint(c.ast), pp.Sprint(tree))
 		}
 	}
 }

@@ -114,7 +114,7 @@ func TestCall(t *testing.T) {
 		t.Error(err)
 	}
 
-	parser := parser.NewParser(tokens)
+	parser := parser.NewParser(tokens, true)
 	tree := parser.Parse()
 	// if err != nil {
 	// 	t.Error(err)

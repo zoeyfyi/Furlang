@@ -63,11 +63,34 @@ func (e *InternalError) Error() string {
 // 	return parser.expression(), nil
 // }
 
-// NewParser creates a new parser
-func NewParser(tokens []lexer.Token) *Parser {
-	return &Parser{
-		scope:  ast.NewScope(),
+// NewParser creates a new parser, if scope is false all block scopes will be nil
+func NewParser(tokens []lexer.Token, scope bool) *Parser {
+	p := &Parser{
 		tokens: tokens,
+	}
+
+	if scope {
+		p.scope = ast.NewScope()
+	}
+
+	return p
+}
+
+func (p *Parser) enterScope() {
+	if p.scope != nil {
+		p.scope = p.scope.Enter()
+	}
+}
+
+func (p *Parser) exitScope() {
+	if p.scope != nil {
+		p.scope = p.scope.Exit()
+	}
+}
+
+func (p *Parser) insertScope(name string, node ast.Node) {
+	if p.scope != nil {
+		p.scope.Insert(name, node)
 	}
 }
 
@@ -252,7 +275,7 @@ func (p *Parser) returnSmt() *ast.ReturnStatement {
 }
 
 func (p *Parser) block() *ast.BlockStatement {
-	p.scope = p.scope.Enter()
+	p.enterScope()
 	lbrace := p.expect(lexer.LBRACE)
 
 	statements := []ast.Statement{}
@@ -264,7 +287,7 @@ func (p *Parser) block() *ast.BlockStatement {
 	}
 
 	blockScope := p.scope
-	p.scope = p.scope.Exit()
+	p.exitScope()
 
 	return &ast.BlockStatement{
 		Scope:      blockScope,
@@ -319,13 +342,14 @@ func (p *Parser) statement() ast.Statement {
 	case lexer.FOR:
 		return p.forSmt()
 	default:
-		if p.peek().Type() != lexer.DEFINE {
+		switch p.peek().Type() {
+		case lexer.ASSIGN:
+			return p.assigment()
+		default:
 			return &ast.DeclareStatement{
 				Statement: p.varibleDcl(),
 			}
 		}
-
-		return p.assigment()
 	}
 }
 
@@ -371,11 +395,13 @@ func (p *Parser) functionDcl() *ast.FunctionDeclaration {
 
 	// Inject function arguments into block scope
 	for _, arg := range arguments {
-		block.Scope.Insert(arg.Name.Value.Value(), &ast.VaribleDeclaration{
-			Name:  arg.Name,
-			Type:  arg.Type,
-			Value: nil,
-		})
+		if block.Scope != nil {
+			block.Scope.Insert(arg.Name.Value.Value(), &ast.VaribleDeclaration{
+				Name:  arg.Name,
+				Type:  arg.Type,
+				Value: nil,
+			})
+		}
 	}
 
 	p.expect(lexer.SEMICOLON)
@@ -389,7 +415,7 @@ func (p *Parser) functionDcl() *ast.FunctionDeclaration {
 	}
 
 	// Insert function into root scope
-	p.scope.Insert(name.Value.Value(), funcDcl)
+	p.insertScope(name.Value.Value(), funcDcl)
 
 	return funcDcl
 }
@@ -416,7 +442,7 @@ func (p *Parser) varibleDcl() *ast.VaribleDeclaration {
 		Value: p.expression(0),
 	}
 
-	p.scope.Insert(name.Value.Value(), varDcl)
+	p.insertScope(name.Value.Value(), varDcl)
 	return varDcl
 }
 
@@ -447,7 +473,7 @@ func ParseExpression(code string) (ast.Expression, error) {
 		return nil, err
 	}
 
-	ast := NewParser(tokens).expression(0)
+	ast := NewParser(tokens, true).expression(0)
 	return ast, nil
 }
 
@@ -457,7 +483,7 @@ func ParseStatement(code string) (ast.Statement, error) {
 		return nil, err
 	}
 
-	ast := NewParser(tokens).statement()
+	ast := NewParser(tokens, true).statement()
 	return ast, nil
 }
 
@@ -467,6 +493,6 @@ func ParseDeclaration(code string) (ast.Declare, error) {
 		return nil, err
 	}
 
-	ast := NewParser(tokens).declaration()
+	ast := NewParser(tokens, true).declaration()
 	return ast, nil
 }
