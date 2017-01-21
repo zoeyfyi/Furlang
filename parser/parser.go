@@ -319,6 +319,12 @@ func (p *Parser) statement() ast.Statement {
 	case lexer.FOR:
 		return p.forSmt()
 	default:
+		if p.peek().Type() != lexer.DEFINE {
+			return &ast.DeclareStatement{
+				Statement: p.varibleDcl(),
+			}
+		}
+
 		return p.assigment()
 	}
 }

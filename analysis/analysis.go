@@ -97,6 +97,13 @@ func (a *Analysis) function(node *ast.FunctionDeclaration) {
 	a.block(node.Body)
 }
 
+func (a *Analysis) varible(node *ast.VaribleDeclaration) {
+	a.expression(node.Value)
+	if node.Type == nil {
+		node.Type = a.typ(node.Value)
+	}
+}
+
 func (a *Analysis) statement(node ast.Statement) {
 	switch node := (node).(type) {
 	case *ast.AssignmentStatement:
@@ -149,6 +156,19 @@ func (a *Analysis) ifNode(node *ast.IfStatment) {
 
 	if node.Else != nil {
 		a.ifNode(node.Else)
+	}
+}
+
+func (a *Analysis) declareVar(node *ast.VaribleDeclaration) {
+	valueType := a.typ(node.Value)
+
+	if node.Type == nil {
+		node.Type = valueType
+	} else if node.Type.Llvm() != valueType.Llvm() {
+		node.Value = &ast.CastExpression{
+			Expression: node.Value,
+			Type:       valueType,
+		}
 	}
 }
 

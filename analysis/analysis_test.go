@@ -8,6 +8,7 @@ import (
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/parser"
+	"github.com/bongo227/Furlang/types"
 	"github.com/k0kubun/pp"
 )
 
@@ -34,67 +35,67 @@ func TestFloatPromotion(t *testing.T) {
 	}
 }
 
-// func TestInferAssigment(t *testing.T) {
-// 	cases := []struct {
-// 		code string
-// 		typ  types.Type
-// 	}{
-// 		{
-// 			code: "a := 10",
-// 			typ:  intType,
-// 		},
-// 		{
-// 			code: "a := 14.5",
-// 			typ:  floatType,
-// 		},
-// 		{
-// 			code: "a := 10 * 13.5",
-// 			typ:  floatType,
-// 		},
-// 		{
-// 			code: "a := 10 / 2",
-// 			typ:  intType,
-// 		},
-// 	}
+func TestInferAssigment(t *testing.T) {
+	cases := []struct {
+		code string
+		typ  types.Type
+	}{
+		{
+			code: "a := 10",
+			typ:  intType,
+		},
+		{
+			code: "a := 14.5",
+			typ:  floatType,
+		},
+		{
+			code: "a := 10 * 13.5",
+			typ:  floatType,
+		},
+		{
+			code: "a := 10 / 2",
+			typ:  intType,
+		},
+	}
 
-// 	for _, c := range cases {
-// 		node, err := parser.ParseDeclaration(c.code)
-// 		if err != nil {
-// 			t.Error(err)
-// 		}
+	for _, c := range cases {
+		node, err := parser.ParseDeclaration(c.code)
+		if err != nil {
+			t.Error(err)
+		}
 
-// 		assigmentNode, ok := node.(*ast.VaribleDeclaration)
-// 		if !ok {
-// 			t.Errorf("Expected node to have type assigment, got type: %s", reflect.TypeOf(assigmentNode).String())
-// 		}
+		assigmentNode, ok := node.(*ast.VaribleDeclaration)
+		if !ok {
+			t.Errorf("Expected node to have type assigment, got type: %s", reflect.TypeOf(assigmentNode).String())
+		}
 
-// 		a.varibleDcl(ass)
-// 		if assigmentNode.Type != c.typ {
-// 			// TODO: give types.Type a string method so we dont have to pp.Print
-// 			t.Errorf("Expected %s to have infer int type but got type: %s", c.code, pp.Sprint(assigmentNode.Type))
-// 		}
-// 	}
-// }
+		a.varible(assigmentNode)
+		if assigmentNode.Type != c.typ {
+			// TODO: give types.Type a string method so we dont have to pp.Print
+			t.Errorf("Expected %s to have infer int type but got type: %s", c.code, pp.Sprint(assigmentNode.Type))
+		}
+	}
+}
 
-// func TestAssigment(t *testing.T) {
-// 	code := "i8 a = 123"
+func TestVaribleDeclare(t *testing.T) {
+	code := "i8 a = 123"
 
-// 	node, err := parser.ParseStatement(code)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
+	node, err := parser.ParseStatement(code)
+	if err != nil {
+		t.Error(err)
+	}
 
-// 	assigmentNode, ok := node.(ast.AssignmentStatement)
-// 	if !ok {
-// 		t.Errorf("Expected node to have type assigment, got type: %s", reflect.TypeOf(assigmentNode).String())
-// 	}
+	declareNode, ok := node.(*ast.DeclareStatement).Statement.(*ast.VaribleDeclaration)
+	if !ok {
+		t.Errorf("Expected node to have type assigment, got type: %s", reflect.TypeOf(declareNode).String())
+	}
 
-// 	analizedNode := a.assigment(&assigmentNode)
-// 	if _, ok := analizedNode.Expression.(ast.Cast); !ok {
-// 		t.Errorf("Expected value of: %s to be a cast node, got %s",
-// 			code, pp.Sprint(assigmentNode.Expression))
-// 	}
-// }
+	a.declareVar(declareNode)
+	if _, ok := declareNode.Value.(*ast.CastExpression); !ok {
+		t.Errorf("Expected value of: %s to be a cast node, got %s",
+			code, pp.Sprint(declareNode.Value))
+	}
+}
 
 func TestCall(t *testing.T) {
 	code := `

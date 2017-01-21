@@ -429,7 +429,7 @@ func TestParserDeclarations(t *testing.T) {
 					Value: lexer.NewToken(lexer.IDENT, "function", 1, 6),
 				},
 				DoubleColon: lexer.NewToken(lexer.DOUBLE_COLON, "", 1, 15),
-				Arguments:   map[ast.IdentExpression]types.Type{},
+				Arguments:   []*ast.ArgumentDeclaration{},
 				Return:      nil,
 				Body: &ast.BlockStatement{
 					LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 21),
@@ -446,7 +446,7 @@ func TestParserDeclarations(t *testing.T) {
 					Value: lexer.NewToken(lexer.IDENT, "function", 1, 6),
 				},
 				DoubleColon: lexer.NewToken(lexer.DOUBLE_COLON, "", 1, 15),
-				Arguments:   map[ast.IdentExpression]types.Type{},
+				Arguments:   []*ast.ArgumentDeclaration{},
 				Return:      types.GetType("int"),
 				Body: &ast.BlockStatement{
 					LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 25),
@@ -463,13 +463,19 @@ func TestParserDeclarations(t *testing.T) {
 					Value: lexer.NewToken(lexer.IDENT, "function", 1, 6),
 				},
 				DoubleColon: lexer.NewToken(lexer.DOUBLE_COLON, "", 1, 15),
-				Arguments: map[ast.IdentExpression]types.Type{
-					ast.IdentExpression{
-						Value: lexer.NewToken(lexer.IDENT, "a", 1, 22),
-					}: types.GetType("int"),
-					ast.IdentExpression{
-						Value: lexer.NewToken(lexer.IDENT, "b", 1, 29),
-					}: types.GetType("int"),
+				Arguments: []*ast.ArgumentDeclaration{
+					&ast.ArgumentDeclaration{
+						Name: &ast.IdentExpression{
+							Value: lexer.NewToken(lexer.IDENT, "a", 1, 22),
+						},
+						Type: types.GetType("int"),
+					},
+					&ast.ArgumentDeclaration{
+						Name: &ast.IdentExpression{
+							Value: lexer.NewToken(lexer.IDENT, "b", 1, 29),
+						},
+						Type: types.GetType("int"),
+					},
 				},
 				Return: types.GetType("int"),
 				Body: &ast.BlockStatement{
