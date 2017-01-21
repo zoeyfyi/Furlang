@@ -113,6 +113,7 @@ func (e *CastExpression) expressionNode()    {}
 
 // BinaryExpression is an expression in the form: expression operator expression
 type BinaryExpression struct {
+	IsFp     bool
 	Left     Expression
 	Operator lexer.Token
 	Right    Expression

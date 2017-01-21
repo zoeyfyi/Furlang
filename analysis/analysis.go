@@ -20,8 +20,9 @@ var (
 // Analysis checks the semantics of the abstract syntax tree and adds any allowed omisions
 // such as type inference
 type Analysis struct {
-	root         *ast.Ast
-	currentBlock *ast.BlockStatement
+	root            *ast.Ast
+	currentBlock    *ast.BlockStatement
+	currentFunction *ast.FunctionDeclaration
 }
 
 func NewAnalysis(root *ast.Ast) *Analysis {
@@ -94,6 +95,7 @@ func (a *Analysis) block(node *ast.BlockStatement) {
 }
 
 func (a *Analysis) function(node *ast.FunctionDeclaration) {
+	a.currentFunction = node
 	a.block(node.Body)
 }
 
@@ -125,6 +127,8 @@ func (a *Analysis) expression(node ast.Expression) ast.Expression {
 		a.binary(node)
 	case *ast.CallExpression:
 		a.call(node)
+	case *ast.LiteralExpression:
+		// Do nothing
 	default:
 		fmt.Printf("Unhandled: %s\n", reflect.TypeOf(node).String())
 	}
@@ -134,6 +138,12 @@ func (a *Analysis) expression(node ast.Expression) ast.Expression {
 
 func (a *Analysis) returnNode(node *ast.ReturnStatement) {
 	a.expression(node.Result)
+	if typ := a.typ(node.Result); typ != a.currentFunction.Return {
+		node.Result = &ast.CastExpression{
+			Expression: node.Result,
+			Type:       a.currentFunction.Return,
+		}
+	}
 }
 
 func (a *Analysis) forNode(node *ast.ForStatement) {
@@ -203,7 +213,9 @@ func (a *Analysis) call(node *ast.CallExpression) {
 func (a *Analysis) binary(node *ast.BinaryExpression) {
 	log.Printf("Binary %s node", node.Operator.String())
 
+	// Gets the overall type of node
 	typ := a.typ(node)
+	node.IsFp = typ.(*types.Basic).Info()&types.IsFloat == 1
 
 	// If left part of the node doesnt match the type of the node cast it
 	if leftTyp := a.typ(node.Left); leftTyp != typ {

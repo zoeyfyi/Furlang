@@ -1,4 +1,4 @@
-main :: -> i32 {
+proc main :: -> i32 {
     a := 33 + ((20 + 5) * 4) - 10
     return a
 }
