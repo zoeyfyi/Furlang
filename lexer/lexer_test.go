@@ -59,11 +59,29 @@ func TestLex(t *testing.T) {
 				Token{SEMICOLON, "\n", 1, 13},
 			},
 		},
+		{
+			input: `1
+2
+3`,
+			expected: []Token{
+				Token{INT, "1", 1, 1},
+				Token{SEMICOLON, "\n", 1, 2},
+				Token{INT, "2", 2, 1},
+				Token{SEMICOLON, "\n", 2, 2},
+				Token{INT, "3", 3, 1},
+				Token{SEMICOLON, "\n", 3, 2},
+			},
+		},
 	}
 
 	for _, c := range cases {
 		l := NewLexer([]byte(c.input))
-		got := l.Lex()
+		got, err := l.Lex()
+
+		if err != nil {
+			t.Errorf("Lexer errored: %s", err.Error())
+		}
+
 		if !reflect.DeepEqual(c.expected, got) {
 			t.Log("Expected: ")
 			for _, tok := range c.expected {

@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"fmt"
+	"log"
 	"unicode"
 	"unicode/utf8"
 )
@@ -15,42 +16,83 @@ type Lexer struct {
 	insertSemi    bool
 }
 
+// Error describes an error during the lexing
+type Error struct {
+	Line    int
+	Column  int
+	Message string
+}
+
+// newError creates a new lexer error
+func (l *Lexer) newError(message string) *Error {
+	return &Error{
+		Line:    l.lineOffset,
+		Column:  l.offset,
+		Message: message,
+	}
+}
+
+func (e *Error) Error() string {
+	return e.Message
+}
+
+// NewLexer creates a new lexer
 func NewLexer(source []byte) *Lexer {
 	return &Lexer{
 		source: append(source, byte('\n')),
 	}
 }
 
-func (l *Lexer) nextRune() {
+// nextRune gets the next rune in source or returns an error if their is a problem with the character
+func (l *Lexer) nextRune() error {
+	// Check if we are not at the end of file
 	if l.readingOffset < len(l.source) {
+		// Move the offset forward
 		l.offset = l.readingOffset
-		if l.currentRune == '\n' {
-			l.lineOffset = l.offset
+
+		// Read the rune
+		r, width := rune(l.source[l.readingOffset]), 1
+
+		// Check for Null character
+		if r == 0 {
+			return l.newError("Illegal NULL character")
 		}
-		r, w := rune(l.source[l.readingOffset]), 1
-		switch {
-		case r == 0:
-			panic("illegal NULL character")
-		case r >= utf8.RuneSelf:
-			r, w := utf8.DecodeRune(l.source[l.readingOffset:])
-			if r == utf8.RuneError && w == 1 {
-				panic("illegal UTF-8 encoding")
-			} else if r == 0xFEFF && l.offset > 0 {
-				panic("illegal byte order mark")
+
+		// Check for non-UTF8 character
+		if r >= utf8.RuneSelf {
+			// Decode rune
+			r, width := utf8.DecodeRune(l.source[l.readingOffset:])
+
+			// Check encoding
+			if r == utf8.RuneError && width == 1 {
+				return l.newError("Illegal UTF-8 encoding")
+			}
+
+			// Byte order mark not at start of file
+			if r == 0xFEFF && l.offset > 0 {
+				return l.newError("Illegal byte order mark")
 			}
 		}
-		l.readingOffset += w
+
+		// Update lexer
+		l.readingOffset += width
 		l.currentRune = r
-	} else {
-		l.offset = len(l.source)
-		if l.currentRune == '\n' {
-			l.lineOffset = l.offset
-		}
-		// Reached end of file
-		l.currentRune = -1
+
+		return nil
 	}
+
+	// Update offsets
+	l.offset = len(l.source)
+	if l.currentRune == '\n' {
+		l.lineOffset = l.offset
+	}
+
+	// Set end of file rune
+	l.currentRune = -1
+	return nil
 }
 
+// clearWhitespace removes spaces newlines and tabs
 func (l *Lexer) clearWhitespace() {
 	for l.currentRune == ' ' ||
 		l.currentRune == '\t' ||
@@ -60,14 +102,17 @@ func (l *Lexer) clearWhitespace() {
 	}
 }
 
+// isLetter returns true if the rune is a a-z or A-Z or _ or a unicode letter
 func isLetter(ch rune) bool {
 	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || ch >= utf8.RuneSelf && unicode.IsLetter(ch)
 }
 
+// IsDigit returns true if the rune is 0-9 or a unicode digit
 func isDigit(ch rune) bool {
 	return '0' <= ch && ch <= '9' || ch >= utf8.RuneSelf && unicode.IsDigit(ch)
 }
 
+// asDigit returns the current rune as an integer digit (also works for hexedecimal digits)
 func asDigit(c rune) int {
 	switch {
 	case '0' <= c && c <= '9':
@@ -97,72 +142,90 @@ func (l *Lexer) ident() string {
 }
 
 // escape consumes an escaped character
-func (l *Lexer) escape(quote rune) {
+func (l *Lexer) escape(quote rune) error {
 	// offset := l.offset
 
 	var n int
 	var base, max uint32
 	switch l.currentRune {
+	// Special character escapes
 	case 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\', quote:
 		l.nextRune()
+	// Octal
 	case '0', '1', '2', '3', '4', '5', '6', '7':
 		n, base, max = 3, 8, 255
+	// Hex
 	case 'x':
 		l.nextRune()
 		n, base, max = 2, 16, 255
+	// Small unicode
 	case 'u':
 		l.nextRune()
 		n, base, max = 4, 16, unicode.MaxRune
+	// Full unicode
 	case 'U':
 		l.nextRune()
 		n, base, max = 8, 16, unicode.MaxRune
 	default:
 		if l.currentRune < 0 {
-			panic("Escape sequence not terminated")
+			return l.newError("Escape sequence not terminated")
 		}
-		panic("Unkown exacape sequence")
+
+		return l.newError("Unknown escape sequence")
 	}
 
+	// Consume additional runes
 	var x uint32
 	for n > 0 {
 		d := uint32(asDigit(l.currentRune))
 		if d >= base {
 			if l.currentRune < 0 {
-				panic(fmt.Sprintf("illegal character %#U in escape sequence", l.currentRune))
+				return l.newError(fmt.Sprintf("illegal character %#U in escape sequence", l.currentRune))
 			}
-			panic("Escape sequence not terminated")
+			return l.newError("Escape sequence not terminated")
 		}
+
 		x = x*base + d
 		l.nextRune()
 		n--
 	}
 
+	// Check if unicode character is valid
 	if x > max || 0xD800 <= x && x < 0xE000 {
-		panic("escape sequence is invalid Unicode code point")
+		return l.newError("escape sequence is invalid Unicode code point")
 	}
+
+	return nil
 }
 
 // string consumes a string and returns its value
-func (l *Lexer) string() string {
+func (l *Lexer) string() (string, error) {
 	offset := l.offset - 1
 
 	for {
+		// Newline of end of line
 		if l.currentRune == '\n' || l.currentRune < 0 {
-			panic("string literal not terminated")
+			return "", l.newError("string literal not terminated")
 		}
+
 		l.nextRune()
+
+		// End of string
 		if l.currentRune == '"' {
 			break
 		}
+
+		// Start of escape sequence
 		if l.currentRune == '\\' {
 			l.escape('"')
 		}
 	}
 
-	return string(l.source[offset:l.offset])
+	// Return the string value
+	return string(l.source[offset:l.offset]), nil
 }
 
-func (l *Lexer) number() (TokenType, string) {
+func (l *Lexer) number() (TokenType, string, error) {
 	offset := l.offset
 	tok := INT
 
@@ -175,10 +238,10 @@ func (l *Lexer) number() (TokenType, string) {
 			l.nextRune()
 			l.mantissa(16)
 			if l.offset-offset <= 2 {
-				panic("Illegal hex number")
+				return ILLEGAL, "", l.newError("Illegal hex number")
 			}
 		} else {
-			// octal
+			// assume octal
 			octal := true
 			l.mantissa(8)
 			if l.currentRune == '8' || l.currentRune == '9' {
@@ -190,7 +253,7 @@ func (l *Lexer) number() (TokenType, string) {
 				goto fraction
 			}
 			if !octal {
-				panic("Illegal octal number")
+				return ILLEGAL, "", l.newError("Illegal octal number")
 			}
 		}
 		goto exit
@@ -206,7 +269,7 @@ fraction:
 	}
 
 exit:
-	return tok, string(l.source[offset:l.offset])
+	return tok, string(l.source[offset:l.offset]), nil
 }
 
 // switch helper functions deside between 2-4 runes in the case of multi symbol runes
@@ -247,7 +310,12 @@ func (l *Lexer) switch4(tok0, tok1 TokenType, ch2 rune, tok2, tok3 TokenType) To
 	return tok0
 }
 
-func (l *Lexer) Lex() (tokens []Token) {
+// Lex runs the lexer across the source and returns a slice of tokens or an error
+func (l *Lexer) Lex() ([]Token, error) {
+	log.Println("Starting lex")
+
+	var tokens []Token
+
 	l.nextRune()
 	if l.currentRune == 0xFEFF {
 		l.nextRune()
@@ -260,11 +328,17 @@ func (l *Lexer) Lex() (tokens []Token) {
 		l.clearWhitespace()
 
 		tok := Token{}
-		tok.column = l.offset + 1*line - column + 1
+		// TODO: fix this, this should be an if
+		if line == 1 {
+			tok.column = l.offset - column + 2
+		} else {
+			tok.column = l.offset - column + 1
+		}
 
 		currentRune := l.currentRune
 		switch {
 		case isLetter(currentRune):
+			log.Println("Ident")
 			tok.value = l.ident()
 			tok.typ = Lookup(tok.value)
 			switch tok.typ {
@@ -272,8 +346,16 @@ func (l *Lexer) Lex() (tokens []Token) {
 				l.insertSemi = true
 			}
 		case isDigit(currentRune):
+			log.Println("Number")
 			l.insertSemi = true
-			tok.typ, tok.value = l.number()
+
+			typ, value, err := l.number()
+			if err != nil {
+				return nil, err
+			}
+
+			tok.typ = typ
+			tok.value = value
 		default:
 			l.nextRune()
 			switch currentRune {
@@ -290,11 +372,14 @@ func (l *Lexer) Lex() (tokens []Token) {
 				l.insertSemi = false
 				tok.typ = SEMICOLON
 				tok.value = "\n"
-				// tok.column--
 				column = l.offset
 			case '"':
 				tok.typ = STRING
-				tok.value = l.string()
+				value, err := l.string()
+				if err != nil {
+					return nil, err
+				}
+				tok.value = value
 				l.insertSemi = true
 			case ':':
 				tok.typ = l.switch3(COLON, DEFINE, ':', DOUBLE_COLON)
@@ -371,7 +456,7 @@ func (l *Lexer) Lex() (tokens []Token) {
 				tok.typ = l.switch3(OR, OR_ASSIGN, '|', LOR)
 			default:
 				if l.currentRune == 0xFEFF {
-					panic(fmt.Sprintf("illegal character %#U", l.currentRune))
+					return nil, l.newError(fmt.Sprintf("illegal character %#U", l.currentRune))
 				}
 				tok.typ = ILLEGAL
 			}
@@ -386,6 +471,5 @@ func (l *Lexer) Lex() (tokens []Token) {
 		}
 	}
 
-	//tokens = append(tokens, Token{typ: EOF})
-	return tokens
+	return tokens, nil
 }

@@ -1,4 +1,4 @@
 main :: -> i64 {
-    test := [3]i64{120, 1, 2}
+    test := i64[3]{120, 1, 2}
     return test[0] + test[1] + test[2]
 }

@@ -34,5 +34,8 @@ furlang
 .vscode/
 !.vscode/launch.json
 
+# Binarys
+Furlang
+
 .wercker
 vendor/*/

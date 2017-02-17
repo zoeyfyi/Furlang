@@ -6,7 +6,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/bongo227/Furlang/analysis"
+	"github.com/bongo227/Furlang/irgen"
 	"github.com/bongo227/Furlang/lexer"
+	"github.com/bongo227/Furlang/parser"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/k0kubun/pp"
 )
 
 // Compiler hold infomation about the file to be compiled
@@ -38,17 +43,20 @@ func New(filePath string) (*Compiler, error) {
 }
 
 // Compile compiles the file and writes to the outPath
-func (c *Compiler) Compile(buildDirector string) error {
+func (c *Compiler) Compile(buildDirectory string) error {
 	// Start compiler timer
 	start := time.Now()
 
 	// Run lexer
 	l := lexer.NewLexer([]byte(c.program))
-	tokens := l.Lex()
+	tokens, err := l.Lex()
+	if err != nil {
+		return err
+	}
 
 	// Optionaly write tokens to file
 	if c.OutputTokens {
-		f, err := os.Create(buildDirector + "/tokens.txt")
+		f, err := os.Create(buildDirectory + "/tokens.txt")
 		if err != nil {
 			return fmt.Errorf("problem creating tokens file: %s", err.Error())
 		}
@@ -60,25 +68,31 @@ func (c *Compiler) Compile(buildDirector string) error {
 	}
 
 	// Run parser
-	parser := newParser(tokens)
+	parser := parser.NewParser(tokens, true)
 	ast := parser.Parse()
+
+	// Run analyser
+	analyser := analysis.NewAnalysis(ast)
+	ast = analyser.Analalize()
 
 	// Optionaly write ast to file (and print it)
 	if c.OutputAst {
-		f, err := os.Create(buildDirector + "/ast.txt")
+		f, err := os.Create(buildDirectory + "/ast.txt")
 		if err != nil {
 			return fmt.Errorf("problem creating ast file: %s", err.Error())
 		}
 		defer f.Close()
 
-		ast.print()
-		ast.Write(f)
+		pp.Print(ast)
+		f.WriteString(spew.Sdump(ast))
 	}
 
 	// Compile ast to llvm
 	if !c.NoCompile {
-		llvm := Llvm(&ast)
-		f, err := os.Create(buildDirector + "/ben.ll")
+		ir := irgen.NewIrgen(ast)
+		llvm := ir.Generate()
+
+		f, err := os.Create(buildDirectory + "/ben.ll")
 		if err != nil {
 			return fmt.Errorf("problem creating llvm ir file: %s", err.Error())
 		}

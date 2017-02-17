@@ -2,22 +2,94 @@ package parser
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
-	"github.com/oleiade/lane"
+	"github.com/bongo227/Furlang/types"
+	"github.com/k0kubun/pp"
 )
 
 // Parser creates an abstract syntax tree from a sequence of tokens
 type Parser struct {
 	tokens []lexer.Token
+	scope  *ast.Scope
 	index  int
 }
 
-// NewParser creates a new parser
-func NewParser(tokens []lexer.Token) *Parser {
-	return &Parser{tokens: tokens}
+// Error represents an error in the parser package
+type Error struct {
+	Message string
+}
+
+// InternalError represents an error in the parser package that is unexpected
+type InternalError struct {
+	Message string
+	Stack   string
+}
+
+func (p *Parser) newError(message string) *Error {
+	return &Error{
+		Message: message,
+	}
+}
+
+func (e *Error) Error() string {
+	return e.Message
+}
+
+// func (p *Parser) newInternalError(message string) *InternalError {
+// 	return &InternalError{
+// 		Message: "Internal error: " + message,
+// 		Stack:   string(debug.Stack()),
+// 	}
+// }
+
+func (e *InternalError) Error() string {
+	return e.Message
+}
+
+// Parse is a convience method for parsing a raw string of code
+// func Parse(code string) (ast.Expression, error) {
+// 	lex := lexer.NewLexer([]byte(code))
+
+// 	tokens, err := lex.Lex()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	parser := NewParser(tokens)
+// 	return parser.expression(), nil
+// }
+
+// NewParser creates a new parser, if scope is false all block scopes will be nil
+func NewParser(tokens []lexer.Token, scope bool) *Parser {
+	p := &Parser{
+		tokens: tokens,
+	}
+
+	if scope {
+		p.scope = ast.NewScope()
+	}
+
+	return p
+}
+
+func (p *Parser) enterScope() {
+	if p.scope != nil {
+		p.scope = p.scope.Enter()
+	}
+}
+
+func (p *Parser) exitScope() {
+	if p.scope != nil {
+		p.scope = p.scope.Exit()
+	}
+}
+
+func (p *Parser) insertScope(name string, node ast.Node) {
+	if p.scope != nil {
+		p.scope.Insert(name, node)
+	}
 }
 
 func (p *Parser) token() lexer.Token {
@@ -29,18 +101,8 @@ func (p *Parser) next() lexer.Token {
 	return p.tokens[p.index]
 }
 
-// TODO: remove this
-func (p *Parser) back() {
-	p.index--
-}
-
 func (p *Parser) peek() lexer.Token {
 	return p.tokens[p.index+1]
-}
-
-// TODO: Can we remove this?
-func (p *Parser) peekpeek() lexer.Token {
-	return p.tokens[p.index+2]
 }
 
 func (p *Parser) eof() bool {
@@ -50,7 +112,8 @@ func (p *Parser) eof() bool {
 func (p *Parser) expect(typ lexer.TokenType) lexer.Token {
 	token := p.token()
 	if token.Type() != typ {
-		panic(fmt.Sprintf("Expected: %s, Got: %s", typ.String(), token.Type().String()))
+		err := p.newError(fmt.Sprintf("Expected: %s, Got: %s", typ.String(), token.Type().String()))
+		panic(err)
 	}
 
 	if !p.eof() {
@@ -67,447 +130,367 @@ func (p *Parser) accept(typ lexer.TokenType) (lexer.Token, bool) {
 
 	token := p.token()
 	if token.Type() != typ {
-		return token, false
+		return lexer.Token{}, false
 	}
 
 	p.next()
 	return token, true
 }
 
-func (p *Parser) ident() ast.Ident {
-	return ast.Ident{p.expect(lexer.IDENT).Value()}
-}
-
-func (p *Parser) integer() ast.Integer {
-	value, err := strconv.ParseInt(p.expect(lexer.INT).Value(), 10, 16)
-	if err != nil {
-		panic(err)
+func bindingPower(token lexer.Token) int {
+	switch token.Type() {
+	case lexer.ADD, lexer.SUB:
+		return 10
+	case lexer.MUL, lexer.QUO:
+		return 20
+	case lexer.LSS, lexer.LEQ, lexer.GTR, lexer.GEQ:
+		return 60
+	case lexer.LPAREN, lexer.LBRACK:
+		return 150
 	}
 
-	return ast.Integer{int64(value)}
+	return 0
 }
 
-func (p *Parser) float() ast.Float {
-	value, err := strconv.ParseFloat(p.expect(lexer.FLOAT).Value(), 64)
-	if err != nil {
-		panic(err)
-	}
-
-	return ast.Float{float64(value)}
-}
-
-func (p *Parser) call() ast.Call {
-	function := p.ident()
-	p.expect(lexer.LPAREN)
-
-	var args []ast.Expression
-	for p.token().Type() != lexer.RPAREN {
-		args = append(args, p.maths())
-		p.accept(lexer.COMMA)
-	}
-
-	p.expect(lexer.RPAREN)
-
-	return ast.Call{function, args}
-}
-
-func (p *Parser) arrayValue() ast.ArrayValue {
-	array := p.ident()
-	p.expect(lexer.LBRACK)
-	index := p.maths()
-	p.expect(lexer.RBRACK)
-
-	return ast.ArrayValue{array, ast.Index{index}}
-}
-
-// Maths parses binary expressions
-func (p *Parser) maths() ast.Expression {
-	outputStack := lane.NewStack()
-	operatorStack := lane.NewStack()
-	arityStack := lane.NewStack()
-
-	popOperatorStack := func() {
-		token := operatorStack.Pop().(lexer.Token)
-		rhs := outputStack.Pop().(ast.Expression)
-		lhs := outputStack.Pop().(ast.Expression)
-		outputStack.Push(ast.Binary{lhs, token.Type(), rhs})
-	}
-
-	// TODO: simplify this condition
-	notEnded := func(token lexer.Token, depth int) bool {
-		return token.Type() != lexer.SEMICOLON &&
-			token.Type() != lexer.LBRACE &&
-			token.Type() != lexer.RBRACE &&
-			!((token.Type() == lexer.COMMA || token.Type() == lexer.RPAREN) && depth == 0)
-	}
-
-	// fmt.Println("=== Begin maths ===")
-	// fmt.Println("Start token:", p.token().String())
-
-	depth := 0
-	for notEnded(p.token(), depth) {
-		token := p.token()
-
-		// fmt.Println("current: ", token.String())
-
-		switch token.Type() {
-		case lexer.INT:
-			outputStack.Push(p.integer())
-
-		case lexer.FLOAT:
-			outputStack.Push(p.float())
-
-		case lexer.ADD, lexer.SUB, lexer.MUL, lexer.QUO, lexer.REM,
-			lexer.GTR, lexer.LSS, lexer.GEQ, lexer.LEQ, lexer.EQL, lexer.NEQ:
-
-			for !operatorStack.Empty() &&
-				!operatorStack.Head().(lexer.Token).IsOperator() &&
-				token.Precedence() <= operatorStack.Head().(lexer.Token).Precedence() {
-
-				popOperatorStack()
+func (p *Parser) nud(token lexer.Token) ast.Expression {
+	switch token.Type() {
+	case lexer.IDENT:
+		return &ast.IdentExpression{
+			Value: token,
+		}
+	case lexer.INT, lexer.FLOAT:
+		return &ast.LiteralExpression{
+			Value: token,
+		}
+	case lexer.ADD, lexer.SUB:
+		return &ast.UnaryExpression{
+			Operator:   token,
+			Expression: p.expression(100),
+		}
+	case lexer.LPAREN:
+		if rparen, ok := p.accept(lexer.RPAREN); ok {
+			return &ast.ParenLiteralExpression{
+				LeftParen:  token,
+				Elements:   []ast.Expression{},
+				RightParen: rparen,
 			}
-			operatorStack.Push(token)
-			p.next()
-
-		case lexer.IDENT:
-			switch {
-			// Token is a function name, push it onto the operator stack
-			case notEnded(p.peek(), depth) && p.peek().Type() == lexer.LPAREN:
-				outputStack.Push(p.call())
-
-			// Token is a array index
-			case notEnded(p.peek(), depth) && p.peek().Type() == lexer.LBRACK:
-				outputStack.Push(p.arrayValue())
-
-			// Token is a varible name, push it onto the out queue
-			default:
-				outputStack.Push(p.ident())
-			}
-
-		case lexer.LPAREN:
-			depth++
-			operatorStack.Push(token)
-
-		case lexer.RPAREN:
-			depth--
-			for operatorStack.Head().(lexer.Token).Type() != lexer.LPAREN {
-				popOperatorStack()
-			}
-			operatorStack.Pop() // pop open bracket
-
-		case lexer.COMMA:
-			// Increment argument count
-			as := arityStack.Pop().(int)
-			arityStack.Push(as + 1)
-
-			for operatorStack.Head().(lexer.Token).Type() != lexer.LPAREN {
-				popOperatorStack()
-			}
-
-			if operatorStack.Empty() {
-				panic("Misplaced comma or mismatched parentheses")
-			}
-
-		default:
-			panic("Unexpected math token: " + token.String())
 		}
 
-		// fmt.Println("next: ", p.token().String())
-	}
-
-	for !operatorStack.Empty() {
-		popOperatorStack()
-	}
-
-	return outputStack.Pop().(ast.Expression)
-}
-
-func (p *Parser) ret() ast.Return {
-	p.expect(lexer.RETURN)
-	return ast.Return{p.maths()}
-}
-
-func (p *Parser) typ() ast.Type {
-	switch {
-	case p.peek().Type() == lexer.LBRACK:
-		base := p.expect(lexer.IDENT)
-		p.expect(lexer.LBRACK)
-		length := p.integer()
-		p.expect(lexer.RBRACK)
-		return &ast.ArrayType{
-			Type:   ast.NewBasic(base.Value()),
-			Length: length,
+		e := p.expression(0)
+		if _, ok := p.accept(lexer.RPAREN); ok {
+			return e
 		}
-	default:
-		return ast.NewBasic(p.expect(lexer.IDENT).Value())
-	}
-}
 
-func (p *Parser) namedTyp() ast.TypedIdent {
-	typ := p.typ()
-	name := p.ident()
+		elements := []ast.Expression{e}
+		_, ok := p.accept(lexer.COMMA)
+		for ok {
+			elements = append(elements, p.expression(0))
+			_, ok = p.accept(lexer.COMMA)
+		}
 
-	return ast.TypedIdent{
-		Ident: name,
-		Type:  typ,
-	}
-}
-
-func (p *Parser) argList() (args []ast.TypedIdent) {
-	for p.token().Type() != lexer.ARROW {
-		args = append(args, p.namedTyp())
-		p.accept(lexer.COMMA)
+		return &ast.ParenLiteralExpression{
+			LeftParen:  token,
+			Elements:   elements,
+			RightParen: p.expect(lexer.RPAREN),
+		}
 	}
 
-	return args
+	panic("nud Undefined for token type: " + token.Type().String())
 }
 
-func (p *Parser) returnList() (returns []ast.Type) {
-	p.expect(lexer.ARROW)
-	for p.token().Type() != lexer.LBRACE {
-		returns = append(returns, p.typ())
-		p.accept(lexer.COMMA)
-	}
+func (p *Parser) led(token lexer.Token, tree ast.Expression) ast.Expression {
+	switch token.Type() {
+	case lexer.ADD, lexer.SUB, lexer.MUL, lexer.QUO,
+		lexer.LSS, lexer.LEQ, lexer.GTR, lexer.GEQ:
 
-	return returns
-}
+		e := p.expression(bindingPower(token))
+		fmt.Println("Hello their!")
+		return &ast.BinaryExpression{
+			Left:     tree,
+			Operator: token,
+			Right:    e,
+		}
+	case lexer.LPAREN:
+		fmt.Println("led lparen")
+		elements := []ast.Expression{}
+		ok := p.token().Type() != lexer.RPAREN
+		for ok {
+			elements = append(elements, p.expression(0))
+			_, ok = p.accept(lexer.COMMA)
+		}
 
-func (p *Parser) function() ast.Function {
-	name := p.ident()
-	p.expect(lexer.DOUBLE_COLON)
-	args := p.argList()
-	returns := p.returnList()
-	body := p.block()
-
-	return ast.Function{
-		Name: name,
-		Type: ast.FunctionType{
-			Parameters: args,
-			Returns:    returns,
-		},
-		Body: body,
-	}
-}
-
-func (p *Parser) assignment() ast.Assignment {
-	typ := p.typ()
-	ident := p.ident()
-	p.expect(lexer.ASSIGN)
-	expression := p.Value()
-	return ast.Assignment{typ, ident, expression}
-}
-
-func (p *Parser) inferAssigment() ast.Assignment {
-	ident := p.ident()
-	p.expect(lexer.DEFINE)
-	expression := p.Value()
-	return ast.Assignment{nil, ident, expression}
-}
-
-func (p *Parser) reAssigment() ast.Assignment {
-	ident := p.ident()
-	p.expect(lexer.ASSIGN)
-	expression := p.Value()
-	return ast.Assignment{nil, ident, expression}
-}
-
-func (p *Parser) increment() ast.Assignment {
-	ident := p.ident()
-	p.next()
-	return ast.Assignment{
-		Name: ident,
-		Expression: ast.Binary{
-			Lhs: ident,
-			Op:  lexer.ADD,
-			Rhs: ast.Integer{
-				Value: 1,
+		return &ast.CallExpression{
+			Function: tree,
+			Arguments: &ast.ParenLiteralExpression{
+				LeftParen:  token,
+				Elements:   elements,
+				RightParen: p.expect(lexer.RPAREN),
 			},
-		},
-	}
-}
-
-func (p *Parser) decrement() ast.Assignment {
-	ident := p.ident()
-	p.next()
-	return ast.Assignment{
-		Name: ident,
-		Expression: ast.Binary{
-			Lhs: ident,
-			Op:  lexer.SUB,
-			Rhs: ast.Integer{
-				Value: 1,
-			},
-		},
-	}
-}
-
-func (p *Parser) addAssign() ast.Assignment {
-	ident := p.ident()
-	p.next()
-	value := p.Value()
-	return ast.Assignment{
-		Name: ident,
-		Expression: ast.Binary{
-			Lhs: ident,
-			Op:  lexer.ADD,
-			Rhs: value,
-		},
-	}
-}
-
-func (p *Parser) subAssign() ast.Assignment {
-	ident := p.ident()
-	p.next()
-	value := p.Value()
-	return ast.Assignment{
-		Name: ident,
-		Expression: ast.Binary{
-			Lhs: ident,
-			Op:  lexer.SUB,
-			Rhs: value,
-		},
-	}
-}
-
-func (p *Parser) block() ast.Block {
-	p.expect(lexer.LBRACE)
-
-	var expressions []ast.Expression
-	for p.token().Type() != lexer.RBRACE {
-		expressions = append(expressions, p.Expression())
-	}
-
-	p.expect(lexer.RBRACE)
-
-	return ast.Block{expressions}
-}
-
-func (p *Parser) ifBlock() *ast.If {
-	p.expect(lexer.IF)
-	condition := p.maths()
-	body := p.block()
-	var elseIf *ast.If
-
-	// Check for else/else if
-	_, isElse := p.accept(lexer.ELSE)
-	if isElse {
-		if p.token().Type() == lexer.IF {
-			elseIf = p.ifBlock()
-		} else {
-			elseIf = &ast.If{
-				Block: p.block(),
-			}
+		}
+	case lexer.LBRACK:
+		return &ast.IndexExpression{
+			Expression: tree,
+			LeftBrack:  token,
+			Index:      p.expression(0),
+			RightBrack: p.expect(lexer.RBRACK),
 		}
 	}
 
-	return &ast.If{
-		Condition: condition,
-		Block:     body,
-		Else:      elseIf,
+	panic("led Undefined for token type: " + p.token().Type().String())
+}
+
+func (p *Parser) expression(rightBindingPower int) ast.Expression {
+	t := p.token()
+	p.next()
+	left := p.nud(t)
+	for rightBindingPower < bindingPower(p.token()) {
+		pp.Println(rightBindingPower,
+			bindingPower(p.token()),
+			t.Type().String(),
+			p.token().Type().String(),
+			left)
+		t = p.token()
+		p.next()
+		left = p.led(t, left)
+	}
+
+	return left
+}
+
+func (p *Parser) assigment() *ast.AssignmentStatement {
+	return &ast.AssignmentStatement{
+		Left:   p.expression(0),
+		Assign: p.expect(lexer.ASSIGN),
+		Right:  p.expression(0),
 	}
 }
 
-func (p *Parser) forBlock() *ast.For {
-	p.expect(lexer.FOR)
-	index := p.Expression()
-	condition := p.maths()
-	p.expect(lexer.SEMICOLON)
-	increment := p.Expression()
+func (p *Parser) returnSmt() *ast.ReturnStatement {
+	return &ast.ReturnStatement{
+		Return: p.expect(lexer.RETURN),
+		Result: p.expression(0),
+	}
+}
+
+func (p *Parser) block() *ast.BlockStatement {
+	p.enterScope()
+	lbrace := p.expect(lexer.LBRACE)
+
+	statements := []ast.Statement{}
+	rbrace, ok := p.accept(lexer.RBRACE)
+	for !ok {
+		statements = append(statements, p.statement())
+		p.expect(lexer.SEMICOLON)
+		rbrace, ok = p.accept(lexer.RBRACE)
+	}
+
+	blockScope := p.scope
+	p.exitScope()
+
+	return &ast.BlockStatement{
+		Scope:      blockScope,
+		LeftBrace:  lbrace,
+		Statements: statements,
+		RightBrace: rbrace,
+	}
+}
+
+func (p *Parser) ifSmt() *ast.IfStatment {
+	ifToken, hasCondition := p.accept(lexer.IF)
+	var condition ast.Expression
+	if hasCondition {
+		condition = p.expression(0)
+	}
+
 	block := p.block()
 
-	return &ast.For{
-		Index:     index,
+	var elseSmt *ast.IfStatment
+	if _, ok := p.accept(lexer.ELSE); ok {
+		elseSmt = p.ifSmt()
+	}
+
+	return &ast.IfStatment{
+		If:        ifToken,
 		Condition: condition,
-		Increment: increment,
-		Block:     block,
+		Body:      block,
+		Else:      elseSmt,
 	}
 }
 
-func (p *Parser) cast() ast.Cast {
-	p.expect(lexer.LPAREN)
-	typ := p.typ()
-	p.expect(lexer.RPAREN)
-	exp := p.Value()
-
-	return ast.Cast{
-		Type:       typ,
-		Expression: exp,
+func (p *Parser) forSmt() *ast.ForStatement {
+	return &ast.ForStatement{
+		For:       p.expect(lexer.FOR),
+		Index:     p.statement(),
+		Semi1:     p.expect(lexer.SEMICOLON),
+		Condition: p.expression(0),
+		Semi2:     p.expect(lexer.SEMICOLON),
+		Increment: p.statement(),
+		Body:      p.block(),
 	}
 }
 
-func (p *Parser) list() ast.List {
-	p.expect(lexer.LBRACE)
-
-	var expressions []ast.Expression
-	ok := p.token().Type() != lexer.RBRACE
-	for ok {
-		expressions = append(expressions, p.Value())
-		_, ok = p.accept(lexer.COMMA)
-	}
-
-	p.expect(lexer.RBRACE)
-
-	return ast.List{
-		Expressions: expressions,
-	}
-}
-
-func (p *Parser) Value() ast.Expression {
-	switch p.token().Type() {
-	case lexer.LPAREN:
-		return p.cast()
-	case lexer.LBRACE:
-		return p.list()
-	default:
-		return p.maths()
-	}
-
-}
-
-func (p *Parser) Expression() ast.Expression {
-	var exp ast.Expression
-
+func (p *Parser) statement() ast.Statement {
 	switch p.token().Type() {
 	case lexer.RETURN:
-		exp = p.ret()
-	case lexer.IF:
-		exp = p.ifBlock()
-	case lexer.FOR:
-		exp = p.forBlock()
-	case lexer.LPAREN:
-		exp = p.cast()
+		return p.returnSmt()
 	case lexer.LBRACE:
-		exp = p.block()
-
-	case lexer.IDENT:
-		switch p.peek().Type() {
-		case lexer.DOUBLE_COLON:
-			exp = p.function()
-		case lexer.INC:
-			exp = p.increment()
-		case lexer.DEC:
-			exp = p.decrement()
-		case lexer.ADD_ASSIGN:
-			exp = p.addAssign()
-		case lexer.SUB_ASSIGN:
-			exp = p.subAssign()
-		case lexer.ASSIGN:
-			exp = p.reAssigment()
-		case lexer.DEFINE:
-			exp = p.inferAssigment()
-		case lexer.LPAREN:
-			exp = p.call()
-		default:
-			exp = p.assignment()
-		}
+		return p.block()
+	case lexer.IF:
+		return p.ifSmt()
+	case lexer.FOR:
+		return p.forSmt()
 	default:
-		exp = p.maths()
+		switch p.peek().Type() {
+		case lexer.ASSIGN:
+			return p.assigment()
+		default:
+			return &ast.DeclareStatement{
+				Statement: p.varibleDcl(),
+			}
+		}
 	}
-
-	p.accept(lexer.SEMICOLON)
-	return exp
 }
 
-func (p *Parser) Parse() ast.Expression {
-	return p.Expression()
+func (p *Parser) functionDcl() *ast.FunctionDeclaration {
+	p.expect(lexer.PROC)
+
+	// Parse function name
+	name := &ast.IdentExpression{
+		Value: p.expect(lexer.IDENT),
+	}
+
+	colon := p.expect(lexer.DOUBLE_COLON)
+
+	// Parse function arguments
+	arguments := []*ast.ArgumentDeclaration{}
+	_, ok := p.accept(lexer.ARROW)
+	for !ok {
+		typeExp := p.expression(0)
+		typ := types.GetType(typeExp.(*ast.IdentExpression).Value.Value())
+		name := p.expect(lexer.IDENT)
+		ident := &ast.IdentExpression{Value: name}
+
+		arguments = append(arguments, &ast.ArgumentDeclaration{
+			Name: ident,
+			Type: typ,
+		})
+
+		_, ok = p.accept(lexer.ARROW)
+		if !ok {
+			p.expect(lexer.COMMA)
+		}
+	}
+
+	// Get the return type
+	var returnTyp types.Type
+	if p.token().Type() != lexer.LBRACE {
+		returnTypeExp := p.expression(0)
+		returnTyp = types.GetType(returnTypeExp.(*ast.IdentExpression).Value.Value())
+	}
+
+	// Parse the function body
+	block := p.block()
+
+	// Inject function arguments into block scope
+	for _, arg := range arguments {
+		if block.Scope != nil {
+			block.Scope.Insert(arg.Name.Value.Value(), &ast.VaribleDeclaration{
+				Name:  arg.Name,
+				Type:  arg.Type,
+				Value: nil,
+			})
+		}
+	}
+
+	p.expect(lexer.SEMICOLON)
+
+	funcDcl := &ast.FunctionDeclaration{
+		Name:        name,
+		DoubleColon: colon,
+		Arguments:   arguments,
+		Return:      returnTyp,
+		Body:        block,
+	}
+
+	// Insert function into root scope
+	p.insertScope(name.Value.Value(), funcDcl)
+
+	return funcDcl
+}
+
+func (p *Parser) varibleDcl() *ast.VaribleDeclaration {
+	var typ types.Type
+	if p.peek().Type() != lexer.DEFINE {
+		typExp := p.expression(0)
+		typ = types.GetType(typExp.(*ast.IdentExpression).Value.Value())
+	}
+
+	name := &ast.IdentExpression{
+		Value: p.expect(lexer.IDENT),
+	}
+
+	_, ok := p.accept(lexer.DEFINE)
+	if !ok {
+		p.expect(lexer.ASSIGN)
+	}
+
+	varDcl := &ast.VaribleDeclaration{
+		Type:  typ,
+		Name:  name,
+		Value: p.expression(0),
+	}
+
+	p.insertScope(name.Value.Value(), varDcl)
+	return varDcl
+}
+
+func (p *Parser) declaration() ast.Declare {
+	switch p.token().Type() {
+	case lexer.PROC:
+		return p.functionDcl()
+	default:
+		return p.varibleDcl()
+	}
+}
+
+func (p *Parser) Parse() *ast.Ast {
+	var functions []*ast.FunctionDeclaration
+	for !p.eof() {
+		functions = append(functions, p.declaration().(*ast.FunctionDeclaration))
+	}
+
+	return &ast.Ast{
+		Functions: functions,
+		Scope:     p.scope,
+	}
+}
+
+func ParseExpression(code string) (ast.Expression, error) {
+	tokens, err := lexer.NewLexer([]byte(code)).Lex()
+	if err != nil {
+		return nil, err
+	}
+
+	ast := NewParser(tokens, true).expression(0)
+	return ast, nil
+}
+
+func ParseStatement(code string) (ast.Statement, error) {
+	tokens, err := lexer.NewLexer([]byte(code)).Lex()
+	if err != nil {
+		return nil, err
+	}
+
+	ast := NewParser(tokens, true).statement()
+	return ast, nil
+}
+
+func ParseDeclaration(code string) (ast.Declare, error) {
+	tokens, err := lexer.NewLexer([]byte(code)).Lex()
+	if err != nil {
+		return nil, err
+	}
+
+	ast := NewParser(tokens, true).declaration()
+	return ast, nil
 }
