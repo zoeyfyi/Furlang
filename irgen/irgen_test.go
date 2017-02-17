@@ -60,7 +60,7 @@ func TestIrgen(t *testing.T) {
 		// "array_i32.fur",
 		// "array_i64.fur",
 		// "array_int.fur",
-		// "blocks.fur",
+		"blocks.fur",
 		// "cast_from_f32_type.fur",
 		// "cast_from_f64_type.fur",
 		// "cast_to_i16_type.fur",
