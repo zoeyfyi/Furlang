@@ -84,23 +84,6 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 	}
 }
 
-func (g *Irgen) typeOf(node ast.Expression) types.Type {
-	switch node := node.(type) {
-	case *ast.BinaryExpression:
-		return g.typeOf(node.Left)
-
-	case *ast.LiteralExpression:
-		switch node.Value.Type() {
-		case lexer.INT:
-			return types.IntType(0)
-		case lexer.FLOAT:
-			return types.FloatType(0)
-		}
-	}
-
-	panic(fmt.Sprintf("Unknown expression node: %s", pp.Sprint(node)))
-}
-
 func (g *Irgen) literalExp(node *ast.LiteralExpression) gooryvalues.Value {
 	switch node.Value.Type() {
 	case lexer.INT:

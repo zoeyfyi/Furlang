@@ -3,8 +3,6 @@ package parser
 import (
 	"fmt"
 
-	"runtime/debug"
-
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/types"
@@ -39,12 +37,12 @@ func (e *Error) Error() string {
 	return e.Message
 }
 
-func (p *Parser) newInternalError(message string) *InternalError {
-	return &InternalError{
-		Message: "Internal error: " + message,
-		Stack:   string(debug.Stack()),
-	}
-}
+// func (p *Parser) newInternalError(message string) *InternalError {
+// 	return &InternalError{
+// 		Message: "Internal error: " + message,
+// 		Stack:   string(debug.Stack()),
+// 	}
+// }
 
 func (e *InternalError) Error() string {
 	return e.Message
