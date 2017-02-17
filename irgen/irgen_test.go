@@ -19,7 +19,7 @@ import (
 
 func runIr(ir string) (int, string) {
 	// Setup lli to run the llvm ir
-	cmd := exec.Command("lli-3.8")
+	cmd := exec.Command("lli-3.9")
 	cmd.Stdin = strings.NewReader(ir)
 	var out bytes.Buffer
 	cmd.Stdout = &out
