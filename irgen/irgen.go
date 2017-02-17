@@ -11,6 +11,8 @@ import (
 
 	"log"
 
+	"reflect"
+
 	gooryvalues "github.com/bongo227/goory/value"
 	"github.com/k0kubun/pp"
 )
@@ -18,16 +20,15 @@ import (
 type Irgen struct {
 	tree        *ast.Ast
 	module      *goory.Module
-	values      map[string]*gooryvalues.Value
 	parentBlock *goory.Block
-	parentScope *ast.Scope
+	scope       *Scope
 }
 
 func NewIrgen(tree *ast.Ast) *Irgen {
 	return &Irgen{
 		tree:   tree,
 		module: goory.NewModule("test"),
-		values: make(map[string]*gooryvalues.Value),
+		scope:  NewScope(),
 	}
 }
 
@@ -45,7 +46,9 @@ func (g *Irgen) function(node *ast.FunctionDeclaration) {
 
 	// Add arguments to function
 	for _, arg := range node.Arguments {
-		f.AddArgument(arg.Type.Llvm(), arg.Name.Value.Value())
+		name := arg.Name.Value.Value()
+		arg := f.AddArgument(arg.Type.Llvm(), name)
+		g.scope.Add(name, arg)
 	}
 
 	g.parentBlock = f.Entry()
@@ -53,17 +56,31 @@ func (g *Irgen) function(node *ast.FunctionDeclaration) {
 }
 
 func (g *Irgen) block(node *ast.BlockStatement) {
-	g.parentScope = node.Scope
+	// Push new scope
+	g.scope = g.scope.Push()
+
 	for _, smt := range node.Statements {
 		g.statement(smt)
 	}
 }
 
 func (g *Irgen) statement(node ast.Statement) {
+	log.Printf("Statement of type %q", reflect.TypeOf(node).String())
+
 	switch node := node.(type) {
 	case *ast.ReturnStatement:
 		g.returnSmt(node)
+	case *ast.DeclareStatement:
+		g.declareSmt(node)
 	}
+}
+
+func (g *Irgen) declareSmt(node *ast.DeclareStatement) {
+	// TODO: handle function declarations
+	decl := node.Statement.(*ast.VaribleDeclaration)
+	name := decl.Name.Value.Value()
+	exp := g.expression(decl.Value)
+	g.scope.Add(name, exp)
 }
 
 func (g *Irgen) returnSmt(node *ast.ReturnStatement) {
@@ -73,15 +90,27 @@ func (g *Irgen) returnSmt(node *ast.ReturnStatement) {
 
 func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 	switch node := node.(type) {
-	case *ast.CastExpression:
-		return g.castExp(node)
 	case *ast.BinaryExpression:
 		return g.binaryExp(node)
+	case *ast.CastExpression:
+		return g.castExp(node)
 	case *ast.LiteralExpression:
 		return g.literalExp(node)
+	case *ast.IdentExpression:
+		return g.identExp(node)
 	default:
 		panic(fmt.Sprintf("Unknown expression node: %s", pp.Sprint(node)))
 	}
+}
+
+func (g *Irgen) identExp(node *ast.IdentExpression) gooryvalues.Value {
+	ident := node.Value.Value()
+	item, ok := g.scope.Get(ident)
+	if !ok {
+		log.Fatalf("%q was not is scope", ident)
+	}
+
+	return item.Value
 }
 
 func (g *Irgen) literalExp(node *ast.LiteralExpression) gooryvalues.Value {

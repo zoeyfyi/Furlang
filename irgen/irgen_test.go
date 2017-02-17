@@ -91,7 +91,7 @@ func TestIrgen(t *testing.T) {
 		// "mod_operator.fur",
 		// "reassignment.fur",
 		// "returns.fur",
-		// "rpn.fur",
+		"rpn.fur",
 		// "single_if.fur",
 	}
 
