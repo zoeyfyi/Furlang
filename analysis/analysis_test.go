@@ -116,9 +116,6 @@ func TestCall(t *testing.T) {
 
 	parser := parser.NewParser(tokens, true)
 	tree := parser.Parse()
-	// if err != nil {
-	// 	t.Error(err)
-	// }
 
 	ana := NewAnalysis(tree)
 	a := ana.Analalize()
@@ -126,19 +123,24 @@ func TestCall(t *testing.T) {
 	firstSmt := a.Functions[1].Body.Statements[0]
 	returnSmt, ok := firstSmt.(*ast.ReturnStatement)
 	if !ok {
-		t.Errorf("Expected first expression to be a return statement, got: %s", reflect.TypeOf(firstSmt).String())
+		t.Fatalf("Expected first expression to be a return statement, got: %s", reflect.TypeOf(firstSmt).String())
 	}
 
-	call, ok := returnSmt.Result.(*ast.CallExpression)
+	cast, ok := returnSmt.Result.(*ast.CastExpression)
 	if !ok {
-		t.Errorf("Expected return value to be of type call, got: %s", reflect.TypeOf(call).String())
+		t.Fatalf("Expected return value to be of type \"*ast.CastExpression\", got: %q", reflect.TypeOf(returnSmt.Result).String())
+	}
+
+	call := cast.Expression.(*ast.CallExpression)
+	if !ok {
+		t.Fatalf("Expected casted return value to be of type \"ast.CallExpression\" Got: %q", reflect.TypeOf(cast.Expression).String())
 	}
 
 	if _, ok := call.Arguments.Elements[1].(*ast.LiteralExpression); !ok {
-		t.Errorf("Expected parameter 1 to be a integer got: %s", pp.Sprint(call.Arguments.Elements[1]))
+		t.Fatalf("Expected parameter 1 to be a integer got: %s", pp.Sprint(call.Arguments.Elements[1]))
 	}
 
 	if _, ok := call.Arguments.Elements[0].(*ast.CastExpression); !ok {
-		t.Errorf("Expected parameter 0 to be a cast got: %s", pp.Sprint(call.Arguments.Elements[0]))
+		t.Fatalf("Expected parameter 0 to be a cast got: %s", pp.Sprint(call.Arguments.Elements[0]))
 	}
 }

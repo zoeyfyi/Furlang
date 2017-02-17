@@ -68,11 +68,8 @@ func (c *Compiler) Compile(buildDirectory string) error {
 	}
 
 	// Run parser
-	parser := parser.NewParser(tokens)
-	ast, err := parser.Parse()
-	if err != nil {
-		return err
-	}
+	parser := parser.NewParser(tokens, true)
+	ast := parser.Parse()
 
 	// Run analyser
 	analyser := analysis.NewAnalysis(ast)
@@ -93,10 +90,7 @@ func (c *Compiler) Compile(buildDirectory string) error {
 	// Compile ast to llvm
 	if !c.NoCompile {
 		ir := irgen.NewIrgen(ast)
-		llvm, err := ir.Generate()
-		if err != nil {
-			return err
-		}
+		llvm := ir.Generate()
 
 		f, err := os.Create(buildDirectory + "/ben.ll")
 		if err != nil {
