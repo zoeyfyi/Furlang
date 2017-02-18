@@ -42,13 +42,16 @@ func (g *Irgen) Generate() string {
 
 func (g *Irgen) function(node *ast.FunctionDeclaration) {
 	// Create new function in module
-	f := g.module.NewFunction(node.Name.Value.Value(), node.Return.Llvm())
+	fName := node.Name.Value.Value()
+	f := g.module.NewFunction(fName, node.Return.Llvm())
+
+	g.scope.AddFunction(fName, f)
 
 	// Add arguments to function
 	for _, arg := range node.Arguments {
 		name := arg.Name.Value.Value()
 		arg := f.AddArgument(arg.Type.Llvm(), name)
-		g.scope.Add(name, arg)
+		g.scope.AddVar(name, arg)
 	}
 
 	g.parentBlock = f.Entry()
@@ -80,7 +83,7 @@ func (g *Irgen) declareSmt(node *ast.DeclareStatement) {
 	decl := node.Statement.(*ast.VaribleDeclaration)
 	name := decl.Name.Value.Value()
 	exp := g.expression(decl.Value)
-	g.scope.Add(name, exp)
+	g.scope.AddVar(name, exp)
 }
 
 func (g *Irgen) returnSmt(node *ast.ReturnStatement) {
@@ -98,19 +101,34 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 		return g.literalExp(node)
 	case *ast.IdentExpression:
 		return g.identExp(node)
+	case *ast.CallExpression:
+		return g.callExp(node)
 	default:
 		panic(fmt.Sprintf("Unknown expression node: %s", pp.Sprint(node)))
 	}
 }
 
+func (g *Irgen) callExp(node *ast.CallExpression) gooryvalues.Value {
+	// TODO: handle lambda's (i.e. functions that are not called by name)
+	funcName := node.Function.(*ast.IdentExpression).Value.Value()
+	function, _ := g.scope.GetFunction(funcName)
+
+	args := make([]gooryvalues.Value, len(node.Arguments.Elements))
+	for i, element := range node.Arguments.Elements {
+		args[i] = g.expression(element)
+	}
+
+	return g.parentBlock.Call(function, args...)
+}
+
 func (g *Irgen) identExp(node *ast.IdentExpression) gooryvalues.Value {
 	ident := node.Value.Value()
-	item, ok := g.scope.Get(ident)
+	item, ok := g.scope.GetVar(ident)
 	if !ok {
 		log.Fatalf("%q was not is scope", ident)
 	}
 
-	return item.Value
+	return item
 }
 
 func (g *Irgen) literalExp(node *ast.LiteralExpression) gooryvalues.Value {

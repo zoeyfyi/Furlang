@@ -1,4 +1,4 @@
-main :: -> i32 {
+proc main :: -> i32 {
     n := 120
     n = 123
     return n
