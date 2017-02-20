@@ -4,8 +4,14 @@ import (
 	"flag"
 	"fmt"
 
+	"log"
+
 	"github.com/bongo227/Furlang/compiler"
 )
+
+func init() {
+	log.SetFlags(log.Ltime | log.Lshortfile)
+}
 
 func main() {
 	// Parse command line flags
@@ -16,6 +22,7 @@ func main() {
 	flag.Parse()
 
 	path := flag.Arg(0)
+	log.Println(path)
 	comp, err := compiler.New(path)
 	if err != nil {
 		fmt.Println(err)
