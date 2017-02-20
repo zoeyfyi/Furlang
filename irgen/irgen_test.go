@@ -17,6 +17,10 @@ import (
 	"github.com/bongo227/Furlang/parser"
 )
 
+func init() {
+	log.SetFlags(log.Ltime | log.Lshortfile)
+}
+
 func runIr(ir string) (int, string) {
 	// Setup lli to run the llvm ir
 	cmd := exec.Command("lli-3.9")
@@ -71,10 +75,10 @@ func TestIrgen(t *testing.T) {
 		// "decrement_multiple.fur",
 		// "decrement_single.fur",
 		// "float.fur",
-		// "float_equal_to.fur",
-		// "float_less_than.fur",
-		// "float_more_than.fur",
-		// "float_not_equal_to.fur",
+		"float_equal_to.fur",
+		"float_less_than.fur",
+		"float_more_than.fur",
+		"float_not_equal_to.fur",
 		// "for_loop.fur",
 		"function.fur",
 		// "i16_type.fur",
@@ -84,9 +88,9 @@ func TestIrgen(t *testing.T) {
 		"if.fur",
 		// "increment_multiple.fur",
 		// "increment_single.fur",
-		// "integer_equal_to.fur",
-		// "integer_more_than.fur",
-		// "integer_not_equal_to.fur",
+		"integer_equal_to.fur",
+		"integer_more_than.fur",
+		"integer_not_equal_to.fur",
 		"main.fur",
 		// "mod_operator.fur",
 		// "reassignment.fur",

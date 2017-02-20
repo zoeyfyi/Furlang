@@ -1,4 +1,4 @@
-main :: -> i32 {
+proc main :: -> i32 {
     if 10.5 > 11.5 {
         return 321
     } else {

@@ -1,4 +1,4 @@
-main :: -> i32 {
+proc main :: -> i32 {
     if 14 > 3 {
         return 123
     } else {

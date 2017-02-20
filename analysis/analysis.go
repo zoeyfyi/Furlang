@@ -56,6 +56,7 @@ func (a *Analysis) typ(node ast.Node) types.Type {
 	case *ast.BinaryExpression:
 		lType := a.typ(node.Left)
 		rType := a.typ(node.Right)
+		log.Printf("lType: %t, rType: %t", lType == floatType, rType == floatType)
 		if lType == floatType || rType == floatType {
 			return floatType
 		}
@@ -224,7 +225,7 @@ func (a *Analysis) binary(node *ast.BinaryExpression) {
 
 	// Gets the overall type of node
 	typ := a.typ(node)
-	node.IsFp = typ.(*types.Basic).Info()&types.IsFloat == 1
+	node.IsFp = typ.(*types.Basic).Info()&types.IsFloat != 0
 
 	// If left part of the node doesnt match the type of the node cast it
 	if leftTyp := a.typ(node.Left); leftTyp != typ {

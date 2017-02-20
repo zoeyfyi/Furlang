@@ -101,13 +101,15 @@ func (g *Irgen) ifSmt(node *ast.IfStatment, block, endBlock *goory.Block) {
 	if !block.Terminated() {
 		block.Br(endBlock)
 	}
-	g.parentBlock = falseBlock
 
 	// Add the conditional branch
 	if node.Condition != nil {
+		g.parentBlock = parent
 		condition := g.expression(node.Condition)
 		parent.CondBr(condition, block, falseBlock)
 	}
+
+	g.parentBlock = falseBlock
 
 	// Check for else statement
 	if node.Else != nil {
@@ -193,6 +195,8 @@ func (g *Irgen) binaryExp(node *ast.BinaryExpression) gooryvalues.Value {
 	left := g.expression(node.Left)
 	right := g.expression(node.Right)
 
+	log.Printf("Is fp: %t", node.IsFp)
+
 	if node.IsFp {
 		switch node.Operator.Type() {
 		case lexer.ADD:
@@ -223,13 +227,13 @@ func (g *Irgen) binaryExp(node *ast.BinaryExpression) gooryvalues.Value {
 		case lexer.QUO:
 			return g.parentBlock.Div(left, right)
 		case lexer.EQL:
-			return g.parentBlock.Icmp(goory.FloatOeq, left, right)
+			return g.parentBlock.Icmp(goory.IntEq, left, right)
 		case lexer.NEQ:
-			return g.parentBlock.Icmp(goory.FloatOne, left, right)
+			return g.parentBlock.Icmp(goory.IntNe, left, right)
 		case lexer.GTR:
-			return g.parentBlock.Icmp(goory.FloatOgt, left, right)
+			return g.parentBlock.Icmp(goory.IntSgt, left, right)
 		case lexer.LSS:
-			return g.parentBlock.Icmp(goory.FloatOlt, left, right)
+			return g.parentBlock.Icmp(goory.IntSlt, left, right)
 		}
 	}
 

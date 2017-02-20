@@ -240,7 +240,7 @@ func (b *Basic) Llvm() goorytypes.Type {
 	case I64:
 		return goorytypes.NewIntType(64)
 	case Float:
-		return goorytypes.NewDoubleType()
+		return goorytypes.NewFloatType()
 	case F32:
 		return goorytypes.NewFloatType()
 	case F64:
