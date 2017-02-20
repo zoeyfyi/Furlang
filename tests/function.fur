@@ -1,9 +1,9 @@
-add :: i32 a, i32 b -> i32 {
+proc add :: i32 a, i32 b -> i32 {
     c := a + b
     return c
 }
 
-main :: -> i32 {
+proc main :: -> i32 {
     a := add(100, 23)
     return a
 }

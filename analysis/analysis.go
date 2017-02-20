@@ -17,8 +17,8 @@ var (
 	floatType = types.FloatType(0)
 )
 
-// Analysis checks the semantics of the abstract syntax tree and adds any allowed omisions
-// such as type inference
+// Analysis checks the semantics of the abstract syntax tree and adds any allowed
+// omisions such as type inference
 type Analysis struct {
 	root            *ast.Ast
 	currentBlock    *ast.BlockStatement
@@ -106,6 +106,13 @@ func (a *Analysis) varible(node *ast.VaribleDeclaration) {
 	}
 }
 
+func (a *Analysis) declare(node ast.Declare) {
+	switch node := (node).(type) {
+	case *ast.VaribleDeclaration:
+		a.varible(node)
+	}
+}
+
 func (a *Analysis) statement(node ast.Statement) {
 	switch node := (node).(type) {
 	case *ast.AssignmentStatement:
@@ -118,6 +125,8 @@ func (a *Analysis) statement(node ast.Statement) {
 		a.block(node)
 	case *ast.ReturnStatement:
 		a.returnNode(node)
+	case *ast.DeclareStatement:
+		a.declare(node.Statement)
 	}
 }
 

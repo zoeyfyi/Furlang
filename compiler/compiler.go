@@ -10,7 +10,6 @@ import (
 	"github.com/bongo227/Furlang/irgen"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/parser"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/k0kubun/pp"
 )
 
@@ -84,7 +83,9 @@ func (c *Compiler) Compile(buildDirectory string) error {
 		defer f.Close()
 
 		pp.Print(ast)
-		f.WriteString(spew.Sdump(ast))
+		pp.ColoringEnabled = false
+		f.WriteString(pp.Sprint(ast))
+		pp.ColoringEnabled = true
 	}
 
 	// Compile ast to llvm
