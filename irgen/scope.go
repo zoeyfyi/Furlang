@@ -50,6 +50,13 @@ func (s *Scope) GetLocalVar(key string) (gooryvalues.Value, bool) {
 // GetVar returns the item and true if the key is in local (or parent scope),
 // otherwise false
 func (s *Scope) GetVar(key string) (gooryvalues.Value, bool) {
+	// TODO: do this with a map
+	if key == "true" {
+		return goory.Constant(goory.BoolType(), true), true
+	} else if key == "false" {
+		return goory.Constant(goory.BoolType(), false), true
+	}
+
 	for s.parentScope != nil {
 		if item, ok := s.scope.varibles[key]; ok {
 			return item, true

@@ -92,7 +92,7 @@ func TestIrgen(t *testing.T) {
 		// "reassignment.fur",
 		"returns.fur",
 		"rpn.fur",
-		// "single_if.fur",
+		"single_if.fur",
 	}
 
 	for _, file := range files {

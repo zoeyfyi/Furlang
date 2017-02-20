@@ -71,11 +71,53 @@ func (g *Irgen) statement(node ast.Statement) {
 	log.Printf("Statement of type %q", reflect.TypeOf(node).String())
 
 	switch node := node.(type) {
+	case *ast.IfStatment:
+		block := g.parentBlock.Function().AddBlock()
+		endBlock := g.parentBlock.Function().AddBlock()
+		g.ifSmt(node, block, endBlock)
 	case *ast.ReturnStatement:
 		g.returnSmt(node)
 	case *ast.DeclareStatement:
 		g.declareSmt(node)
 	}
+}
+
+func (g *Irgen) ifSmt(node *ast.IfStatment, block, endBlock *goory.Block) {
+	// parent := g.parentBlock
+	if block == nil {
+		block = g.parentBlock.Function().AddBlock()
+	}
+
+	// falseBlock either points to and else/else if block to be generated or
+	// the last block to continue execution
+	falseBlock := endBlock
+	if node.Else != nil {
+		g.parentBlock.Function().AddBlock()
+	}
+
+	// Generate true block
+	g.parentBlock = block
+	g.block(node.Body)
+	// Didnt terminate block so continue exection at end block
+	if !block.Terminated() {
+		g.parentBlock.Br(endBlock)
+	}
+	g.parentBlock = falseBlock
+
+	// Add the conditional branch
+	if node.Condition != nil {
+		condition := g.expression(node.Condition)
+		g.parentBlock.CondBr(condition, block, falseBlock)
+	} else {
+		g.parentBlock.Br(block)
+	}
+
+	// Check for else statement
+	if node.Else != nil {
+		g.ifSmt(node.Else, falseBlock, endBlock)
+	}
+
+	g.parentBlock = endBlock
 }
 
 func (g *Irgen) declareSmt(node *ast.DeclareStatement) {
