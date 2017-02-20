@@ -143,7 +143,8 @@ func bindingPower(token lexer.Token) int {
 		return 10
 	case lexer.MUL, lexer.QUO:
 		return 20
-	case lexer.LSS, lexer.LEQ, lexer.GTR, lexer.GEQ:
+	case lexer.LSS, lexer.LEQ, lexer.GTR, lexer.GEQ,
+		lexer.EQL, lexer.NEQ:
 		return 60
 	case lexer.LPAREN, lexer.LBRACK:
 		return 150
@@ -201,17 +202,16 @@ func (p *Parser) nud(token lexer.Token) ast.Expression {
 func (p *Parser) led(token lexer.Token, tree ast.Expression) ast.Expression {
 	switch token.Type() {
 	case lexer.ADD, lexer.SUB, lexer.MUL, lexer.QUO,
-		lexer.LSS, lexer.LEQ, lexer.GTR, lexer.GEQ:
+		lexer.LSS, lexer.LEQ, lexer.GTR, lexer.GEQ,
+		lexer.EQL, lexer.NEQ:
 
 		e := p.expression(bindingPower(token))
-		fmt.Println("Hello their!")
 		return &ast.BinaryExpression{
 			Left:     tree,
 			Operator: token,
 			Right:    e,
 		}
 	case lexer.LPAREN:
-		fmt.Println("led lparen")
 		elements := []ast.Expression{}
 		ok := p.token().Type() != lexer.RPAREN
 		for ok {

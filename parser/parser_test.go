@@ -279,6 +279,28 @@ func TestParserStatements(t *testing.T) {
 		},
 
 		{
+			`if x == 3 {}`,
+			&ast.IfStatment{
+				If: lexer.NewToken(lexer.IF, "if", 1, 1),
+				Condition: &ast.BinaryExpression{
+					Left: &ast.IdentExpression{
+						Value: lexer.NewToken(lexer.IDENT, "x", 1, 4),
+					},
+					Operator: lexer.NewToken(lexer.EQL, "", 1, 6),
+					Right: &ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "3", 1, 9),
+					},
+				},
+				Body: &ast.BlockStatement{
+					LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 11),
+					Statements: []ast.Statement{},
+					RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 12),
+				},
+				Else: nil,
+			},
+		},
+
+		{
 			`if x > 3 {} else if x < 3 {}`,
 			&ast.IfStatment{
 				If: lexer.NewToken(lexer.IF, "if", 1, 1),
