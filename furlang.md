@@ -1,6 +1,5 @@
 #Furlang: An investigation into modern programming languages and compilers
 
-----------
 ##Analysis
 Until recently most game development was done in C/C++ because there were no real alternatives for game engines seeking to maximize the hardware. Most modern languages are designed with a garbage collector to prevent the problems which arise with manual memory management, and object oriented patterns which aim to encapsulate state to make the program easier to reason about. What has become apparent is that these features have excluded modern languages from serious widespread use in high performance code bases, and there is a gap for programming language with modern ideas without the heavy drawbacks from the modern alternatives. 
 
@@ -108,7 +107,6 @@ This makes managing multiple versions of compilers trivial since you can just in
 - Executable should be easily obtainable from the project's website and GitHub repository.
 - Provide builds for different architectures and operating systems.
 
-----------
 ##Documented Design
 
 ###Overview
@@ -200,11 +198,9 @@ block.Ret(result)
 // Gets the llvm ir for the "test" module
 module.LLVM()
 ```
-----------
 ##Technical Solution
 Insert code here...
 
-----------
 ##Testing
 
 ###Lexer
@@ -216,11 +212,9 @@ Input | Expected | Result
 `"100 + 23"` | `Token{INT, "100", 1, 1}`, `Token{ADD, "", 1, 5}`, `Token{INT, "23", 1, 7}`, `Token{SEMICOLON, "\n", 1, 9}` | Pass
 
 
-----------
 ##Evaluation
 Insert evaluation here...
 
-----------
 ##References
 1. The Rust Reference <a id="1">https://doc.rust-lang.org/reference.html</a>
 2. The Go Programming Language Specification <a id="2">https://golang.org/ref/spec</a>
