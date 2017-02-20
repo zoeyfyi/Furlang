@@ -72,9 +72,8 @@ func (g *Irgen) statement(node ast.Statement) {
 
 	switch node := node.(type) {
 	case *ast.IfStatment:
-		block := g.parentBlock.Function().AddBlock()
 		endBlock := g.parentBlock.Function().AddBlock()
-		g.ifSmt(node, block, endBlock)
+		g.ifSmt(node, nil, endBlock)
 	case *ast.ReturnStatement:
 		g.returnSmt(node)
 	case *ast.DeclareStatement:
@@ -83,7 +82,7 @@ func (g *Irgen) statement(node ast.Statement) {
 }
 
 func (g *Irgen) ifSmt(node *ast.IfStatment, block, endBlock *goory.Block) {
-	// parent := g.parentBlock
+	parent := g.parentBlock
 	if block == nil {
 		block = g.parentBlock.Function().AddBlock()
 	}
@@ -92,7 +91,7 @@ func (g *Irgen) ifSmt(node *ast.IfStatment, block, endBlock *goory.Block) {
 	// the last block to continue execution
 	falseBlock := endBlock
 	if node.Else != nil {
-		g.parentBlock.Function().AddBlock()
+		falseBlock = g.parentBlock.Function().AddBlock()
 	}
 
 	// Generate true block
@@ -100,16 +99,14 @@ func (g *Irgen) ifSmt(node *ast.IfStatment, block, endBlock *goory.Block) {
 	g.block(node.Body)
 	// Didnt terminate block so continue exection at end block
 	if !block.Terminated() {
-		g.parentBlock.Br(endBlock)
+		block.Br(endBlock)
 	}
 	g.parentBlock = falseBlock
 
 	// Add the conditional branch
 	if node.Condition != nil {
 		condition := g.expression(node.Condition)
-		g.parentBlock.CondBr(condition, block, falseBlock)
-	} else {
-		g.parentBlock.Br(block)
+		parent.CondBr(condition, block, falseBlock)
 	}
 
 	// Check for else statement

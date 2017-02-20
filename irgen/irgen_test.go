@@ -81,7 +81,7 @@ func TestIrgen(t *testing.T) {
 		// "i32_type.fur",
 		// "i64_type.fur",
 		// "i8_type.fur",
-		// "if.fur",
+		"if.fur",
 		// "increment_multiple.fur",
 		// "increment_single.fur",
 		// "integer_equal_to.fur",
