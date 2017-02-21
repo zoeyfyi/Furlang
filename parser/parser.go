@@ -329,6 +329,58 @@ func (p *Parser) forSmt() *ast.ForStatement {
 	}
 }
 
+func (p *Parser) incrementSmt() *ast.AssignmentStatement {
+	exp := p.expression(0)
+
+	var op lexer.TokenType
+	var opRight ast.Expression
+	token := p.token().Type()
+	p.next()
+	switch token {
+	case lexer.INC:
+		op = lexer.ADD
+		opRight = &ast.LiteralExpression{
+			Value: lexer.NewToken(lexer.INT, "1", 0, 0),
+		}
+
+	case lexer.DEC:
+		op = lexer.SUB
+		opRight = &ast.LiteralExpression{
+			Value: lexer.NewToken(lexer.INT, "1", 0, 0),
+		}
+
+	case lexer.ADD_ASSIGN:
+		op = lexer.ADD
+		opRight = p.expression(0)
+
+	case lexer.SUB_ASSIGN:
+		op = lexer.SUB
+		opRight = p.expression(0)
+
+	case lexer.MUL_ASSIGN:
+		op = lexer.MUL
+		opRight = p.expression(0)
+
+	case lexer.QUO_ASSIGN:
+		op = lexer.QUO
+		opRight = p.expression(0)
+
+	case lexer.REM_ASSIGN:
+		op = lexer.REM
+		opRight = p.expression(0)
+	}
+
+	return &ast.AssignmentStatement{
+		Left: exp,
+		Right: &ast.BinaryExpression{
+			IsFp:     false,
+			Left:     exp,
+			Operator: lexer.NewToken(op, "", 0, 0),
+			Right:    opRight,
+		},
+	}
+}
+
 func (p *Parser) statement() ast.Statement {
 	switch p.token().Type() {
 	case lexer.RETURN:
@@ -340,7 +392,11 @@ func (p *Parser) statement() ast.Statement {
 	case lexer.FOR:
 		return p.forSmt()
 	default:
+		// TODO: covert this into pratt pass
 		switch p.peek().Type() {
+		case lexer.INC, lexer.DEC, lexer.ADD_ASSIGN, lexer.SUB_ASSIGN, lexer.MUL_ASSIGN,
+			lexer.QUO_ASSIGN, lexer.REM_ASSIGN:
+			return p.incrementSmt()
 		case lexer.ASSIGN:
 			return p.assigment()
 		default:
