@@ -78,7 +78,10 @@ func (g *Irgen) statement(node ast.Statement) {
 		g.returnSmt(node)
 	case *ast.DeclareStatement:
 		g.declareSmt(node)
+	case *ast.AssignmentStatement:
+		g.assignmentSmt(node)
 	}
+
 }
 
 func (g *Irgen) ifSmt(node *ast.IfStatment, block, endBlock *goory.Block) {
@@ -119,6 +122,11 @@ func (g *Irgen) ifSmt(node *ast.IfStatment, block, endBlock *goory.Block) {
 	g.parentBlock = endBlock
 }
 
+func (g *Irgen) returnSmt(node *ast.ReturnStatement) {
+	exp := g.expression(node.Result)
+	g.parentBlock.Ret(exp)
+}
+
 func (g *Irgen) declareSmt(node *ast.DeclareStatement) {
 	// TODO: handle function declarations
 	decl := node.Statement.(*ast.VaribleDeclaration)
@@ -127,9 +135,11 @@ func (g *Irgen) declareSmt(node *ast.DeclareStatement) {
 	g.scope.AddVar(name, exp)
 }
 
-func (g *Irgen) returnSmt(node *ast.ReturnStatement) {
-	exp := g.expression(node.Result)
-	g.parentBlock.Ret(exp)
+func (g *Irgen) assignmentSmt(node *ast.AssignmentStatement) {
+	name := node.Left.(*ast.IdentExpression).Value.Value()
+	exp := g.expression(node.Right)
+
+	g.scope.AddVar(name, exp)
 }
 
 func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {

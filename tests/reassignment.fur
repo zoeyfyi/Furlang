@@ -1,5 +1,6 @@
 proc main :: -> i32 {
     n := 120
-    n = 123
+    
+    n = n + 3
     return n
 }
