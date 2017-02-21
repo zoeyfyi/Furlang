@@ -92,7 +92,7 @@ func TestIrgen(t *testing.T) {
 		"integer_more_than.fur",
 		"integer_not_equal_to.fur",
 		"main.fur",
-		// "mod_operator.fur",
+		"mod_operator.fur",
 		// "reassignment.fur",
 		"returns.fur",
 		"rpn.fur",

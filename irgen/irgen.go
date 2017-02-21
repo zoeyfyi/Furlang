@@ -234,6 +234,8 @@ func (g *Irgen) binaryExp(node *ast.BinaryExpression) gooryvalues.Value {
 			return g.parentBlock.Icmp(goory.IntSgt, left, right)
 		case lexer.LSS:
 			return g.parentBlock.Icmp(goory.IntSlt, left, right)
+		case lexer.REM:
+			return g.parentBlock.Srem(left, right)
 		}
 	}
 
