@@ -74,7 +74,7 @@ func TestIrgen(t *testing.T) {
 		// "complex_control_flow.fur",
 		// "decrement_multiple.fur",
 		// "decrement_single.fur",
-		// "float.fur",
+		"float.fur",
 		"float_equal_to.fur",
 		"float_less_than.fur",
 		"float_more_than.fur",
