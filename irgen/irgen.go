@@ -46,15 +46,19 @@ func (g *Irgen) function(node *ast.FunctionDeclaration) {
 	f := g.module.NewFunction(fName, node.Return.Llvm())
 
 	g.scope.AddFunction(fName, f)
+	g.parentBlock = f.Entry()
 
 	// Add arguments to function
 	for _, arg := range node.Arguments {
 		name := arg.Name.Value.Value()
-		arg := f.AddArgument(arg.Type.Llvm(), name)
-		g.scope.AddVar(name, arg)
+		argType := arg.Type.Llvm()
+		arg := f.AddArgument(argType, name)
+
+		alloc := g.parentBlock.Alloca(argType)
+		g.parentBlock.Store(alloc, arg)
+		g.scope.AddVar(name, alloc)
 	}
 
-	g.parentBlock = f.Entry()
 	g.block(node.Body)
 }
 
@@ -132,14 +136,23 @@ func (g *Irgen) declareSmt(node *ast.DeclareStatement) {
 	decl := node.Statement.(*ast.VaribleDeclaration)
 	name := decl.Name.Value.Value()
 	exp := g.expression(decl.Value)
-	g.scope.AddVar(name, exp)
+
+	alloc := g.parentBlock.Alloca(decl.Type.Base().Llvm())
+	g.parentBlock.Store(alloc, exp)
+
+	g.scope.AddVar(name, alloc)
 }
 
 func (g *Irgen) assignmentSmt(node *ast.AssignmentStatement) {
 	name := node.Left.(*ast.IdentExpression).Value.Value()
 	exp := g.expression(node.Right)
 
-	g.scope.AddVar(name, exp)
+	alloc, ok := g.scope.GetVar(name)
+	if !ok {
+		log.Fatalf("%q was not in scope", name)
+	}
+	g.parentBlock.Store(alloc, exp)
+	g.scope.AddVar(name, alloc)
 }
 
 func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
@@ -174,12 +187,20 @@ func (g *Irgen) callExp(node *ast.CallExpression) gooryvalues.Value {
 
 func (g *Irgen) identExp(node *ast.IdentExpression) gooryvalues.Value {
 	ident := node.Value.Value()
+
+	// TODO: do this with a map
+	if ident == "true" {
+		return goory.Constant(goory.BoolType(), true)
+	} else if ident == "false" {
+		return goory.Constant(goory.BoolType(), false)
+	}
+
 	item, ok := g.scope.GetVar(ident)
 	if !ok {
 		log.Fatalf("%q was not is scope", ident)
 	}
 
-	return item
+	return g.parentBlock.Load(item)
 }
 
 func (g *Irgen) literalExp(node *ast.LiteralExpression) gooryvalues.Value {
@@ -198,6 +219,7 @@ func (g *Irgen) literalExp(node *ast.LiteralExpression) gooryvalues.Value {
 func (g *Irgen) castExp(node *ast.CastExpression) gooryvalues.Value {
 	exp := g.expression(node.Expression)
 	log.Printf("Casting to: %s", node.Type.Llvm())
+	log.Printf("%s", pp.Sprint(exp.Type()))
 	return g.parentBlock.Cast(exp, node.Type.Llvm())
 }
 

@@ -1,7 +1,7 @@
 package irgen
 
-import gooryvalues "github.com/bongo227/goory/value"
 import "github.com/bongo227/goory"
+import instructions "github.com/bongo227/goory/instructions"
 
 type Scope struct {
 	parentScope *Scope
@@ -10,7 +10,7 @@ type Scope struct {
 
 type scopes struct {
 	functions map[string]*goory.Function
-	varibles  map[string]gooryvalues.Value
+	varibles  map[string]*instructions.Alloca
 }
 
 func NewScope() *Scope {
@@ -18,7 +18,7 @@ func NewScope() *Scope {
 		parentScope: nil,
 		scope: &scopes{
 			functions: make(map[string]*goory.Function),
-			varibles:  make(map[string]gooryvalues.Value),
+			varibles:  make(map[string]*instructions.Alloca),
 		},
 	}
 }
@@ -28,18 +28,18 @@ func (s *Scope) Push() *Scope {
 		parentScope: s,
 		scope: &scopes{
 			functions: make(map[string]*goory.Function),
-			varibles:  make(map[string]gooryvalues.Value),
+			varibles:  make(map[string]*instructions.Alloca),
 		},
 	}
 }
 
 // AddVar adds a value to the current scope
-func (s *Scope) AddVar(key string, value gooryvalues.Value) {
+func (s *Scope) AddVar(key string, value *instructions.Alloca) {
 	s.scope.varibles[key] = value
 }
 
 // GetLocalVar returns the item and true if the key is in local scope, otherwise false
-func (s *Scope) GetLocalVar(key string) (gooryvalues.Value, bool) {
+func (s *Scope) GetLocalVar(key string) (*instructions.Alloca, bool) {
 	if item, ok := s.scope.varibles[key]; ok {
 		return item, true
 	}
@@ -49,14 +49,7 @@ func (s *Scope) GetLocalVar(key string) (gooryvalues.Value, bool) {
 
 // GetVar returns the item and true if the key is in local (or parent scope),
 // otherwise false
-func (s *Scope) GetVar(key string) (gooryvalues.Value, bool) {
-	// TODO: do this with a map
-	if key == "true" {
-		return goory.Constant(goory.BoolType(), true), true
-	} else if key == "false" {
-		return goory.Constant(goory.BoolType(), false), true
-	}
-
+func (s *Scope) GetVar(key string) (*instructions.Alloca, bool) {
 	for s.parentScope != nil {
 		if item, ok := s.scope.varibles[key]; ok {
 			return item, true

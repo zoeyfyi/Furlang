@@ -71,7 +71,7 @@ func TestIrgen(t *testing.T) {
 		// "cast_to_i32_type.fur",
 		// "cast_to_i64_type.fur",
 		// "cast_to_i8_type.fur",
-		// "complex_control_flow.fur",
+		"complex_control_flow.fur",
 		"decrement_multiple.fur",
 		"decrement_single.fur",
 		"float.fur",
