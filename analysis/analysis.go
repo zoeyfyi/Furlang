@@ -101,9 +101,14 @@ func (a *Analysis) function(node *ast.FunctionDeclaration) {
 }
 
 func (a *Analysis) varible(node *ast.VaribleDeclaration) {
-	a.expression(node.Value)
+	exp := a.expression(node.Value)
 	if node.Type == nil {
 		node.Type = a.typ(node.Value)
+	} else {
+		node.Value = &ast.CastExpression{
+			Type:       node.Type,
+			Expression: exp,
+		}
 	}
 }
 
