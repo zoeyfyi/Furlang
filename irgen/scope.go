@@ -4,7 +4,7 @@ import "github.com/bongo227/goory"
 import instructions "github.com/bongo227/goory/instructions"
 
 type Scope struct {
-	parentScope *Scope
+	parentScope *Scope // TODO: parentScope -> parent
 	scope       *scopes
 }
 

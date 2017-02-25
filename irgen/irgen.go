@@ -175,6 +175,8 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 func (g *Irgen) callExp(node *ast.CallExpression) gooryvalues.Value {
 	// TODO: handle lambda's (i.e. functions that are not called by name)
 	funcName := node.Function.(*ast.IdentExpression).Value.Value()
+
+	log.Printf("Function name: %q", funcName)
 	function, _ := g.scope.GetFunction(funcName)
 
 	args := make([]gooryvalues.Value, len(node.Arguments.Elements))

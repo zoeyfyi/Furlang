@@ -3,10 +3,11 @@ package parser
 import (
 	"fmt"
 
+	"log"
+
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/types"
-	"github.com/k0kubun/pp"
 )
 
 // Parser creates an abstract syntax tree from a sequence of tokens
@@ -87,6 +88,7 @@ func (p *Parser) exitScope() {
 }
 
 func (p *Parser) insertScope(name string, node ast.Node) {
+	log.Printf("Inserting %q into scope", name)
 	if p.scope != nil {
 		p.scope.Insert(name, node)
 	}
@@ -244,11 +246,6 @@ func (p *Parser) expression(rightBindingPower int) ast.Expression {
 	p.next()
 	left := p.nud(t)
 	for rightBindingPower < bindingPower(p.token()) {
-		pp.Println(rightBindingPower,
-			bindingPower(p.token()),
-			t.Type().String(),
-			p.token().Type().String(),
-			left)
 		t = p.token()
 		p.next()
 		left = p.led(t, left)

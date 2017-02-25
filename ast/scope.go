@@ -1,23 +1,23 @@
 package ast
 
 type Scope struct {
-	outer *Scope
-	scope map[string]Node
+	parent *Scope
+	scope  map[string]Node
 }
 
 // NewScope creates a new blank scope
 func NewScope() *Scope {
 	return &Scope{
-		outer: nil,
-		scope: make(map[string]Node),
+		parent: nil,
+		scope:  make(map[string]Node),
 	}
 }
 
 // Enter creates a new inner scope
 func (s *Scope) Enter() *Scope {
-	inner := NewScope()
-	inner.outer = s
-	return inner
+	child := NewScope()
+	child.parent = s
+	return child
 }
 
 // Insert adds a new declaration to the current scope
@@ -32,7 +32,7 @@ func (s *Scope) Lookup(name string) Node {
 		if currentScope.scope[name] != nil {
 			return currentScope.scope[name]
 		}
-		currentScope = currentScope.outer
+		currentScope = currentScope.parent
 	}
 
 	return nil
@@ -40,5 +40,5 @@ func (s *Scope) Lookup(name string) Node {
 
 // Exit returns the outer scope
 func (s *Scope) Exit() *Scope {
-	return s.outer
+	return s.parent
 }
