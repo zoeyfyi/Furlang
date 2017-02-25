@@ -84,8 +84,9 @@ func (g *Irgen) statement(node ast.Statement) {
 		g.declareSmt(node)
 	case *ast.AssignmentStatement:
 		g.assignmentSmt(node)
+	case *ast.ForStatement:
+		g.forSmt(node)
 	}
-
 }
 
 func (g *Irgen) ifSmt(node *ast.IfStatment, block, endBlock *goory.Block) {
@@ -153,6 +154,24 @@ func (g *Irgen) assignmentSmt(node *ast.AssignmentStatement) {
 	}
 	g.parentBlock.Store(alloc, exp)
 	g.scope.AddVar(name, alloc)
+}
+
+func (g *Irgen) forSmt(node *ast.ForStatement) {
+	forBlock := g.parentBlock.Function().AddBlock()
+	endBlock := g.parentBlock.Function().AddBlock()
+
+	g.statement(node.Index)
+	outerCondition := g.expression(node.Condition)
+	g.parentBlock.CondBr(outerCondition, forBlock, endBlock)
+
+	// TODO: add a function to do this automaticly (for this and if statments)
+	g.parentBlock = forBlock
+	g.block(node.Body)
+	g.statement(node.Increment)
+	innerCondition := g.expression(node.Condition)
+	forBlock.CondBr(innerCondition, forBlock, endBlock)
+
+	g.parentBlock = endBlock
 }
 
 func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {

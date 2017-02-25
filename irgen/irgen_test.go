@@ -79,7 +79,7 @@ func TestIrgen(t *testing.T) {
 		"float_less_than.fur",
 		"float_more_than.fur",
 		"float_not_equal_to.fur",
-		// "for_loop.fur",
+		"for_loop.fur",
 		"function.fur",
 		"i16_type.fur",
 		"i32_type.fur",
