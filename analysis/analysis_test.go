@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"log"
 	"testing"
 
 	"reflect"
@@ -12,26 +13,62 @@ import (
 	"github.com/k0kubun/pp"
 )
 
+func init() {
+	log.SetFlags(log.Ltime | log.Lshortfile)
+}
+
 var a = &Analysis{}
 
 func TestFloatPromotion(t *testing.T) {
-	code := "10 + 14.5"
-
-	exp, err := parser.ParseExpression(code)
-	if err != nil {
-		t.Error(err)
+	cases := []struct {
+		code string
+	}{
+		{"10 + 14.5"},
+		{"3.5 + 11"},
 	}
 
-	node := exp.(*ast.BinaryExpression)
-	a.binary(node)
+	for _, c := range cases {
+		node, err := parser.ParseExpression(c.code)
+		if err != nil {
+			t.Error(err)
+		}
 
-	if _, ok := node.Left.(*ast.CastExpression); !ok {
-		t.Errorf("Expected left hand side of: %s to be a cast node, got %s",
-			code, pp.Sprint(node.Left))
-	}
+		binNode, ok := node.(*ast.BinaryExpression)
+		if !ok {
+			t.Errorf("Expected node to be of type \"*ast.BinaryExpression\", got %q",
+				reflect.TypeOf(node).String())
+		}
 
-	if typ := a.typ(node); typ != floatType {
-		t.Errorf("Expected %s to have type float but got type: %s", code, pp.Sprint(typ))
+		anaNode, ok := a.binaryExp(binNode).(*ast.BinaryExpression)
+		if !ok {
+			t.Errorf("Expected analysed node to be of type \"*ast.BinaryExpression\", got: %q",
+				reflect.TypeOf(anaNode).String())
+		}
+
+		var anaCastNode *ast.CastExpression
+		if a.typ(binNode.Left) != floatType {
+			anaCastNode, ok = anaNode.Left.(*ast.CastExpression)
+			if !ok {
+				t.Errorf("Expected left hand side of analysed node to be a cast node, got %q",
+					reflect.TypeOf(anaNode.Left).String())
+			}
+		} else {
+			anaCastNode, ok = anaNode.Right.(*ast.CastExpression)
+			if !ok {
+				t.Errorf("Expected right hand side of analysed node to be a cast node, got %q",
+					reflect.TypeOf(anaNode.Right).String())
+			}
+		}
+
+		if anaCastNode.Type != floatType {
+			t.Errorf("Expected cast node to have type \"float\", got %q",
+				reflect.TypeOf(anaCastNode.Type).String())
+		}
+
+		if typ := a.typ(anaNode); typ != floatType {
+			t.Errorf("Expected type of analysed node to be \"float\", got %q",
+				reflect.TypeOf(typ).String())
+		}
 	}
 }
 
@@ -40,22 +77,10 @@ func TestInferAssigment(t *testing.T) {
 		code string
 		typ  types.Type
 	}{
-		{
-			code: "a := 10",
-			typ:  intType,
-		},
-		{
-			code: "a := 14.5",
-			typ:  floatType,
-		},
-		{
-			code: "a := 10 * 13.5",
-			typ:  floatType,
-		},
-		{
-			code: "a := 10 / 2",
-			typ:  intType,
-		},
+		{"a := 10", intType},
+		{"a := 14.5", floatType},
+		{"a := 10 * 13.5", floatType},
+		{"a := 10 / 2", intType},
 	}
 
 	for _, c := range cases {
@@ -64,15 +89,23 @@ func TestInferAssigment(t *testing.T) {
 			t.Error(err)
 		}
 
-		assigmentNode, ok := node.(*ast.VaribleDeclaration)
+		dclNode, ok := node.(*ast.VaribleDeclaration)
 		if !ok {
-			t.Errorf("Expected node to have type assigment, got type: %s", reflect.TypeOf(assigmentNode).String())
+			t.Errorf("Expected node to have type assigment, got type %q",
+				reflect.TypeOf(dclNode).String())
 		}
 
-		a.varible(assigmentNode)
-		if assigmentNode.Type != c.typ {
-			// TODO: give types.Type a string method so we dont have to pp.Print
-			t.Errorf("Expected %s to have infer int type but got type: %s", c.code, pp.Sprint(assigmentNode.Type))
+		anaNode := a.varibleDcl(dclNode)
+		anaVaribleNode, ok := anaNode.(*ast.VaribleDeclaration)
+		if !ok {
+			t.Errorf("Expected analysed node to have type \"*ast.VaribleDeclaration\", got %q",
+				reflect.TypeOf(anaNode).String())
+		}
+
+		if anaVaribleNode.Type != c.typ {
+			// TODO: give types.Type a string method so we dont have to reflect
+			t.Errorf("Expected varible node to have type int but, got type %q",
+				anaVaribleNode.Type.Llvm().String())
 		}
 	}
 }
@@ -85,15 +118,27 @@ func TestVaribleDeclare(t *testing.T) {
 		t.Error(err)
 	}
 
-	declareNode, ok := node.(*ast.DeclareStatement).Statement.(*ast.VaribleDeclaration)
+	dclNode, ok := node.(*ast.DeclareStatement)
 	if !ok {
-		t.Errorf("Expected node to have type assigment, got type: %s", reflect.TypeOf(declareNode).String())
+		t.Errorf("Expected node to have type \"*ast.DeclareStatement\", got type %q",
+			reflect.TypeOf(dclNode).String())
 	}
 
-	a.declareVar(declareNode)
-	if _, ok := declareNode.Value.(*ast.CastExpression); !ok {
-		t.Errorf("Expected value of: %s to be a cast node, got %s",
-			code, pp.Sprint(declareNode.Value))
+	varNode, ok := dclNode.Statement.(*ast.VaribleDeclaration)
+	if !ok {
+		t.Errorf("Expected declaration statment to have type \"*ast.VaribleDeclaration\", got %q",
+			reflect.TypeOf(dclNode.Statement).String())
+	}
+
+	anaNode, ok := a.declare(varNode).(*ast.VaribleDeclaration)
+	if !ok {
+		t.Errorf("Expected type of analysed declaration statment to have type \"*ast.VaribleDeclaration\", got %q",
+			reflect.TypeOf(anaNode).String())
+	}
+
+	if _, ok := anaNode.Value.(*ast.CastExpression); !ok {
+		t.Errorf("Expected value of analysed node to be a cast node, got %q",
+			reflect.TypeOf(anaNode).String())
 	}
 }
 
@@ -123,24 +168,29 @@ func TestCall(t *testing.T) {
 	firstSmt := a.Functions[1].Body.Statements[0]
 	returnSmt, ok := firstSmt.(*ast.ReturnStatement)
 	if !ok {
-		t.Fatalf("Expected first expression to be a return statement, got: %s", reflect.TypeOf(firstSmt).String())
+		t.Fatalf("Expected first expression to be a return statement, got %q",
+			reflect.TypeOf(firstSmt).String())
 	}
 
 	cast, ok := returnSmt.Result.(*ast.CastExpression)
 	if !ok {
-		t.Fatalf("Expected return value to be of type \"*ast.CastExpression\", got: %q", reflect.TypeOf(returnSmt.Result).String())
+		t.Fatalf("Expected return value to be of type \"*ast.CastExpression\", got %q",
+			reflect.TypeOf(returnSmt.Result).String())
 	}
 
 	call := cast.Expression.(*ast.CallExpression)
 	if !ok {
-		t.Fatalf("Expected casted return value to be of type \"ast.CallExpression\" Got: %q", reflect.TypeOf(cast.Expression).String())
+		t.Fatalf("Expected casted return value to be of type \"ast.CallExpression\", got %q",
+			reflect.TypeOf(cast.Expression).String())
 	}
 
 	if _, ok := call.Arguments.Elements[1].(*ast.LiteralExpression); !ok {
-		t.Fatalf("Expected parameter 1 to be a integer got: %s", pp.Sprint(call.Arguments.Elements[1]))
+		t.Fatalf("Expected parameter 1 to be a integer got %s",
+			pp.Sprint(call.Arguments.Elements[1]))
 	}
 
 	if _, ok := call.Arguments.Elements[0].(*ast.CastExpression); !ok {
-		t.Fatalf("Expected parameter 0 to be a cast got: %s", pp.Sprint(call.Arguments.Elements[0]))
+		t.Fatalf("Expected parameter 0 to be a cast got %s",
+			pp.Sprint(call.Arguments.Elements[0]))
 	}
 }
