@@ -177,7 +177,10 @@ func (g *Irgen) callExp(node *ast.CallExpression) gooryvalues.Value {
 	funcName := node.Function.(*ast.IdentExpression).Value.Value()
 
 	log.Printf("Function name: %q", funcName)
-	function, _ := g.scope.GetFunction(funcName)
+	function, ok := g.scope.GetFunction(funcName)
+	if !ok {
+		log.Fatalf("Function %q not in scope", funcName)
+	}
 
 	args := make([]gooryvalues.Value, len(node.Arguments.Elements))
 	for i, element := range node.Arguments.Elements {

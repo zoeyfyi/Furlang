@@ -1,4 +1,4 @@
-main :: -> i64 {
+proc main :: -> i64 {
     i8 i = 123
-    return (i64)i
+    return i64(i)
 }

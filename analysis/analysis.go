@@ -61,7 +61,15 @@ func (a *Analysis) typ(node ast.Node) types.Type {
 		return intType
 
 	case *ast.CallExpression:
-		return a.typ(node.Function).(*types.Function).Return()
+		switch nodeType := a.typ(node.Function).(type) {
+		case *types.Function:
+			return nodeType.Return()
+		case *types.Basic:
+			return nodeType
+		}
+
+		log.Fatalf("Unexpected function type on call expression")
+		return nil
 
 	case *ast.CastExpression:
 		return node.Type
@@ -306,6 +314,8 @@ func (a *Analysis) callExp(node *ast.CallExpression) ast.Expression {
 		// TODO: check for multiple arguments
 		newCastExp.Expression = a.expression(node.Arguments.Elements[0])
 		newCastExp.Type = nodeType
+
+		return newCastExp
 	default:
 		log.Fatalf("Call node node type had invalid type %q",
 			reflect.TypeOf(a.typ(node.Function)).String())

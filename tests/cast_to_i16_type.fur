@@ -1,4 +1,4 @@
-main :: -> i16 {
+proc main :: -> i16 {
     i8 i = 123
-    return (i16)i
+    return i16(i)
 }

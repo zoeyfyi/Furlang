@@ -1,4 +1,4 @@
-main :: -> i32 {
+proc main :: -> i32 {
     f64 i = 123.0
-    return (i32)i
+    return i32(i)
 }
