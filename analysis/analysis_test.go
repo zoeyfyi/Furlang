@@ -2,9 +2,8 @@ package analysis
 
 import (
 	"log"
-	"testing"
-
 	"reflect"
+	"testing"
 
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
@@ -18,6 +17,96 @@ func init() {
 }
 
 var a = &Analysis{}
+
+func TestAnalysisExpressions(t *testing.T) {
+	cases := []struct {
+		preAnalisis  ast.Expression
+		postAnalisis ast.Expression
+	}{
+		// 123.4 + 4215.21
+		{
+			&ast.BinaryExpression{
+				Left: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "123.4", 1, 1),
+				},
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 7),
+				Right: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "4215.21", 1, 9),
+				},
+			},
+			&ast.BinaryExpression{
+				IsFp: true,
+				Left: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "123.4", 1, 1),
+				},
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 7),
+				Right: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "4215.21", 1, 9),
+				},
+			},
+		},
+
+		// 123 + 4215.21
+		{
+			&ast.BinaryExpression{
+				Left: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "123", 1, 1),
+				},
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 5),
+				Right: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "4215.21", 1, 7),
+				},
+			},
+			&ast.BinaryExpression{
+				IsFp: true,
+				Left: &ast.CastExpression{
+					Type: types.FloatType(0),
+					Expression: &ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "123", 1, 1),
+					},
+				},
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 5),
+				Right: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "4215.21", 1, 7),
+				},
+			},
+		},
+
+		// 123.4 + 4215
+		{
+			&ast.BinaryExpression{
+				Left: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "123.4", 1, 1),
+				},
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 7),
+				Right: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "4215", 1, 9),
+				},
+			},
+			&ast.BinaryExpression{
+				IsFp: true,
+				Left: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "123.4", 1, 1),
+				},
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 7),
+				Right: &ast.CastExpression{
+					Type: types.FloatType(0),
+					Expression: &ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "4215", 1, 9),
+					},
+				},
+			},
+		},
+	}
+
+	for _, c := range cases {
+		exp := a.expression(c.preAnalisis)
+		if !reflect.DeepEqual(c.postAnalisis, exp) {
+			t.Errorf("Expected:\n%s\nGot:\n%s\n",
+				pp.Sprint(c.postAnalisis), pp.Sprint(exp))
+		}
+	}
+}
 
 func TestFloatPromotion(t *testing.T) {
 	cases := []struct {
@@ -143,7 +232,7 @@ func TestVaribleDeclare(t *testing.T) {
 	}
 }
 
-func TestCall(t *testing.T) {
+func TestCallStatement(t *testing.T) {
 	code := `
 		proc add :: i32 a, i64 b -> i64 {
 			return a + b
@@ -169,29 +258,64 @@ func TestCall(t *testing.T) {
 	firstSmt := a.Functions[1].Body.Statements[0]
 	returnSmt, ok := firstSmt.(*ast.ReturnStatement)
 	if !ok {
-		t.Fatalf("Expected first expression to be a return statement, got %q",
+		t.Errorf("Expected first expression to be a return statement, got %q",
 			reflect.TypeOf(firstSmt).String())
 	}
 
 	cast, ok := returnSmt.Result.(*ast.CastExpression)
 	if !ok {
-		t.Fatalf("Expected return value to be of type \"*ast.CastExpression\", got %q",
+		t.Errorf("Expected return value to be of type \"*ast.CastExpression\", got %q",
 			reflect.TypeOf(returnSmt.Result).String())
 	}
 
 	call := cast.Expression.(*ast.CallExpression)
 	if !ok {
-		t.Fatalf("Expected casted return value to be of type \"ast.CallExpression\", got %q",
+		t.Errorf("Expected casted return value to be of type \"ast.CallExpression\", got %q",
 			reflect.TypeOf(cast.Expression).String())
 	}
 
 	if _, ok := call.Arguments.Elements[1].(*ast.LiteralExpression); !ok {
-		t.Fatalf("Expected parameter 1 to be a integer got %s",
+		t.Errorf("Expected parameter 1 to be a integer got %s",
 			pp.Sprint(call.Arguments.Elements[1]))
 	}
 
 	if _, ok := call.Arguments.Elements[0].(*ast.CastExpression); !ok {
-		t.Fatalf("Expected parameter 0 to be a cast got %s",
+		t.Errorf("Expected parameter 0 to be a cast got %s",
 			pp.Sprint(call.Arguments.Elements[0]))
+	}
+}
+
+func TestCast(t *testing.T) {
+	cases := []struct {
+		source string
+		typ    types.Type
+	}{
+		{`int(132)`, types.IntType(0)},
+		{`i8(234)`, types.IntType(8)},
+		{`i16(13)`, types.IntType(16)},
+		{`i32(5)`, types.IntType(32)},
+		{`i64(1415)`, types.IntType(64)},
+		{`float(241)`, types.FloatType(0)},
+		{`f32(1231)`, types.FloatType(32)},
+		{`f64(21)`, types.FloatType(64)},
+	}
+
+	for _, c := range cases {
+		exp, err := parser.ParseExpression(c.source)
+		if err != nil {
+			t.Error(err)
+		}
+
+		anaExp := a.expression(exp)
+
+		castExp, ok := anaExp.(*ast.CastExpression)
+		if !ok {
+			t.Errorf("Expected \"*ast.CastExpression\", got %q",
+				reflect.TypeOf(anaExp).String())
+		}
+
+		if !reflect.DeepEqual(castExp.Type, c.typ) {
+			t.Errorf("Expected cast type to be %q, got %q", c.typ.String(), castExp.Type.String())
+		}
 	}
 }
