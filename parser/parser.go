@@ -2,8 +2,11 @@ package parser
 
 import (
 	"fmt"
+	"reflect"
 
 	"log"
+
+	"strconv"
 
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
@@ -141,6 +144,8 @@ func (p *Parser) accept(typ lexer.TokenType) (lexer.Token, bool) {
 
 func bindingPower(token lexer.Token) int {
 	switch token.Type() {
+	case lexer.LPAREN, lexer.LBRACK:
+		return 150
 	case lexer.ADD, lexer.SUB:
 		return 110
 	case lexer.MUL, lexer.QUO, lexer.REM:
@@ -148,14 +153,15 @@ func bindingPower(token lexer.Token) int {
 	case lexer.LSS, lexer.LEQ, lexer.GTR, lexer.GEQ,
 		lexer.EQL, lexer.NEQ:
 		return 60
-	case lexer.LPAREN, lexer.LBRACK:
-		return 150
+	case lexer.LBRACE:
+		return 20
 	}
 
 	return 0
 }
 
 func (p *Parser) nud(token lexer.Token) ast.Expression {
+	// TODO: break this down into a token interace that has a nud method.
 	switch token.Type() {
 	case lexer.IDENT:
 		return &ast.IdentExpression{
@@ -196,6 +202,7 @@ func (p *Parser) nud(token lexer.Token) ast.Expression {
 			Elements:   elements,
 			RightParen: p.expect(lexer.RPAREN),
 		}
+
 	}
 
 	panic("nud Undefined for token type: " + token.Type().String())
@@ -207,6 +214,7 @@ func (p *Parser) led(token lexer.Token, tree ast.Expression) ast.Expression {
 		lexer.LSS, lexer.LEQ, lexer.GTR, lexer.GEQ,
 		lexer.EQL, lexer.NEQ, lexer.REM:
 
+		log.Printf("Binding with power %d", bindingPower(token))
 		e := p.expression(bindingPower(token))
 		return &ast.BinaryExpression{
 			Left:     tree,
@@ -236,20 +244,56 @@ func (p *Parser) led(token lexer.Token, tree ast.Expression) ast.Expression {
 			Index:      p.expression(0),
 			RightBrack: p.expect(lexer.RBRACK),
 		}
+
+	case lexer.LBRACE:
+		indexExp, ok := tree.(*ast.IndexExpression)
+		if !ok {
+			log.Fatalf("Expected left hand side of { to be type \"*ast.IndexExpression\", got %q",
+				reflect.TypeOf(tree).String())
+		}
+
+		// Convert index expression into array type
+		typeName := indexExp.Expression.(*ast.IdentExpression).Value.Value()
+		arraySize := indexExp.Index.(*ast.LiteralExpression).Value.Value()
+		size, _ := strconv.Atoi(arraySize)
+		arrayType := types.NewArray(types.GetType(typeName), int64(size))
+
+		elements := []ast.Expression{}
+
+		for p.token().Type() != lexer.RBRACE {
+			elements = append(elements, p.expression(0))
+			p.accept(lexer.COMMA)
+		}
+
+		return &ast.BraceLiteralExpression{
+			Type:       arrayType,
+			LeftBrace:  token,
+			Elements:   elements,
+			RightBrace: p.expect(lexer.RBRACE),
+		}
 	}
 
 	panic("led Undefined for token type: " + p.token().Type().String())
 }
 
 func (p *Parser) expression(rightBindingPower int) ast.Expression {
+	log.Printf("Start expression (%d)", rightBindingPower)
+
 	t := p.token()
 	p.next()
 	left := p.nud(t)
+	log.Printf("lbp: %d, rbp: %d", bindingPower(p.token()), rightBindingPower)
 	for rightBindingPower < bindingPower(p.token()) {
+		// TODO: figure out how to remove this check
+		if _, ok := left.(*ast.IndexExpression); !ok && p.token().Type() == lexer.LBRACE {
+			return left
+		}
 		t = p.token()
 		p.next()
 		left = p.led(t, left)
 	}
+
+	log.Print("Finished expression")
 
 	return left
 }
@@ -298,6 +342,8 @@ func (p *Parser) ifSmt() *ast.IfStatment {
 	if hasCondition {
 		condition = p.expression(0)
 	}
+
+	log.Print("Parsed condition")
 
 	block := p.block()
 
@@ -475,6 +521,7 @@ func (p *Parser) varibleDcl() *ast.VaribleDeclaration {
 	var typ types.Type
 	if p.peek().Type() != lexer.DEFINE {
 		typExp := p.expression(0)
+		// TODO: make type parser (simplifys brace literal expressions)
 		typ = types.GetType(typExp.(*ast.IdentExpression).Value.Value())
 	}
 

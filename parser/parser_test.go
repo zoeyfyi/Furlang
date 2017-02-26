@@ -5,6 +5,8 @@ import (
 
 	"reflect"
 
+	"log"
+
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/types"
@@ -173,6 +175,36 @@ func TestParserExpressions(t *testing.T) {
 				RightBrack: lexer.NewToken(lexer.RBRACK, "", 1, 8),
 			},
 		},
+
+		{
+			`int[1]{}`,
+			&ast.BraceLiteralExpression{
+				Type:       types.NewArray(types.IntType(0), 1),
+				LeftBrace:  lexer.NewToken(lexer.LBRACE, "", 1, 7),
+				Elements:   []ast.Expression{},
+				RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 8),
+			},
+		},
+
+		{
+			`int[3]{1, 2, 3}`,
+			&ast.BraceLiteralExpression{
+				Type:      types.NewArray(types.IntType(0), 3),
+				LeftBrace: lexer.NewToken(lexer.LBRACE, "", 1, 7),
+				Elements: []ast.Expression{
+					&ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "1", 1, 8),
+					},
+					&ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "2", 1, 11),
+					},
+					&ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "3", 1, 14),
+					},
+				},
+				RightBrace: lexer.NewToken(lexer.RBRACE, "", 1, 15),
+			},
+		},
 	}
 
 	for _, c := range cases {
@@ -183,11 +215,6 @@ func TestParserExpressions(t *testing.T) {
 		}
 
 		parser := NewParser(tokens, false)
-		t.Log("=== Start tokens ===")
-		for _, tok := range parser.tokens {
-			t.Log(tok.String())
-		}
-		t.Log("=== End tokens ===\n\n")
 		ast := parser.expression(0)
 		if !reflect.DeepEqual(c.ast, ast) {
 			t.Errorf("Source:\n%q\nExpected:\n%s\nGot:\n%s\n",
@@ -419,6 +446,8 @@ func TestParserStatements(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		log.Println(c.source)
+
 		lexer := lexer.NewLexer([]byte(c.source))
 		tokens, err := lexer.Lex()
 		if err != nil {
