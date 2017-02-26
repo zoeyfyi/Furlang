@@ -2,9 +2,8 @@ package analysis
 
 import (
 	"log"
-	"testing"
-
 	"reflect"
+	"testing"
 
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
@@ -18,6 +17,96 @@ func init() {
 }
 
 var a = &Analysis{}
+
+func TestAnalysisExpressions(t *testing.T) {
+	cases := []struct {
+		preAnalisis  ast.Expression
+		postAnalisis ast.Expression
+	}{
+		// 123.4 + 4215.21
+		{
+			&ast.BinaryExpression{
+				Left: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "123.4", 1, 1),
+				},
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 7),
+				Right: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "4215.21", 1, 9),
+				},
+			},
+			&ast.BinaryExpression{
+				IsFp: true,
+				Left: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "123.4", 1, 1),
+				},
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 7),
+				Right: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "4215.21", 1, 9),
+				},
+			},
+		},
+
+		// 123 + 4215.21
+		{
+			&ast.BinaryExpression{
+				Left: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "123", 1, 1),
+				},
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 5),
+				Right: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "4215.21", 1, 7),
+				},
+			},
+			&ast.BinaryExpression{
+				IsFp: true,
+				Left: &ast.CastExpression{
+					Type: types.FloatType(0),
+					Expression: &ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "123", 1, 1),
+					},
+				},
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 5),
+				Right: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "4215.21", 1, 7),
+				},
+			},
+		},
+
+		// 123.4 + 4215
+		{
+			&ast.BinaryExpression{
+				Left: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "123.4", 1, 1),
+				},
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 7),
+				Right: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.INT, "4215", 1, 9),
+				},
+			},
+			&ast.BinaryExpression{
+				IsFp: true,
+				Left: &ast.LiteralExpression{
+					Value: lexer.NewToken(lexer.FLOAT, "123.4", 1, 1),
+				},
+				Operator: lexer.NewToken(lexer.ADD, "", 1, 7),
+				Right: &ast.CastExpression{
+					Type: types.FloatType(0),
+					Expression: &ast.LiteralExpression{
+						Value: lexer.NewToken(lexer.INT, "4215", 1, 9),
+					},
+				},
+			},
+		},
+	}
+
+	for _, c := range cases {
+		exp := a.expression(c.preAnalisis)
+		if !reflect.DeepEqual(c.postAnalisis, exp) {
+			t.Errorf("Expected:\n%s\nGot:\n%s\n",
+				pp.Sprint(c.postAnalisis), pp.Sprint(exp))
+		}
+	}
+}
 
 func TestFloatPromotion(t *testing.T) {
 	cases := []struct {
@@ -143,7 +232,7 @@ func TestVaribleDeclare(t *testing.T) {
 	}
 }
 
-func TestCall(t *testing.T) {
+func TestCallStatement(t *testing.T) {
 	code := `
 		proc add :: i32 a, i64 b -> i64 {
 			return a + b
