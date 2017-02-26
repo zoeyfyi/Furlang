@@ -1,4 +1,4 @@
-gcd :: i32 x, i32 y -> i32 {
+proc gcd :: i32 x, i32 y -> i32 {
     if x == y {
         return x
     }
@@ -10,6 +10,6 @@ gcd :: i32 x, i32 y -> i32 {
     return gcd(x - y, y)
 } 
 
-main :: -> i32 {
+proc main :: -> i32 {
     return gcd(1529, 14039) - 16
 }
