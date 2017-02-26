@@ -88,7 +88,7 @@ func (a *Analysis) typ(node ast.Node) types.Type {
 		return a.typ(a.currentBlock.Scope.Lookup(ident))
 
 	case *ast.IndexExpression:
-		return a.typ(node.Expression)
+		return a.typ(node.Expression).Base()
 
 	case *ast.BraceLiteralExpression:
 		return node.Type
@@ -297,6 +297,9 @@ func (a *Analysis) assigmentSmt(node *ast.AssignmentStatement) ast.Statement {
 	// Get type of assigment expression
 	leftType := a.typ(node.Left)
 	rightType := a.typ(node.Right)
+
+	pp.Println(node.Left)
+	log.Printf("Left type: %q, right type: %q", leftType.String(), rightType.String())
 
 	// Expression doesnt match assigment type
 	// TODO: do we need llvm types of can we check base types

@@ -299,6 +299,8 @@ func (p *Parser) expression(rightBindingPower int) ast.Expression {
 }
 
 func (p *Parser) assigment() *ast.AssignmentStatement {
+	log.Printf(p.token().String())
+
 	return &ast.AssignmentStatement{
 		Left:   p.expression(0),
 		Assign: p.expect(lexer.ASSIGN),
@@ -434,19 +436,29 @@ func (p *Parser) statement() ast.Statement {
 		return p.ifSmt()
 	case lexer.FOR:
 		return p.forSmt()
-	default:
-		// TODO: covert this into pratt pass
-		switch p.peek().Type() {
-		case lexer.INC, lexer.DEC, lexer.ADD_ASSIGN, lexer.SUB_ASSIGN, lexer.MUL_ASSIGN,
-			lexer.QUO_ASSIGN, lexer.REM_ASSIGN:
-			return p.incrementSmt()
-		case lexer.ASSIGN:
-			return p.assigment()
-		default:
+	// TODO: covert this into pratt pass
+	case lexer.IDENT:
+		// Check for varible declaration
+		if types.GetType(p.token().Value()) != nil || p.peek().Type() == lexer.DEFINE {
 			return &ast.DeclareStatement{
 				Statement: p.varibleDcl(),
 			}
 		}
+
+		switch p.peek().Type() {
+		// Increment statement
+		case lexer.INC, lexer.DEC, lexer.ADD_ASSIGN, lexer.SUB_ASSIGN, lexer.MUL_ASSIGN,
+			lexer.QUO_ASSIGN, lexer.REM_ASSIGN:
+			return p.incrementSmt()
+
+		// Assignment statment
+		default:
+			return p.assigment()
+		}
+
+	default:
+		log.Fatalf("Unkown statement starting with %q", p.token().Type().String())
+		return nil
 	}
 }
 

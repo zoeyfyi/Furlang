@@ -138,6 +138,8 @@ func (g *Irgen) declareSmt(node *ast.DeclareStatement) {
 	decl := node.Statement.(*ast.VaribleDeclaration)
 	name := decl.Name.Value.Value()
 
+	log.Printf("Declaring %q", name)
+
 	// TODO: check this didnt break anything
 	// alloc := g.parentBlock.Alloca(decl.Type.Base().Llvm())
 	alloc := g.parentBlock.Alloca(decl.Type.Llvm())
@@ -145,7 +147,7 @@ func (g *Irgen) declareSmt(node *ast.DeclareStatement) {
 	g.scope.AddVar(name, alloc)
 
 	if _, ok := decl.Type.(*types.Array); ok {
-		g.arraySmt(decl.Value.(*ast.BraceLiteralExpression), alloc)
+		g.arraySmt(decl.Value, alloc)
 	} else {
 		exp := g.expression(decl.Value)
 		g.parentBlock.Store(alloc, exp)
@@ -153,31 +155,57 @@ func (g *Irgen) declareSmt(node *ast.DeclareStatement) {
 
 }
 
-func (g *Irgen) arraySmt(node *ast.BraceLiteralExpression, alloc *instructions.Alloca) {
-	for i, exp := range node.Elements {
-		// Analyse element of array
-		emt := g.expression(exp)
+func (g *Irgen) arraySmt(node ast.Expression, alloc *instructions.Alloca) {
+	switch node := node.(type) {
+	case *ast.BraceLiteralExpression:
+		for i, exp := range node.Elements {
+			// Analyse element of array
+			emt := g.expression(exp)
 
-		// Get a pointer to the index of the array
-		ptr := g.parentBlock.Getelementptr(node.Type.Base().Llvm(), alloc,
-			goory.Constant(goory.IntType(64), 0),
-			goory.Constant(goory.IntType(64), i))
+			// Get a pointer to the index of the array
+			ptr := g.parentBlock.Getelementptr(node.Type.Base().Llvm(), alloc,
+				goory.Constant(goory.IntType(64), 0),
+				goory.Constant(goory.IntType(64), i))
 
-		// Store element in the array
-		g.parentBlock.Store(ptr, emt)
+			// Store element in the array
+			g.parentBlock.Store(ptr, emt)
+		}
+	case *ast.CallExpression:
+		array := g.expression(node)
+		g.parentBlock.Store(alloc, array)
+	default:
+		log.Fatalf("Cant assign type %q to array type", reflect.TypeOf(node).String())
 	}
 }
 
 func (g *Irgen) assignmentSmt(node *ast.AssignmentStatement) {
-	name := node.Left.(*ast.IdentExpression).Value.Value()
-	exp := g.expression(node.Right)
+	switch leftNode := node.Left.(type) {
+	case *ast.IdentExpression:
+		name := leftNode.Value.Value()
+		exp := g.expression(node.Right)
 
-	alloc, ok := g.scope.GetVar(name)
-	if !ok {
-		log.Fatalf("%q was not in scope", name)
+		alloc, ok := g.scope.GetVar(name)
+		if !ok {
+			log.Fatalf("%q was not in scope", name)
+		}
+		g.parentBlock.Store(alloc, exp)
+		g.scope.AddVar(name, alloc)
+	case *ast.IndexExpression:
+		name := leftNode.Expression.(*ast.IdentExpression).Value.Value()
+		index := g.expression(leftNode.Index)
+		exp := g.expression(node.Right)
+
+		alloc, ok := g.scope.GetVar(name)
+		if !ok {
+			log.Fatalf("%q was not in scope", name)
+		}
+
+		arrayIndex := g.parentBlock.Getelementptr(alloc.Type(), alloc,
+			goory.Constant(goory.IntType(0), 0), index)
+		g.parentBlock.Store(arrayIndex, exp)
+		g.scope.AddVar(name, alloc)
 	}
-	g.parentBlock.Store(alloc, exp)
-	g.scope.AddVar(name, alloc)
+
 }
 
 func (g *Irgen) forSmt(node *ast.ForStatement) {
@@ -218,14 +246,13 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 }
 
 func (g *Irgen) indexExp(node *ast.IndexExpression) gooryvalues.Value {
-
-	array := g.expression(node.Expression).(*instructions.Load)
+	alloc, _ := g.scope.GetVar(node.Expression.(*ast.IdentExpression).Value.Value())
 	index := g.expression(node.Index)
-	ev := g.parentBlock.Extractvalue(array, index)
+	ptr := g.parentBlock.Getelementptr(alloc.Type(), alloc, index)
 
-	fmt.Printf("=======\n%s\n=======", ev.Block().Llvm())
+	// fmt.Printf("=======\n%s\n=======", ev.Block().Llvm())
 
-	return ev
+	return g.parentBlock.Load(ptr)
 }
 
 func (g *Irgen) callExp(node *ast.CallExpression) gooryvalues.Value {
@@ -278,9 +305,10 @@ func (g *Irgen) literalExp(node *ast.LiteralExpression) gooryvalues.Value {
 }
 
 func (g *Irgen) castExp(node *ast.CastExpression) gooryvalues.Value {
+	pp.Print(node.Expression)
+
 	exp := g.expression(node.Expression)
 	log.Printf("Casting to: %s", node.Type.Llvm())
-	// pp.Println(exp)
 	return g.parentBlock.Cast(exp, node.Type.Llvm())
 }
 
