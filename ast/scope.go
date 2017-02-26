@@ -38,6 +38,19 @@ func (s *Scope) Lookup(name string) Node {
 	return nil
 }
 
+func (s *Scope) Replace(name string, node Node) bool {
+	currentScope := s
+	for currentScope != nil {
+		if currentScope.scope[name] != nil {
+			currentScope.scope[name] = node
+			return true
+		}
+		currentScope = currentScope.parent
+	}
+
+	return false
+}
+
 // Exit returns the outer scope
 func (s *Scope) Exit() *Scope {
 	return s.parent

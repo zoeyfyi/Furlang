@@ -81,6 +81,7 @@ func TestInferAssigment(t *testing.T) {
 		{"a := 14.5", floatType},
 		{"a := 10 * 13.5", floatType},
 		{"a := 10 / 2", intType},
+		{"a := int[2]{0, 0}", types.NewArray(intType, 2)},
 	}
 
 	for _, c := range cases {
@@ -102,10 +103,10 @@ func TestInferAssigment(t *testing.T) {
 				reflect.TypeOf(anaNode).String())
 		}
 
-		if anaVaribleNode.Type != c.typ {
+		if !reflect.DeepEqual(anaVaribleNode.Type, c.typ) {
 			// TODO: give types.Type a string method so we dont have to reflect
-			t.Errorf("Expected varible node to have type int but, got type %q",
-				anaVaribleNode.Type.Llvm().String())
+			t.Errorf("Expected varible node to have type %q but, got type %q",
+				c.typ.String(), anaVaribleNode.Type.String())
 		}
 	}
 }

@@ -91,6 +91,12 @@ func (a *Analysis) typ(node ast.Node) types.Type {
 
 		return a.typ(a.currentBlock.Scope.Lookup(ident))
 
+	case *ast.IndexExpression:
+		return a.typ(node.Expression)
+
+	case *ast.BraceLiteralExpression:
+		return node.Type
+
 	case *ast.VaribleDeclaration:
 		if node.Type != nil {
 			return node.Type
@@ -144,6 +150,9 @@ func (a *Analysis) varibleDcl(node *ast.VaribleDeclaration) ast.Declare {
 
 	newVaribleDcl.Name = node.Name
 
+	log.Println("var dcl: " + node.Name.Value.Value())
+	log.Println(a.typ(node.Value))
+
 	if node.Type == nil {
 		newVaribleDcl.Type = a.typ(node.Value)
 		newVaribleDcl.Value = a.expression(node.Value)
@@ -153,6 +162,10 @@ func (a *Analysis) varibleDcl(node *ast.VaribleDeclaration) ast.Declare {
 			Type:       node.Type,
 			Expression: a.expression(node.Value),
 		}
+	}
+
+	if a.currentBlock != nil {
+		a.currentBlock.Scope.Replace(node.Name.Value.Value(), newVaribleDcl)
 	}
 
 	return newVaribleDcl
@@ -200,11 +213,34 @@ func (a *Analysis) expression(node ast.Expression) ast.Expression {
 		return a.binaryExp(node)
 	case *ast.CallExpression:
 		return a.callExp(node)
+	case *ast.BraceLiteralExpression:
+		return a.braceLiteralExp(node)
 	default:
 		log.Printf("Unhandled %q node\n", reflect.TypeOf(node).String())
 	}
 
 	return node
+}
+
+func (a *Analysis) braceLiteralExp(node *ast.BraceLiteralExpression) ast.Expression {
+	newBraceLiteralExp := &ast.BraceLiteralExpression{}
+
+	newBraceLiteralExp.Type = node.Type
+
+	newBraceLiteralExp.Elements = make([]ast.Expression, len(node.Elements))
+	for i, elm := range node.Elements {
+		exp := a.expression(elm)
+		// TODO: add non-reflect equal check
+		if !reflect.DeepEqual(a.typ(exp), node.Type.Base()) {
+			exp = &ast.CastExpression{
+				Type:       node.Type.Base(),
+				Expression: exp,
+			}
+		}
+		newBraceLiteralExp.Elements[i] = exp
+	}
+
+	return newBraceLiteralExp
 }
 
 func (a *Analysis) returnSmt(node *ast.ReturnStatement) ast.Statement {
