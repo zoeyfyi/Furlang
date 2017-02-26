@@ -13,6 +13,7 @@ import (
 
 	"reflect"
 
+	instructions "github.com/bongo227/goory/instructions"
 	gooryvalues "github.com/bongo227/goory/value"
 	"github.com/k0kubun/pp"
 )
@@ -136,12 +137,35 @@ func (g *Irgen) declareSmt(node *ast.DeclareStatement) {
 	// TODO: handle function declarations
 	decl := node.Statement.(*ast.VaribleDeclaration)
 	name := decl.Name.Value.Value()
-	exp := g.expression(decl.Value)
 
-	alloc := g.parentBlock.Alloca(decl.Type.Base().Llvm())
-	g.parentBlock.Store(alloc, exp)
+	// TODO: check this didnt break anything
+	// alloc := g.parentBlock.Alloca(decl.Type.Base().Llvm())
+	alloc := g.parentBlock.Alloca(decl.Type.Llvm())
 
 	g.scope.AddVar(name, alloc)
+
+	if _, ok := decl.Type.(*types.Array); ok {
+		g.arraySmt(decl.Value.(*ast.BraceLiteralExpression), alloc)
+	} else {
+		exp := g.expression(decl.Value)
+		g.parentBlock.Store(alloc, exp)
+	}
+
+}
+
+func (g *Irgen) arraySmt(node *ast.BraceLiteralExpression, alloc *instructions.Alloca) {
+	for i, exp := range node.Elements {
+		// Analyse element of array
+		emt := g.expression(exp)
+
+		// Get a pointer to the index of the array
+		ptr := g.parentBlock.Getelementptr(node.Type.Base().Llvm(), alloc,
+			goory.Constant(goory.IntType(64), 0),
+			goory.Constant(goory.IntType(64), i))
+
+		// Store element in the array
+		g.parentBlock.Store(ptr, emt)
+	}
 }
 
 func (g *Irgen) assignmentSmt(node *ast.AssignmentStatement) {
@@ -186,9 +210,22 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 		return g.identExp(node)
 	case *ast.CallExpression:
 		return g.callExp(node)
+	case *ast.IndexExpression:
+		return g.indexExp(node)
 	default:
 		panic(fmt.Sprintf("Unknown expression node: %s", pp.Sprint(node)))
 	}
+}
+
+func (g *Irgen) indexExp(node *ast.IndexExpression) gooryvalues.Value {
+
+	array := g.expression(node.Expression).(*instructions.Load)
+	index := g.expression(node.Index)
+	ev := g.parentBlock.Extractvalue(array, index)
+
+	fmt.Printf("=======\n%s\n=======", ev.Block().Llvm())
+
+	return ev
 }
 
 func (g *Irgen) callExp(node *ast.CallExpression) gooryvalues.Value {
@@ -243,7 +280,7 @@ func (g *Irgen) literalExp(node *ast.LiteralExpression) gooryvalues.Value {
 func (g *Irgen) castExp(node *ast.CastExpression) gooryvalues.Value {
 	exp := g.expression(node.Expression)
 	log.Printf("Casting to: %s", node.Type.Llvm())
-	log.Printf("%s", pp.Sprint(exp.Type()))
+	// pp.Println(exp)
 	return g.parentBlock.Cast(exp, node.Type.Llvm())
 }
 
