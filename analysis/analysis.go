@@ -9,6 +9,7 @@ import (
 	"github.com/bongo227/Furlang/ast"
 	"github.com/bongo227/Furlang/lexer"
 	"github.com/bongo227/Furlang/types"
+	"github.com/k0kubun/pp"
 )
 
 var (
@@ -247,6 +248,7 @@ func (a *Analysis) returnSmt(node *ast.ReturnStatement) ast.Statement {
 	newReturnSmt := &ast.ReturnStatement{}
 
 	newReturnSmt.Result = a.expression(node.Result)
+	pp.Print(newReturnSmt.Result)
 
 	resultType := a.typ(newReturnSmt.Result)
 	if resultType != a.currentFunction.Return {
@@ -334,6 +336,7 @@ func (a *Analysis) callExp(node *ast.CallExpression) ast.Expression {
 			defType := nodeType.Arguments()[i] // definition type
 			typ := a.typ(newArg)               // actual type
 			if typ.Llvm() != defType.Llvm() {
+				log.Printf("Casting argument %d", i)
 				newCallExp.Arguments.Elements[i] = &ast.CastExpression{
 					Expression: newArg,
 					Type:       defType,
@@ -363,27 +366,28 @@ func (a *Analysis) callExp(node *ast.CallExpression) ast.Expression {
 func (a *Analysis) binaryExp(node *ast.BinaryExpression) ast.Expression {
 	log.Printf("Binary %s node", node.Operator.String())
 
-	newBinaryExp := &ast.BinaryExpression{}
-	newBinaryExp.Operator = node.Operator
+	newBinaryExp := &ast.BinaryExpression{
+		Left:     a.expression(node.Left),
+		Operator: node.Operator,
+		Right:    a.expression(node.Right),
+	}
 
 	// Gets the overall type of node
-	typ := a.typ(node)
+	typ := a.typ(newBinaryExp)
 	newBinaryExp.IsFp = typ.(*types.Basic).Info()&types.IsFloat != 0
 
 	// If left part of the node doesnt match the type of the node cast it
-	newBinaryExp.Left = node.Left
-	if leftTyp := a.typ(node.Left); leftTyp != typ {
+	if leftTyp := a.typ(newBinaryExp.Left); leftTyp != typ {
 		newBinaryExp.Left = &ast.CastExpression{
-			Expression: node.Left,
+			Expression: newBinaryExp.Left,
 			Type:       typ,
 		}
 	}
 
 	// If the right part of the node doesnt match the type of the node cast it
-	newBinaryExp.Right = node.Right
-	if rightTyp := a.typ(node.Right); rightTyp != typ {
+	if rightTyp := a.typ(newBinaryExp.Right); rightTyp != typ {
 		newBinaryExp.Right = &ast.CastExpression{
-			Expression: node.Right,
+			Expression: newBinaryExp.Right,
 			Type:       typ,
 		}
 	}

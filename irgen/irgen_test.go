@@ -61,6 +61,9 @@ func TestIrgen(t *testing.T) {
 	// }
 
 	files := []string{
+		// "algorithum_bubble_sort.fur",
+		"algorithum_fibbonaci.fur",
+		"algorithum_gcd.fur",
 		"array_i32.fur",
 		"array_i64.fur",
 		"array_int.fur",
