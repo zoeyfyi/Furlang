@@ -13,6 +13,37 @@ import (
 	"github.com/k0kubun/pp"
 )
 
+func TestParserTypes(t *testing.T) {
+	cases := []struct {
+		source string
+		typ    types.Type
+	}{
+		{`int`, types.IntType(0)},
+		{`i8`, types.IntType(8)},
+		{`i16`, types.IntType(16)},
+		{`i32`, types.IntType(32)},
+		{`i64`, types.IntType(64)},
+
+		{`i32[2]`, types.NewArray(types.IntType(32), 2)},
+		{`i64[13]`, types.NewArray(types.IntType(64), 13)},
+	}
+
+	for _, c := range cases {
+		lexer := lexer.NewLexer([]byte(c.source))
+		tokens, err := lexer.Lex()
+		if err != nil {
+			t.Error(err)
+		}
+
+		parser := NewParser(tokens, false)
+		typ := parser.typ()
+		if !reflect.DeepEqual(c.typ, typ) {
+			t.Errorf("Source:\n%q\nExpected:\n%s\nGot:\n%s\n",
+				c.source, pp.Sprint(c.typ), pp.Sprint(typ))
+		}
+	}
+}
+
 func TestParserExpressions(t *testing.T) {
 	cases := []struct {
 		source string

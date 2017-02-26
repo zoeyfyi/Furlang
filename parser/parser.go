@@ -464,11 +464,9 @@ func (p *Parser) functionDcl() *ast.FunctionDeclaration {
 	arguments := []*ast.ArgumentDeclaration{}
 	_, ok := p.accept(lexer.ARROW)
 	for !ok {
-		typeExp := p.expression(0)
-		typ := types.GetType(typeExp.(*ast.IdentExpression).Value.Value())
+		typ := p.typ()
 		name := p.expect(lexer.IDENT)
 		ident := &ast.IdentExpression{Value: name}
-
 		arguments = append(arguments, &ast.ArgumentDeclaration{
 			Name: ident,
 			Type: typ,
@@ -483,8 +481,7 @@ func (p *Parser) functionDcl() *ast.FunctionDeclaration {
 	// Get the return type
 	var returnTyp types.Type
 	if p.token().Type() != lexer.LBRACE {
-		returnTypeExp := p.expression(0)
-		returnTyp = types.GetType(returnTypeExp.(*ast.IdentExpression).Value.Value())
+		returnTyp = p.typ()
 	}
 
 	// Parse the function body
@@ -520,9 +517,7 @@ func (p *Parser) functionDcl() *ast.FunctionDeclaration {
 func (p *Parser) varibleDcl() *ast.VaribleDeclaration {
 	var typ types.Type
 	if p.peek().Type() != lexer.DEFINE {
-		typExp := p.expression(0)
-		// TODO: make type parser (simplifys brace literal expressions)
-		typ = types.GetType(typExp.(*ast.IdentExpression).Value.Value())
+		typ = p.typ()
 	}
 
 	name := &ast.IdentExpression{
@@ -551,6 +546,23 @@ func (p *Parser) declaration() ast.Declare {
 	default:
 		return p.varibleDcl()
 	}
+}
+
+func (p *Parser) typ() types.Type {
+	ident := p.expect(lexer.IDENT)
+	typ := types.GetType(ident.Value())
+
+	_, ok := p.accept(lexer.LBRACK)
+	if !ok {
+		return typ
+	}
+
+	// TODO: Handle size invalid / constant value
+	sizeToken := p.expect(lexer.INT)
+	size, _ := strconv.Atoi(sizeToken.Value())
+	p.expect(lexer.RBRACK)
+
+	return types.NewArray(typ, int64(size))
 }
 
 func (p *Parser) Parse() *ast.Ast {
