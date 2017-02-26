@@ -79,15 +79,10 @@ func (a *Analysis) typ(node ast.Node) types.Type {
 		ident := node.Value.Value()
 		log.Printf("Looking for %q in scope", ident)
 
-		switch ident {
-		case "i8":
-			return types.IntType(8)
-		case "i16":
-			return types.IntType(16)
-		case "i32":
-			return types.IntType(32)
-		case "i64":
-			return types.IntType(64)
+		// Check if ident is type
+		typ := types.GetType(ident)
+		if typ != nil {
+			return typ
 		}
 
 		return a.typ(a.currentBlock.Scope.Lookup(ident))

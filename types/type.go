@@ -159,7 +159,7 @@ func GetType(ident string) *Basic {
 		return BasicBool
 	}
 
-	panic(fmt.Sprintf("Unrecognized basic type: %s", ident))
+	return nil
 }
 
 var (
