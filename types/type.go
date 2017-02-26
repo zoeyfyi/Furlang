@@ -15,7 +15,7 @@ type Type interface {
 	// Gets the base type of the type
 	Base() Type
 	Llvm() goorytypes.Type
-	// String() string
+	String() string
 }
 
 type BasicType int
@@ -39,12 +39,12 @@ const (
 	F64
 	String
 
-	UntypedBool
-	UntypedInt
-	UntypedRune
-	UntypedFloat
-	UntypedString
-	UntypedNil
+	// UntypedBool
+	// UntypedInt
+	// UntypedRune
+	// UntypedFloat
+	// UntypedString
+	// UntypedNil
 
 	// Aliases
 
@@ -170,6 +170,43 @@ var (
 	}
 )
 
+func (b *Basic) String() string {
+	switch b.Type() {
+	case Invalid:
+		return "invalid"
+	case Bool:
+		return "bool"
+	case Int:
+		return "int"
+	case I64:
+		return "i64"
+	case I32:
+		return "i32"
+	case I16:
+		return "i16"
+	case I8:
+		return "i8"
+	case Uint:
+		return "uint"
+	case U64:
+		return "u64"
+	case U32:
+		return "u32"
+	case U16:
+		return "u16"
+	case U8:
+		return "u8"
+	case Float:
+		return "float"
+	case F64:
+		return "f64"
+	case F32:
+		return "f32"
+	default:
+		return "unkown"
+	}
+}
+
 func (b *Basic) Type() BasicType {
 	return b.typ
 }
@@ -189,6 +226,10 @@ type Array struct {
 
 func NewArray(typ Type, length int64) *Array {
 	return &Array{typ, length}
+}
+
+func (a *Array) String() string {
+	return fmt.Sprintf("%s[%d]", a.typ.String(), a.length)
 }
 
 func (a *Array) Length() int {
@@ -217,6 +258,10 @@ type Pointer struct {
 
 func NewPointer(typ Type) *Pointer {
 	return &Pointer{typ}
+}
+
+func (p *Pointer) String() string {
+	return fmt.Sprintf("*%s", p.typ.String())
 }
 
 func (p *Pointer) Type() Type {
@@ -277,6 +322,19 @@ func NewFunction(returnType Type, argTypes ...Type) *Function {
 		argTypes:   argTypes,
 		returnType: returnType,
 	}
+}
+
+func (b *Function) String() string {
+	argString := ""
+	for i, a := range b.argTypes {
+		argString += a.String()
+
+		if i != len(b.argTypes)-1 {
+			argString += ", "
+		}
+	}
+
+	return fmt.Sprintf("(%s) %s", argString, b.returnType.String())
 }
 
 func (b *Function) Arguments() []Type {
