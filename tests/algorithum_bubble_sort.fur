@@ -1,4 +1,4 @@
-sort :: [5]i32 items -> [5]i32 { 
+proc sort :: i32[5] items -> i32[5] { 
     n := 5
     for i := 0; i < n-1; i++ {
         for j := 0; j < n-i-1; j++ {
@@ -11,7 +11,7 @@ sort :: [5]i32 items -> [5]i32 {
     }
 }
 
-main :: -> i32 {
-    sorted := sort([5]i32{123, 32, 756, 23, 1000})
+proc main :: -> i32 {
+    sorted := sort(i32[5]{123, 32, 756, 23, 1000})
     return sorted[2]
 }
