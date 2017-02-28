@@ -9,6 +9,8 @@ proc sort :: i32[5] items -> i32[5] {
             }
         }
     }
+
+    return items
 }
 
 proc main :: -> i32 {

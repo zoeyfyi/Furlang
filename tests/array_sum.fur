@@ -1,4 +1,4 @@
-sum :: i32[4] test -> i32 {
+proc sum :: i32[4] test -> i32 {
     n := 0
     for i := 0; i < 4; i++ {
         n += test[i]
@@ -7,7 +7,7 @@ sum :: i32[4] test -> i32 {
     return n
 }
 
-main :: -> i32 {
-    test := int[4]{10, 102, 8, 3}
+proc main :: -> i32 {
+    test := i32[4]{10, 102, 8, 3}
     return sum(test)
 }

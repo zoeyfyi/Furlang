@@ -246,8 +246,9 @@ func (a *Analysis) returnSmt(node *ast.ReturnStatement) ast.Statement {
 	pp.Print(newReturnSmt.Result)
 
 	resultType := a.typ(newReturnSmt.Result)
-	if resultType != a.currentFunction.Return {
-		log.Printf("Casting return statment\n")
+	// TODO: remove reflect
+	if !reflect.DeepEqual(resultType, a.currentFunction.Return) {
+		log.Printf("Casting return statment %q to %q\n", resultType, a.currentFunction.Return)
 		newReturnSmt.Result = &ast.CastExpression{
 			Expression: newReturnSmt.Result,
 			Type:       a.currentFunction.Return,
@@ -291,15 +292,12 @@ func (a *Analysis) ifSmt(node *ast.IfStatment) ast.Statement {
 func (a *Analysis) assigmentSmt(node *ast.AssignmentStatement) ast.Statement {
 	newAssigmentSmt := &ast.AssignmentStatement{}
 
-	newAssigmentSmt.Left = node.Left
-	newAssigmentSmt.Right = node.Right
+	newAssigmentSmt.Left = a.expression(node.Left)
+	newAssigmentSmt.Right = a.expression(node.Right)
 
 	// Get type of assigment expression
 	leftType := a.typ(node.Left)
 	rightType := a.typ(node.Right)
-
-	pp.Println(node.Left)
-	log.Printf("Left type: %q, right type: %q", leftType.String(), rightType.String())
 
 	// Expression doesnt match assigment type
 	// TODO: do we need llvm types of can we check base types

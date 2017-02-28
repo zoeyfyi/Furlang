@@ -14,6 +14,7 @@ import (
 	"reflect"
 
 	instructions "github.com/bongo227/goory/instructions"
+	gtypes "github.com/bongo227/goory/types"
 	gooryvalues "github.com/bongo227/goory/value"
 	"github.com/k0kubun/pp"
 )
@@ -63,6 +64,7 @@ func (g *Irgen) function(node *ast.FunctionDeclaration) {
 	g.block(node.Body)
 }
 
+// TODO: remove this
 func (g *Irgen) block(node *ast.BlockStatement) {
 	// Push new scope
 	g.scope = g.scope.Push()
@@ -70,6 +72,17 @@ func (g *Irgen) block(node *ast.BlockStatement) {
 	for _, smt := range node.Statements {
 		g.statement(smt)
 	}
+}
+
+func (g *Irgen) newBlock(node *ast.BlockStatement) (start, end *goory.Block) {
+	startBlock := g.parentBlock.Function().AddBlock()
+	parent := g.parentBlock
+	g.parentBlock = startBlock
+	g.block(node)
+	endBlock := g.parentBlock
+	g.parentBlock = parent
+
+	return startBlock, endBlock
 }
 
 func (g *Irgen) statement(node ast.Statement) {
@@ -200,8 +213,10 @@ func (g *Irgen) assignmentSmt(node *ast.AssignmentStatement) {
 			log.Fatalf("%q was not in scope", name)
 		}
 
-		arrayIndex := g.parentBlock.Getelementptr(alloc.Type(), alloc,
-			goory.Constant(goory.IntType(0), 0), index)
+		arrayType := alloc.BaseType().(gtypes.ArrayType).BaseType()
+		arrayIndex := g.parentBlock.Getelementptr(arrayType, alloc,
+			goory.Constant(goory.IntType(64), 0), index)
+
 		g.parentBlock.Store(arrayIndex, exp)
 		g.scope.AddVar(name, alloc)
 	}
@@ -209,21 +224,22 @@ func (g *Irgen) assignmentSmt(node *ast.AssignmentStatement) {
 }
 
 func (g *Irgen) forSmt(node *ast.ForStatement) {
-	forBlock := g.parentBlock.Function().AddBlock()
-	endBlock := g.parentBlock.Function().AddBlock()
-
 	g.statement(node.Index)
-	outerCondition := g.expression(node.Condition)
-	g.parentBlock.CondBr(outerCondition, forBlock, endBlock)
 
-	// TODO: add a function to do this automaticly (for this and if statments)
-	g.parentBlock = forBlock
-	g.block(node.Body)
+	// Branch into for loop
+	outerCondition := g.expression(node.Condition)
+	start, end := g.newBlock(node.Body)
+	continueBlock := g.parentBlock.Function().AddBlock()
+	g.parentBlock.CondBr(outerCondition, start, continueBlock)
+
+	// Branch to continue of exit
+	g.parentBlock = end
 	g.statement(node.Increment)
 	innerCondition := g.expression(node.Condition)
-	forBlock.CondBr(innerCondition, forBlock, endBlock)
+	g.parentBlock.CondBr(innerCondition, start, continueBlock)
 
-	g.parentBlock = endBlock
+	// Set continue block
+	g.parentBlock = continueBlock
 }
 
 func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
@@ -248,11 +264,11 @@ func (g *Irgen) expression(node ast.Expression) gooryvalues.Value {
 func (g *Irgen) indexExp(node *ast.IndexExpression) gooryvalues.Value {
 	alloc, _ := g.scope.GetVar(node.Expression.(*ast.IdentExpression).Value.Value())
 	index := g.expression(node.Index)
-	ptr := g.parentBlock.Getelementptr(alloc.Type(), alloc, index)
+	// TODO: Make getting base type cleaner
+	ptr := g.parentBlock.Getelementptr(alloc.BaseType().(gtypes.ArrayType).BaseType(), alloc, goory.Constant(goory.IntType(32), 0), index)
+	value := g.parentBlock.Load(ptr)
 
-	// fmt.Printf("=======\n%s\n=======", ev.Block().Llvm())
-
-	return g.parentBlock.Load(ptr)
+	return value
 }
 
 func (g *Irgen) callExp(node *ast.CallExpression) gooryvalues.Value {
@@ -305,10 +321,7 @@ func (g *Irgen) literalExp(node *ast.LiteralExpression) gooryvalues.Value {
 }
 
 func (g *Irgen) castExp(node *ast.CastExpression) gooryvalues.Value {
-	pp.Print(node.Expression)
-
 	exp := g.expression(node.Expression)
-	log.Printf("Casting to: %s", node.Type.Llvm())
 	return g.parentBlock.Cast(exp, node.Type.Llvm())
 }
 
@@ -317,6 +330,8 @@ func (g *Irgen) binaryExp(node *ast.BinaryExpression) gooryvalues.Value {
 	right := g.expression(node.Right)
 
 	log.Printf("Is fp: %t", node.IsFp)
+
+	log.Printf("Left is %q, right is %q", left.Type().String(), right.Type().String())
 
 	if node.IsFp {
 		switch node.Operator.Type() {
