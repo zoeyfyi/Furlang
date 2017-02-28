@@ -1,14 +1,44 @@
 # Furlang: An investigation into modern programming languages and compilers
 
 ## Analysis
-Until recently most game development was done in C/C++ because there were no real alternatives for game engines seeking to maximize the hardware. Most modern languages are designed with a garbage collector to prevent the problems which arise with manual memory management, and object oriented patterns which aim to encapsulate state to make the program easier to reason about. What has become apparent is that these features have excluded modern languages from serious widespread use in high performance code bases, and there is a gap for programming language with modern ideas without the heavy drawbacks from the modern alternatives.
-
-In this investigation the aim is to design a modern programming language called Fur and implement a subset in the form of a compiler. Due to time constraints it would be infeasible to implement all aspects of a modern programming language, standard libraries and language tooling. Instead the focus will be on implementing a subset such that a programmer has the ability to create simple algorithms such as bubble sort in Fur.
+In this investigation the aim is to design a programming language and implement the basics of a compiler to create executable programs. Due to the time constraints it would be infeasible to implement all asspects of a modern programming language, standard library and language tooling. Instead the focus wull be on implementing a small subset such that simple algorithums like the greatest common divisor and bubble sort can be created.
 
 ### Research
-In terms of the languages design I looked at several languages with similar goals as mine and read through their specifications including: [Rust<sup>[1]</sup>](#1), [Go<sup>[2]</sup>](#2), [D<sup>[3]</sup>](#3) and [F#<sup>[4]</sup>](#4). I used my prior experience with these languages to judge whether their features would be beneficial in Fur.
+In terms of the languages design I looked at several languages with similar goals as mine and read through their specifications including: [Rust<sup>[1]</sup>](#1), [Go<sup>[2]</sup>](#2), [D<sup>[3]</sup>](#3) and [F#<sup>[4]</sup>](#4). I looked at their syntax and the design disicions behind them in order the judge what Fur shoudl look like.
 
 To create the compiler I looked at the source code of these same languages, especially the [Go compiler<sup>[5]</sup>](#5) as it's the language I decided to create Fur's compiler in.
+
+### Syntax
+Compared to C modern programming languages use a lot less characters to describe the instructions which make the final program. By using less character it becomes alot faster to read through the source code in order to understand the logic, which intern makes the language easier to use and faster to develop in. With Fur, I wanted to explore the modern ideas and how they can be implemented. 
+
+#### Type inference
+In go, most varibles dont need a type because their type can be infered:
+```go
+foo := 123
+```
+In this case foo will be an `int` type since the value on the right hand side is an integer. If you want to be more explicit you can use the longer form varible declaration:
+```go
+var foo int = 123
+``` 
+The infered type is much quicker to type and just as easy to read, healping to reduce the character count of the source code. 
+
+#### Semicolons and parentiesis
+Most languages use semi colons to tell the compiler that the current statement has ended and everyting after the semicolon is interpreted as a seperate statment. In more modern languages like python, their are no semicolons anywhere in the language. Instead python uses spaces and new lines to signify the start and end of each statement and block.
+
+Go uses semicolons only in a few places such as for loops:
+```go
+for i := 0; i < 10; i++ {}
+```
+Here each part of the for loop is seperate by semicolons just like C, however for most statements new lines are used as in python to signify the end of a statement.
+
+Another thing to note is the lack of parentiesis around the for loop. The lack of brackets helps to further eliminate useless syntax which only hinders the programmer. The side effect of ommiting semicolons and brackets is that the source code is much more complex to parse since the compiler can assume where statements begin and end.
+
+#### Function definitions
+Having looked at the way functions are defined in several languages I decided to create my own syntax inspired by functional programming languages. 
+```
+proc bar :: int foo -> float
+```
+First of all what whould normaly be called functions are called procedures in Fur, hence the apprevation `proc`. The double semi colon is used to provide a clear divider between the name and the arguments, this clear line of seperation helps when skimming though the source code in order to find a function with a certain name. Finaly the arrow that seperates the arguments and return type reinforces the consept of a function, to transform the input into output. 
 
 ### Memory Managment
 When a program needs memory to persist longer than the scope of a function, memory needs to be allocated from the heap. The heap is slower than stack but the program can choose at run-time how much memory it wants. This flexibility brings several problems such as: what if the operating system can't give you the memory you requested, what if you need more, what if the you never give it back. In languages with manual memory management the programmer must solve all these problems whenever they need to allocate memory on the heap, making the code more complex and error prone.
@@ -18,59 +48,22 @@ One solution to this problem is a garbage collector. In languages such as Go and
 The problems arises in applications which have low latency requirements, such as games. With virtual reality and higher refresh rate monitors, games have less than 7 milliseconds to update and render the next frame. GC max pause times in Go are around [50µs<sup>[6]</sup>](#6) (with considerable CPU usage) and [50ms<sup>[7]</sup>](#7) in Java, what's worse is that they can happen at anytime causing the game to freeze and stutter. One workaround is to budget this into your frame time i.e. 5ms to update and render and 2ms for any GC pauses, this means reduced graphics, less realistic physics and simpler game mechanics. Even if you do not pause mid-frame there is still the problem of: higher read/write latency, less CPU performance and less data locality (hence less cache utilization). For this reason Fur will not have a garbage collector.
 
 #### Objectives
- - Simple and clear procedure for allocating memory on the heap that is flexible enough to derive all other heap structures such as lists, trees, maps etc.
-
-### Object oriented programming
-Often in programming we deal with real life objects, in the context of a game this could be the humans and animals you interact with, the plants/decorations you see and tools/weapons you use. Object oriented programming is all about representing the state of these objects and things we can do with them, for example let's say we have 3 different weapons:
-
-Weapon | State | Actions
---- | --- | ---
-Normal gun | Ammunition left, firing rate | Aim, fire
-Burst gun | Ammunition left, firing rate, Burst amount | Aim, fire, Burst fire
-Laser gun | Cooldown time | Auto aim, Repeated fire
-
-Each weapon has some state and some actions. You may notice that the burst gun has all the properties and actions of the normal gun, so we can say the burst gun inherits from the normal gun. In the OOP paradigm this mean we don't need to write two identical aim and fire methods, we create one normal gun and the burst gun inherits the state and actions of the normal gun.
-
-Where object oriented programming (OOP) breaks down is when we change the behavior of an object. Say are game requires a laser gun, a laser gun doesn't have ammunition, it has a cool-down rate instead. A laser gun is still a gun though so we need to make a generic gun with no state or actions which both the normal and laser gun inherits from. Overtime as new ideas are implemented, inheritance trees becomes unwieldy as different behaviors are required. What started of as a way of preventing code duplication can cause exponential growth in the code base.
-
-Modern game engines have recognized this problem and developed the component based approach. Small bits of data and behaviors are bundled into components, and entities are just a list of components. This approach made objects in the game infinitely flexible, write the logic once and add it to any object in the game. If all the same components are stored sequentially updating them becomes extremely fast since they will almost always be in cache.
-
-In conclusion, Fur doesn't need the many language features required for effective OOP because it isn't a good choice for modern games development. The data orientated approach makes better use of the cache for a better performing game.
-
-#### Objectives
- - No explicit support for object oriented programming because it would be useless complexity for the end user.
- - Standard library should reflect this ideology with no oop behavior.
-
-### Functional programming
-Functional programming seems like a natural fit for the composable nature of logic in video games however not all the features of functional programming are performant. There's a reason that almost all functional programming languages have a garbage collector, their design causes a lot of allocations. Their immutable structures means a manual memory allocator is forced to copy the existing memory to a new place in memory to make changes to the values instead of applying the modifications in place. This can mean massive performance penalties if the programmer does not rewrite or redesign the logic such that no references to old structures are needed and a smarter compiler/allocator can reason that a modification in place doesn't break the rules of the language. Most of the time theses transforms are non trivial and require a large amount of knowledge of the compilers behavior, slowing programmers down and reducing the hiring pool. Obviously some functional programming ideas are not compatible with Fur’s performance targets.
-
-With that said, pure functions and function composition are features that allow programmers to compose small bits of logic to form something more complex. They can be very useful and can be implemented at no additional cost to performance. Pure functions by the nature can be ran in parallel presenting a unique opportunity for the compiler to make faster code than it otherwise could. Procedural language compilers could also use the same performance boost however with explicit language support the compiler can make more optimizations in more places resulting in better CPU usage and faster execution.
-
-#### Objectives
- - The language should differentiate between pure functions and procedures, where pure functions are a subclass of procedures.
- - The compiler should ensure pure functions cause no side effects by only allowing calls to other pure functions and not allowing mutations to function parameters and global variables.
-
-### Modules and packages
-In non trivial code bases portions of code tend to split nicely into different modules. This code separation allows multiple programmers to work on the code base with greater ease. Additionally when code bases get so large that it's impossible for each person to memorize the whole code base, the separation of code allows the programmers to control what parts of the module external code can use. This idea of public/private constructs forms the modules interface which is hopefully easier to reason with for someone that is using the module externally.
-
-Most languages approach this in different ways, but with Fur’s design goals in mind a [Go style module system](#2) with modules as folders seems to be the simplest module system which is compatible for all projects. The benefit of modules as folders is that it allows anyone browsing the code base to easily build a mental map of the project's structure regardless of where they are whether it be an editor, file explorer or source control.
-
-#### Objectives
-- Modules should be defined by the folder structure where the direct children of a folder represents the code in the module and sub folders represent sub modules.
-- Modules should be imported by their relative file path. Only exported constructs should be accessible from modules that import them.
+ - Programs should be compiled with no runtime managing the executable memory.
 
 ### Syntax and keywords
 Golang has [25 keywords<sup>[2]</sup>](#2) which helps make it's easy/quick to learn, simple to read and less keywords are reserved so it's simpler to name some constructs. The obvious drawback is the reduced expressiveness compared to languages like C# and Java which have many more keywords. Fur will be closer to Go in terms of the small pool of keywords in favor of a more simpler and clearer expression of logic.
 
-Functional languages like F# tend to use far more symbols to express their logic. Symbols make smaller code and less visual noise however they create a steeper learning curve since they are less descriptive. Fur will feel familiar sharing most of the symbols from C based languages whilst including some of the expressive power of more functional languages for its functional inspired features.
-
-C++ and Java both have operator overloading which makes their source code easy to read in code bases that use things like arbitrarily wide integers, vectors and matrices. The problem is operator overloading is easily abused by hiding complex computations behind a simple looking operator. For example in the case of a two arbitrary length integers being multiplied, memory allocations and complex loops are invoked which isn't obvious from the call site. Since performance is a priority for Fur the source code should be easy to reason about its performance, hence no operator overloading.
-
 #### Objectives
 - Aim for a small amount of keywords so there is no unnecessary complexity.
+
+### Symbols
+Functional languages like F# tend to use far more symbols to express their logic. Symbols make smaller code and less visual noise however they create a steeper learning curve since they are less descriptive. Fur will feel familiar sharing most of the symbols from C based languages whilst including some of the expressive power of more functional languages for its functional inspired features.
+
+C++ and Java both have operator overloading which makes their source code easy to read in code bases that use things like arbitrarily wide integers, vectors and matrices. The problem is operator overloading is easily abused by hiding complex computations behind a simple looking operator. For example in the case of a two arbitrary length integers being multiplied, memory allocations and complex loops are invoked which isn't obvious from the call site. Source code should be easy to reason about its performance, hence no operator overloading.
+
+#### Objectives
 - Share the symbols from other C like languages so that the language feels instantly familiar.
 - Disallow operator overloading so source code is easier to reason about in terms of performance.
-- Pure functions should be easily composed to create more complex behavior.
 
 ### Types
 #### Integers
