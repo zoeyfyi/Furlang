@@ -1,0 +1,3 @@
+[submodule "FurlangC"]
+	path = FurlangC
+	url = git@github.com:bongo227/FurlangC.git
